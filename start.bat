@@ -8,7 +8,7 @@ echo   琥珀冒险 - 游戏服务器启动脚本
 echo ========================================
 echo.
 
-cd /d "%USERPROFILE%\.nanobot\hupo-game"
+cd /d "%~dp0"
 
 echo [1/4] 读取配置文件...
 for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty server | Select-Object -ExpandProperty api_port"') do set API_PORT=%%a
