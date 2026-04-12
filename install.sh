@@ -18,7 +18,7 @@ echo "[1/7] 检查依赖..."
 if ! command -v python3 &> /dev/null; then
     echo "正在安装 Python3..."
     apt-get update
-    apt-get install -y python3 python3-pip
+    apt-get install -y python3 python3-pip python3-psutil
 fi
 
 if ! command -v node &> /dev/null; then
@@ -28,7 +28,14 @@ if ! command -v node &> /dev/null; then
 fi
 
 echo "[2/7] 安装 Python 依赖..."
-pip3 install psutil --break-system-packages 2>/dev/null || pip3 install psutil
+if command -v pip3 &> /dev/null; then
+    pip3 install psutil --break-system-packages 2>/dev/null || pip3 install psutil
+elif command -v pip &> /dev/null; then
+    pip install psutil --break-system-packages 2>/dev/null || pip install psutil
+else
+    echo "尝试使用 apt 安装 psutil..."
+    apt-get install -y python3-psutil
+fi
 
 echo "[3/7] 创建安装目录..."
 mkdir -p $INSTALL_DIR
@@ -36,7 +43,11 @@ mkdir -p $INSTALL_DIR/logs
 
 echo "[4/7] 复制文件..."
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cp -r $SCRIPT_DIR/* $INSTALL_DIR/
+if [ "$SCRIPT_DIR" != "$INSTALL_DIR" ]; then
+    cp -r $SCRIPT_DIR/* $INSTALL_DIR/
+else
+    echo "  已在安装目录，跳过复制"
+fi
 
 echo "[5/7] 配置日志轮转..."
 cp $INSTALL_DIR/logrotate.conf /etc/logrotate.d/hupo-game 2>/dev/null || true
