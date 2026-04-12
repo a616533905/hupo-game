@@ -1,9 +1,12 @@
 const http = require('http');
 const https = require('https');
 const url = require('url');
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+
+const MAX_BODY_SIZE = 10 * 1024 * 1024;
+const ALLOWED_FORMATS = ['webm', 'mp3', 'wav', 'ogg', 'm4a', 'aac'];
 
 const CONFIG_FILE = path.join(__dirname, 'config.json');
 
@@ -30,7 +33,7 @@ const BAIDU_SECRET_KEY = baidu.secret_key || '';
 
 function audioToPcm(audioBase64, format) {
     return new Promise((resolve, reject) => {
-        const ext = format || 'webm';
+        const ext = ALLOWED_FORMATS.includes(format) ? format : 'webm';
         const timestamp = Date.now();
         const randomSuffix = Math.random().toString(36).substring(7);
         const tempAudio = path.join(__dirname, `temp_${timestamp}_${randomSuffix}.${ext}`);
@@ -39,7 +42,6 @@ function audioToPcm(audioBase64, format) {
         const audioBuffer = Buffer.from(audioBase64, 'base64');
         fs.writeFileSync(tempAudio, audioBuffer);
 
-        const { spawn } = require('child_process');
         const ffmpeg = spawn('ffmpeg', [
             '-y', '-i', tempAudio,
             '-f', 's16le', '-acodec', 'pcm_s16le',
@@ -207,7 +209,17 @@ const server = http.createServer(async (req, res) => {
 
     if (parsedUrl.pathname === '/voice/recognize') {
         let body = '';
-        req.on('data', chunk => body += chunk);
+        let bodySize = 0;
+        req.on('data', chunk => {
+            bodySize += chunk.length;
+            if (bodySize > MAX_BODY_SIZE) {
+                res.writeHead(413, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: '请求体过大，最大10MB' }));
+                req.destroy();
+                return;
+            }
+            body += chunk;
+        });
         req.on('end', async () => {
             try {
                 const { speech, token, provider, format, access_token } = JSON.parse(body);
