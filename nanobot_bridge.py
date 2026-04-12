@@ -41,11 +41,14 @@ CONFIG_FILE = "config.json"
 WEB_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 import psutil
+import threading
 
 RATE_LIMIT_WINDOW = 60
 RATE_LIMIT_MAX_REQUESTS = 100
 MAX_CONTENT_LENGTH = 10 * 1024 * 1024
+HTTP_TIMEOUT = 30
 rate_limit_data = {}
+rate_limit_lock = threading.Lock()
 
 prometheus_metrics = {
     'requests_total': 0,
@@ -55,54 +58,64 @@ prometheus_metrics = {
     'tts_requests': 0,
     'start_time': time.time()
 }
+metrics_lock = threading.Lock()
+
+def increment_metric(key, value=1):
+    with metrics_lock:
+        prometheus_metrics[key] += value
 
 def check_rate_limit(client_ip):
     """检查请求频率限制"""
     now = time.time()
-    if client_ip not in rate_limit_data:
-        rate_limit_data[client_ip] = []
-    
-    rate_limit_data[client_ip] = [t for t in rate_limit_data[client_ip] if now - t < RATE_LIMIT_WINDOW]
-    
-    if len(rate_limit_data[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
-        return False
-    
-    rate_limit_data[client_ip].append(now)
-    return True
+    with rate_limit_lock:
+        if client_ip not in rate_limit_data:
+            rate_limit_data[client_ip] = []
+        
+        rate_limit_data[client_ip] = [t for t in rate_limit_data[client_ip] if now - t < RATE_LIMIT_WINDOW]
+        
+        if len(rate_limit_data[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
+            return False
+        
+        rate_limit_data[client_ip].append(now)
+        return True
 
 def cleanup_rate_limit_data():
     """定期清理过期的频率限制数据"""
     while True:
         time.sleep(300)
         now = time.time()
-        ips_to_remove = []
-        for ip in rate_limit_data:
-            rate_limit_data[ip] = [t for t in rate_limit_data[ip] if now - t < RATE_LIMIT_WINDOW]
-            if not rate_limit_data[ip]:
-                ips_to_remove.append(ip)
-        for ip in ips_to_remove:
-            del rate_limit_data[ip]
-        if ips_to_remove:
-            logger.debug(f"清理了 {len(ips_to_remove)} 个过期的IP频率限制记录")
+        with rate_limit_lock:
+            ips_to_remove = []
+            for ip in rate_limit_data:
+                rate_limit_data[ip] = [t for t in rate_limit_data[ip] if now - t < RATE_LIMIT_WINDOW]
+                if not rate_limit_data[ip]:
+                    ips_to_remove.append(ip)
+            for ip in ips_to_remove:
+                del rate_limit_data[ip]
+            if ips_to_remove:
+                logger.debug(f"清理了 {len(ips_to_remove)} 个过期的IP频率限制记录")
 
 cleanup_thread = threading.Thread(target=cleanup_rate_limit_data, daemon=True)
 cleanup_thread.start()
 
 def get_system_stats():
     """获取系统状态"""
+    with metrics_lock:
+        uptime = time.time() - prometheus_metrics['start_time']
     return {
         'cpu_percent': psutil.cpu_percent(interval=0.1),
         'memory_percent': psutil.virtual_memory().percent,
         'memory_used': psutil.virtual_memory().used,
         'memory_total': psutil.virtual_memory().total,
         'disk_percent': psutil.disk_usage('/').percent if os.name != 'nt' else psutil.disk_usage('C:\\').percent,
-        'uptime': time.time() - prometheus_metrics['start_time']
+        'uptime': uptime
     }
 
 def format_prometheus_metrics():
     """格式化Prometheus指标"""
     stats = get_system_stats()
-    metrics = f"""# HELP hupo_requests_total Total number of requests
+    with metrics_lock:
+        metrics = f"""# HELP hupo_requests_total Total number of requests
 # TYPE hupo_requests_total counter
 hupo_requests_total {prometheus_metrics['requests_total']}
 
@@ -280,7 +293,11 @@ def get_config():
 
 config = get_config()
 
-PORT = int(os.environ.get('API_PORT')) if os.environ.get('API_PORT') else config.get('port', 80)
+try:
+    PORT = int(os.environ.get('API_PORT')) if os.environ.get('API_PORT') else config.get('port', 80)
+except (ValueError, TypeError):
+    logger.warning("API_PORT 环境变量格式错误，使用默认端口 80")
+    PORT = 80
 
 def get_provider_config(provider_name):
     """获取指定提供者的配置"""
@@ -314,7 +331,7 @@ def call_minimax_api(message, model_override=None):
         "temperature": 0.7
     }
 
-    conn = http.client.HTTPSConnection("api.minimax.chat")
+    conn = http.client.HTTPSConnection("api.minimax.chat", timeout=HTTP_TIMEOUT)
 
     headers = {
         "Content-Type": "application/json",
@@ -354,7 +371,7 @@ def call_minimax_tts(text, voice_id="female-tianmei"):
     if not api_key or not group_id:
         return None, "错误: MiniMax API未配置"
 
-    conn = http.client.HTTPSConnection("api.minimaxi.com")
+    conn = http.client.HTTPSConnection("api.minimaxi.com", timeout=HTTP_TIMEOUT)
 
     headers = {
         "Content-Type": "application/json",
@@ -411,7 +428,7 @@ def call_minimax_asr(audio_data, audio_format="mp3"):
     if not api_key or not group_id:
         return None, "错误: MiniMax API未配置"
 
-    conn = http.client.HTTPSConnection("api.minimax.chat")
+    conn = http.client.HTTPSConnection("api.minimax.chat", timeout=HTTP_TIMEOUT)
 
     headers = {
         "Authorization": f"Bearer {api_key}"
@@ -544,7 +561,7 @@ def call_ollama_api(message, model_override=None, host_override=None):
     headers = {"Content-Type": "application/json"}
 
     def try_openai_api():
-        conn = conn_class(host, port)
+        conn = conn_class(host, port, timeout=HTTP_TIMEOUT)
         try:
             conn.request("POST", "/v1/chat/completions", json.dumps(data_openai), headers)
             response = conn.getresponse()
@@ -560,7 +577,7 @@ def call_ollama_api(message, model_override=None, host_override=None):
             conn.close()
 
     def try_native_api():
-        conn = conn_class(host, port)
+        conn = conn_class(host, port, timeout=HTTP_TIMEOUT)
         try:
             conn.request("POST", "/api/chat", json.dumps(data_native), headers)
             response = conn.getresponse()
@@ -612,7 +629,7 @@ def call_openrouter_api(message, model_override=None):
         "temperature": 0.7
     }
 
-    conn = http.client.HTTPSConnection("openrouter.ai")
+    conn = http.client.HTTPSConnection("openrouter.ai", timeout=HTTP_TIMEOUT)
 
     headers = {
         "Content-Type": "application/json",
@@ -700,11 +717,11 @@ class NanobotHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         client_ip = self.client_address[0]
-        prometheus_metrics['requests_total'] += 1
+        increment_metric('requests_total')
         
         if not check_rate_limit(client_ip):
             logger.warning(f"[{client_ip}] 请求频率超限")
-            prometheus_metrics['requests_error'] += 1
+            increment_metric('requests_error')
             self.send_response(429)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -714,7 +731,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
         
         try:
             if self.path == "/chat":
-                prometheus_metrics['chat_requests'] += 1
+                increment_metric('chat_requests')
                 content_length = int(self.headers.get("Content-Length", 0))
                 if content_length > MAX_CONTENT_LENGTH:
                     logger.warning(f"[{client_ip}] POST /chat - 请求体过大: {content_length}")
@@ -735,7 +752,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                         expected_token = config.get('access_token', '')
                         if not expected_token or token != expected_token:
                             logger.warning(f"[{client_ip}] POST /chat - 认证失败")
-                            prometheus_metrics['requests_error'] += 1
+                            increment_metric('requests_error')
                             self.send_response(401)
                             self.send_header("Content-Type", "application/json; charset=utf-8")
                             self.send_header('Access-Control-Allow-Origin', '*')
@@ -762,17 +779,17 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     self.send_header('Access-Control-Allow-Origin', '*')
                     self.end_headers()
                     self.wfile.write(json.dumps({"response": response}, ensure_ascii=False).encode('utf-8'))
-                    prometheus_metrics['requests_success'] += 1
+                    increment_metric('requests_success')
 
                 except Exception as e:
                     logger.error(f"[{client_ip}] POST /chat 错误: {str(e)}")
-                    prometheus_metrics['requests_error'] += 1
+                    increment_metric('requests_error')
                     self.send_response(500)
                     self.send_header('Access-Control-Allow-Origin', '*')
                     self.end_headers()
                     self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
             elif self.path == "/tts":
-                prometheus_metrics['tts_requests'] += 1
+                increment_metric('tts_requests')
                 content_length = int(self.headers.get("Content-Length", 0))
                 if content_length > MAX_CONTENT_LENGTH:
                     logger.warning(f"[{client_ip}] POST /tts - 请求体过大: {content_length}")
@@ -793,7 +810,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                         expected_token = config.get('access_token', '')
                         if not expected_token or token != expected_token:
                             logger.warning(f"[{client_ip}] POST /tts - 认证失败")
-                            prometheus_metrics['requests_error'] += 1
+                            increment_metric('requests_error')
                             self.send_response(401)
                             self.send_header("Content-Type", "application/json; charset=utf-8")
                             self.send_header('Access-Control-Allow-Origin', '*')
@@ -817,7 +834,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
 
                     if error:
                         logger.error(f"[{client_ip}] POST /tts 错误: {error}")
-                        prometheus_metrics['requests_error'] += 1
+                        increment_metric('requests_error')
                         self.send_response(500)
                         self.send_header("Content-Type", "application/json; charset=utf-8")
                         self.send_header('Access-Control-Allow-Origin', '*')
@@ -831,7 +848,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     self.send_header("Content-Length", len(audio_data))
                     self.end_headers()
                     self.wfile.write(audio_data)
-                    prometheus_metrics['requests_success'] += 1
+                    increment_metric('requests_success')
 
                 except Exception as e:
                     logger.error(f"[{client_ip}] POST /tts 异常: {str(e)}")
@@ -900,7 +917,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         client_ip = self.client_address[0]
-        prometheus_metrics['requests_total'] += 1
+        increment_metric('requests_total')
         
         try:
             if self.path == "/health":
@@ -909,19 +926,21 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     self.end_headers()
                     return
                 stats = get_system_stats()
+                with metrics_lock:
+                    requests_total = prometheus_metrics['requests_total']
                 health_data = {
                     "status": "ok",
                     "uptime": round(stats['uptime'], 2),
                     "cpu_percent": stats['cpu_percent'],
                     "memory_percent": stats['memory_percent'],
                     "disk_percent": stats['disk_percent'],
-                    "requests_total": prometheus_metrics['requests_total']
+                    "requests_total": requests_total
                 }
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
                 self.wfile.write(json.dumps(health_data).encode('utf-8'))
-                prometheus_metrics['requests_success'] += 1
+                increment_metric('requests_success')
                 return
             
             if self.path == "/metrics":
@@ -933,7 +952,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "text/plain; version=0.0.4")
                 self.end_headers()
                 self.wfile.write(format_prometheus_metrics().encode('utf-8'))
-                prometheus_metrics['requests_success'] += 1
+                increment_metric('requests_success')
                 return
             
             if self.path == "/model":
