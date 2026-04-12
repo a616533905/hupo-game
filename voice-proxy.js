@@ -161,6 +161,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (parsedUrl.pathname === '/voice/config') {
+        const queryToken = parsedUrl.query.token || '';
+        if (!verifyToken(queryToken)) {
+            console.log('Token验证失败: /voice/config');
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Unauthorized: invalid token' }));
+            return;
+        }
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
             provider: VOICE_PROVIDER,
@@ -222,7 +229,21 @@ const server = http.createServer(async (req, res) => {
         });
         req.on('end', async () => {
             try {
-                const { speech, token, provider, format, access_token } = JSON.parse(body);
+                let parsedBody;
+                try {
+                    parsedBody = JSON.parse(body);
+                } catch (parseError) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false, error: '无效的JSON格式' }));
+                    return;
+                }
+                const { speech, token, provider, format, access_token } = parsedBody;
+                
+                if (!speech) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false, error: '缺少speech参数' }));
+                    return;
+                }
                 
                 if (!verifyToken(access_token)) {
                     console.log('Token验证失败: /voice/recognize');

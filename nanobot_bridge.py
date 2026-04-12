@@ -774,6 +774,14 @@ class NanobotHandler(BaseHTTPRequestHandler):
             elif self.path == "/tts":
                 prometheus_metrics['tts_requests'] += 1
                 content_length = int(self.headers.get("Content-Length", 0))
+                if content_length > MAX_CONTENT_LENGTH:
+                    logger.warning(f"[{client_ip}] POST /tts - 请求体过大: {content_length}")
+                    self.send_response(413)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(b'{"error": "Request entity too large"}')
+                    return
                 body = self.rfile.read(content_length).decode("utf-8")
 
                 try:
@@ -833,6 +841,14 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
             elif self.path == "/asr":
                 content_length = int(self.headers.get("Content-Length", 0))
+                if content_length > MAX_CONTENT_LENGTH:
+                    logger.warning(f"[{client_ip}] POST /asr - 请求体过大: {content_length}")
+                    self.send_response(413)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(b'{"error": "Request entity too large"}')
+                    return
                 body = self.rfile.read(content_length)
                 
                 token_required = config.get('token_required', 'no')
@@ -921,13 +937,16 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 return
             
             if self.path == "/model":
+                if client_ip not in ('127.0.0.1', '::1'):
+                    self.send_response(404)
+                    self.end_headers()
+                    return
                 active_provider = config.get('active_provider', 'minimax')
                 provider_config = get_provider_config(active_provider)
                 model = provider_config.get('model', 'unknown')
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 self.wfile.write(json.dumps({"model": f"{active_provider}/{model}"}, ensure_ascii=False).encode('utf-8'))
                 return
