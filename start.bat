@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 chcp 65001 >nul
 set PYTHONIOENCODING=utf-8
 title Game Server Startup
@@ -24,8 +25,30 @@ echo   语音端口: %VOICE_PORT%
 echo.
 
 echo [2/4] 清理端口...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%API_PORT%" ^| findstr "LISTENING"') do taskkill /F /PID %%a >nul 2>&1
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%VOICE_PORT%" ^| findstr "LISTENING"') do taskkill /F /PID %%a >nul 2>&1
+echo   检查端口 %API_PORT% (AI Bridge)...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%API_PORT% " ^| findstr "LISTENING" ^| findstr /v "0.0.0.0" ^| findstr /v ":::"') do (
+    echo     发现端口 %API_PORT% 被占用，PID: %%a
+    for /f "tokens=1" %%b in ('tasklist /FI "PID eq %%a" /NH ^| findstr "PID"') do (
+        set PROC_NAME=%%b
+    )
+    for /f "tokens=1" %%b in ('wmic process where ProcessId=%%a get Name 2^|findstr ".exe"') do set PROC_NAME=%%b
+    echo     进程名: !PROC_NAME!
+    echo     正在关闭...
+    taskkill /F /PID %%a >nul 2>&1
+)
+timeout /t 1 /nobreak >nul
+for %%a in (%API_PORT%) do echo     端口 %API_PORT% 已清理
+
+echo   检查端口 %VOICE_PORT% (Voice Proxy)...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%VOICE_PORT% " ^| findstr "LISTENING" ^| findstr /v "0.0.0.0" ^| findstr /v ":::"') do (
+    echo     发现端口 %VOICE_PORT% 被占用，PID: %%a
+    for /f "tokens=1" %%b in ('wmic process where ProcessId=%%a get Name 2^|findstr ".exe"') do set PROC_NAME=%%b
+    echo     进程名: !PROC_NAME!
+    echo     正在关闭...
+    taskkill /F /PID %%a >nul 2>&1
+)
+timeout /t 1 /nobreak >nul
+for %%a in (%VOICE_PORT%) do echo     端口 %VOICE_PORT% 已清理
 
 timeout /t 2 /nobreak >nul
 
