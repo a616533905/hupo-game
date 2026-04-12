@@ -1,0 +1,19 @@
+[Unit]
+Description=Hupo Game AI Bridge Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/hupo-game
+Environment="API_PORT=80"
+Environment="VOICE_PORT=85"
+ExecStart=/usr/bin/python3 /root/hupo-game/nanobot_bridge.py
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

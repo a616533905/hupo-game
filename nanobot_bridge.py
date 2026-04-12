@@ -12,6 +12,7 @@ import threading
 import time
 import mimetypes
 import logging
+import signal
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 
@@ -845,5 +846,21 @@ if __name__ == "__main__":
     logger.info("="*50)
 
     server = HTTPServer(("0.0.0.0", PORT), NanobotHandler)
+    
+    def graceful_shutdown(signum, frame):
+        logger.info("收到关闭信号，正在优雅关闭...")
+        logger.info("等待当前请求完成...")
+        server.shutdown()
+        logger.info("服务器已关闭")
+        sys.exit(0)
+    
+    signal.signal(signal.SIGTERM, graceful_shutdown)
+    signal.signal(signal.SIGINT, graceful_shutdown)
+    
     logger.info(f"服务器已启动，监听端口 {PORT}")
-    server.serve_forever()
+    logger.info("按 Ctrl+C 或发送 SIGTERM 信号可优雅关闭")
+    
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        graceful_shutdown(None, None)

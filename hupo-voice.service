@@ -1,0 +1,18 @@
+[Unit]
+Description=Hupo Game Voice Proxy Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/hupo-game
+Environment="VOICE_PORT=85"
+ExecStart=/usr/bin/node /root/hupo-game/voice-proxy.js
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
