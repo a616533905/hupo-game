@@ -777,10 +777,10 @@ body.snow .snowfall{display:block}
 <button class="speak-mode-btn" data-mode="none" onclick="setSpeakMode('none')">🔇 静音</button>
 </div>
 <div class="voice-gender" style="display:none;flex-wrap:wrap;gap:5px;margin-top:8px">
-<button class="voice-gender-btn active" data-gender="xiaoxiao" onclick="setVoiceGender('xiaoxiao')">👩 晓晓</button>
+<button class="voice-gender-btn" data-gender="xiaoxiao" onclick="setVoiceGender('xiaoxiao')">👩 晓晓</button>
 <button class="voice-gender-btn" data-gender="yunxi" onclick="setVoiceGender('yunxi')">👨 云希</button>
 <button class="voice-gender-btn" data-gender="yunyang" onclick="setVoiceGender('yunyang')">🎙️ 云扬</button>
-<button class="voice-gender-btn" data-gender="xiaoyi" onclick="setVoiceGender('xiaoyi')">👧 晓伊</button>
+<button class="voice-gender-btn active" data-gender="xiaoyi" onclick="setVoiceGender('xiaoyi')">👧 晓伊</button>
 </div>
 </div>
 </div>
@@ -4758,7 +4758,7 @@ async function sendToBaidu(audioBlob){
 }
 let autoSpeak=true;
 let speakMode='tts';
-let voiceGender='xiaoxiao';
+let voiceGender='xiaoyi';
 let userInteracted=false;
 document.addEventListener('click',()=>{userInteracted=true},{once:true});
 document.addEventListener('touchstart',()=>{userInteracted=true},{once:true});
