@@ -12,13 +12,25 @@
 - **养成系统**: 等级、装备、皮肤、成就
 - **竞技场**: PVP 对战，排名系统
 
+## 生产环境特性
+
+- **日志记录**: 详细的请求日志，按日期轮转
+- **配置验证**: 启动时自动验证配置文件格式
+- **优雅关闭**: 支持平滑重启，不中断当前请求
+- **请求频率限制**: 防止单IP滥用API（默认100次/分钟）
+- **健康检查**: CPU/内存/磁盘监控
+- **Prometheus监控**: 标准指标导出，支持Grafana可视化
+- **Systemd服务**: 开机自启，崩溃自动重启
+
 ## 快速开始
 
 ### Windows 用户
 
 ```batch
-# 双击运行 start.bat
-# 或命令行执行：
+# 方式1: 运行安装脚本（推荐首次安装）
+install.bat
+
+# 方式2: 直接启动
 start.bat
 ```
 
@@ -27,15 +39,11 @@ start.bat
 ### Linux 服务器部署
 
 ```bash
-# 1. 安装依赖
-sudo apt update
-sudo apt install -y python3 nodejs npm ffmpeg
+# 方式1: 使用安装脚本（推荐）
+chmod +x install.sh
+sudo ./install.sh
 
-# 2. 上传文件到服务器
-scp -r hupo-game root@你的服务器IP:/root/
-
-# 3. 启动服务
-cd /root/hupo-game
+# 方式2: 手动部署
 chmod +x start.sh
 ./start.sh
 ```
@@ -50,24 +58,30 @@ chmod +x start.sh
 
 ```
 hupo-game/
-├── index.html          # 游戏主程序（HTML + CSS + JS）
-├── config.json         # 配置文件（AI、语音、服务器）
-├── nanobot_bridge.py   # AI 桥接服务 + Web 服务器
-├── voice-proxy.js      # 语音代理服务
-├── start.bat           # Windows 启动脚本
-├── start.sh            # Linux 启动脚本
-├── favicon.ico         # 网站图标
-├── README.md           # 说明文档
-└── requirements.txt    # 依赖说明
+├── index.html            # 游戏主程序（HTML + CSS + JS）
+├── config.json           # 配置文件（AI、语音、服务器）
+├── nanobot_bridge.py     # AI 桥接服务 + Web 服务器
+├── voice-proxy.js        # 语音代理服务
+├── start.bat             # Windows 启动脚本
+├── start.sh              # Linux 启动脚本
+├── install.bat           # Windows 安装脚本
+├── install.sh            # Linux 安装脚本
+├── hupo-bridge.service   # Systemd 服务配置
+├── hupo-voice.service    # 语音服务 Systemd 配置
+├── logrotate.conf        # 日志轮转配置
+├── favicon.ico           # 网站图标
+├── README.md             # 说明文档
+└── logs/                 # 日志目录（自动创建）
 ```
 
 ## 环境要求
 
 | 依赖 | 版本要求 | 用途 |
 |------|----------|------|
-| Python | 3.6+ | AI 桥接服务 |
+| Python | 3.8+ | AI 桥接服务 |
 | Node.js | 14+ | 语音代理服务 |
 | ffmpeg | 任意版本 | 音频格式转换（语音识别必需） |
+| psutil | 最新版 | 系统监控（自动安装） |
 
 ## 配置说明
 
@@ -113,6 +127,90 @@ hupo-game/
 | baidu | 百度语音识别（推荐） |
 | browser | 浏览器原生语音识别 |
 
+## API 端点
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/health` | GET | 健康检查（含CPU/内存/磁盘状态） |
+| `/metrics` | GET | Prometheus 监控指标 |
+| `/chat` | POST | AI 对话接口 |
+| `/tts` | POST | 语音合成接口 |
+| `/model` | GET | 获取当前模型信息 |
+
+### 健康检查示例
+
+```bash
+curl http://localhost:80/health
+```
+
+响应：
+```json
+{
+    "status": "ok",
+    "uptime": 3600.5,
+    "cpu_percent": 15.2,
+    "memory_percent": 42.8,
+    "disk_percent": 55.0,
+    "requests_total": 1234
+}
+```
+
+### Prometheus 监控
+
+```bash
+curl http://localhost:80/metrics
+```
+
+可用指标：
+- `hupo_requests_total` - 总请求数
+- `hupo_requests_success` - 成功请求数
+- `hupo_requests_error` - 失败请求数
+- `hupo_chat_requests` - Chat API 请求数
+- `hupo_tts_requests` - TTS API 请求数
+- `hupo_cpu_percent` - CPU 使用率
+- `hupo_memory_percent` - 内存使用率
+- `hupo_uptime_seconds` - 运行时间
+
+## 服务管理
+
+### 启动服务
+
+```bash
+systemctl start hupo-bridge
+systemctl start hupo-voice
+```
+
+### 停止服务
+
+```bash
+systemctl stop hupo-bridge
+systemctl stop hupo-voice
+```
+
+### 重启服务
+
+```bash
+systemctl restart hupo-bridge
+systemctl restart hupo-voice
+```
+
+### 查看状态
+
+```bash
+systemctl status hupo-bridge
+systemctl status hupo-voice
+```
+
+### 查看日志
+
+```bash
+# Systemd 日志
+journalctl -u hupo-bridge -f
+
+# 应用日志
+tail -f /root/hupo-game/logs/bridge_*.log
+```
+
 ## 防火墙配置
 
 ```bash
@@ -124,34 +222,6 @@ sudo ufw allow 85/tcp
 sudo firewall-cmd --add-port=80/tcp --permanent
 sudo firewall-cmd --add-port=85/tcp --permanent
 sudo firewall-cmd --reload
-```
-
-## 后台运行（systemd）
-
-创建服务文件 `/etc/systemd/system/hupo-game.service`：
-
-```ini
-[Unit]
-Description=Hupo Cat Game Server
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/root/hupo-game
-ExecStart=/root/hupo-game/start.sh
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-启用服务：
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable hupo-game
-sudo systemctl start hupo-game
 ```
 
 ## 可选：本地 AI（Ollama）
@@ -170,6 +240,16 @@ ollama pull gemma3:270m
         "model": "gemma3:270m"
     }
 }
+```
+
+## 请求频率限制
+
+默认限制：每个IP每分钟最多100次请求
+
+修改 `nanobot_bridge.py` 中的配置：
+```python
+RATE_LIMIT_WINDOW = 60        # 时间窗口（秒）
+RATE_LIMIT_MAX_REQUESTS = 100 # 最大请求数
 ```
 
 ## 浏览器兼容性
@@ -192,6 +272,12 @@ A: 检查防火墙是否开放端口，确保手机和服务器在同一网络
 
 **Q: AI 不回复？**
 A: 检查 API Key 是否正确，查看控制台错误日志
+
+**Q: 请求频率超限？**
+A: 默认每IP每分钟100次请求，可在代码中调整限制
+
+**Q: 如何查看系统状态？**
+A: 访问 http://服务器IP/health 查看CPU/内存状态
 
 ## License
 
