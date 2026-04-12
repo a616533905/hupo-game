@@ -49,6 +49,9 @@ input::placeholder{color:rgba(255,255,255,0.4)}
 <button class="btn" onclick="verifyToken()">验证并进入 🔑</button>
 <p class="error" id="errorMsg">令牌无效，请重试</p>
 <script>
+if(window.location.search.indexOf('error=1')!==-1){
+    document.getElementById('errorMsg').style.display='block';
+}
 function verifyToken(){
     var input=document.getElementById('tokenInput').value.trim();
     if(input){
@@ -643,7 +646,17 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 return
 
             if not self.check_token():
-                self.send_login_page()
+                parsed = urlparse(self.path)
+                query = parse_qs(parsed.query)
+                has_token = query.get('token', [None])[0] is not None
+                cookie_header = self.headers.get('Cookie', '')
+                has_cookie = 'hupo_token=' in cookie_header
+                if has_token or has_cookie:
+                    self.send_response(302)
+                    self.send_header("Location", "/?error=1")
+                    self.end_headers()
+                else:
+                    self.send_login_page()
                 return
 
             parsed = urlparse(self.path)
