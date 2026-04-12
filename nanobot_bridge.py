@@ -44,6 +44,7 @@ import psutil
 
 RATE_LIMIT_WINDOW = 60
 RATE_LIMIT_MAX_REQUESTS = 100
+MAX_CONTENT_LENGTH = 10 * 1024 * 1024
 rate_limit_data = {}
 
 prometheus_metrics = {
@@ -286,6 +287,7 @@ def get_provider_config(provider_name):
     return config.get(provider_name, {})
 
 conversation_history = []
+MAX_HISTORY_LENGTH = 20
 
 def call_minimax_api(message, model_override=None):
     """调用 MiniMax API"""
@@ -303,8 +305,8 @@ def call_minimax_api(message, model_override=None):
     logger.info(f"调用MiniMax API, model={model}, message_length={len(message)}")
     conversation_history.append({"role": "user", "content": message})
 
-    if len(conversation_history) > 20:
-        conversation_history = conversation_history[-20:]
+    if len(conversation_history) > MAX_HISTORY_LENGTH:
+        conversation_history = conversation_history[-MAX_HISTORY_LENGTH:]
 
     data = {
         "model": model,
@@ -522,8 +524,8 @@ def call_ollama_api(message, model_override=None, host_override=None):
 
     conversation_history.append({"role": "user", "content": message})
 
-    if len(conversation_history) > 20:
-        conversation_history = conversation_history[-20:]
+    if len(conversation_history) > MAX_HISTORY_LENGTH:
+        conversation_history = conversation_history[-MAX_HISTORY_LENGTH:]
 
     use_https = parsed.scheme == 'https'
     conn_class = http.client.HTTPSConnection if use_https else http.client.HTTPConnection
@@ -601,8 +603,8 @@ def call_openrouter_api(message, model_override=None):
 
     conversation_history.append({"role": "user", "content": message})
 
-    if len(conversation_history) > 20:
-        conversation_history = conversation_history[-20:]
+    if len(conversation_history) > MAX_HISTORY_LENGTH:
+        conversation_history = conversation_history[-MAX_HISTORY_LENGTH:]
 
     data = {
         "model": model,
@@ -714,6 +716,14 @@ class NanobotHandler(BaseHTTPRequestHandler):
             if self.path == "/chat":
                 prometheus_metrics['chat_requests'] += 1
                 content_length = int(self.headers.get("Content-Length", 0))
+                if content_length > MAX_CONTENT_LENGTH:
+                    logger.warning(f"[{client_ip}] POST /chat - 请求体过大: {content_length}")
+                    self.send_response(413)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(b'{"error": "Request entity too large"}')
+                    return
                 body = self.rfile.read(content_length).decode("utf-8")
 
                 try:
