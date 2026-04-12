@@ -11,12 +11,30 @@ import subprocess
 import threading
 import time
 import mimetypes
+import logging
+from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 if sys.stderr.encoding != 'utf-8':
     sys.stderr.reconfigure(encoding='utf-8')
+
+LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
+
+LOG_FILE = os.path.join(LOG_DIR, f'bridge_{datetime.now().strftime("%Y%m%d")}.log')
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_FILE, encoding='utf-8'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
 
 CONFIG_FILE = "config.json"
 WEB_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -68,12 +86,82 @@ document.getElementById('tokenInput').addEventListener('keypress',function(e){
 </body>
 </html>'''
 
+REQUIRED_CONFIG_FIELDS = {
+    'port': int,
+    'access_token': str,
+    'active_provider': str,
+}
+
+PROVIDER_CONFIG_FIELDS = {
+    'minimax': ['api_key', 'group_id'],
+    'openrouter': ['api_key'],
+    'ollama': ['api_base'],
+    'baidu': ['api_key', 'secret_key'],
+}
+
+def validate_config(cfg):
+    """验证配置文件格式和必需字段"""
+    errors = []
+    warnings = []
+    
+    for field, expected_type in REQUIRED_CONFIG_FIELDS.items():
+        if field not in cfg:
+            errors.append(f"缺少必需字段: {field}")
+        elif not isinstance(cfg[field], expected_type) and cfg[field] is not None:
+            if expected_type == int and isinstance(cfg[field], str) and cfg[field].isdigit():
+                pass
+            else:
+                errors.append(f"字段 '{field}' 类型错误: 期望 {expected_type.__name__}, 实际 {type(cfg[field]).__name__}")
+    
+    active_provider = cfg.get('active_provider', 'minimax')
+    if active_provider in PROVIDER_CONFIG_FIELDS:
+        provider_cfg = cfg.get(active_provider, {})
+        for field in PROVIDER_CONFIG_FIELDS[active_provider]:
+            if field not in provider_cfg or not provider_cfg[field]:
+                if active_provider == 'ollama' and field == 'api_base':
+                    warnings.append(f"提供者 '{active_provider}' 缺少配置: {field} (将使用默认值)")
+                elif active_provider != 'ollama':
+                    warnings.append(f"提供者 '{active_provider}' 缺少配置: {field}")
+    
+    if 'server' in cfg:
+        server_cfg = cfg['server']
+        if 'api_port' in server_cfg and not isinstance(server_cfg['api_port'], int):
+            errors.append("server.api_port 必须是整数")
+        if 'voice_port' in server_cfg and not isinstance(server_cfg['voice_port'], int):
+            errors.append("server.voice_port 必须是整数")
+    
+    return errors, warnings
+
 def load_config():
     """加载配置文件"""
-    if os.path.exists(CONFIG_FILE):
+    if not os.path.exists(CONFIG_FILE):
+        logger.error(f"配置文件不存在: {CONFIG_FILE}")
+        return {}
+    
+    try:
         with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return {}
+            cfg = json.load(f)
+        logger.info(f"配置文件加载成功: {CONFIG_FILE}")
+        
+        errors, warnings = validate_config(cfg)
+        
+        for warning in warnings:
+            logger.warning(f"配置警告: {warning}")
+        
+        if errors:
+            for error in errors:
+                logger.error(f"配置错误: {error}")
+            logger.warning("配置验证失败，使用默认值")
+        else:
+            logger.info("配置验证通过")
+        
+        return cfg
+    except json.JSONDecodeError as e:
+        logger.error(f"配置文件JSON格式错误: {e}")
+        return {}
+    except Exception as e:
+        logger.error(f"加载配置文件失败: {e}")
+        return {}
 
 def get_config():
     """获取配置，支持环境变量覆盖"""
@@ -89,6 +177,7 @@ def get_config():
             if provider not in config:
                 config[provider] = {}
             config[provider][key] = value
+            logger.info(f"从环境变量覆盖配置: {provider}.{key}")
 
     return config
 
@@ -112,8 +201,10 @@ def call_minimax_api(message, model_override=None):
     model = model_override or provider_config.get('model', 'MiniMax-M2.7')
 
     if not api_key or not group_id:
+        logger.error("MiniMax API未配置")
         return "错误: MiniMax API未配置（请在config.json中设置api_key和group_id）"
 
+    logger.info(f"调用MiniMax API, model={model}, message_length={len(message)}")
     conversation_history.append({"role": "user", "content": message})
 
     if len(conversation_history) > 20:
@@ -143,10 +234,14 @@ def call_minimax_api(message, model_override=None):
         if "choices" in result_json and len(result_json["choices"]) > 0:
             assistant_message = result_json["choices"][0]["message"]["content"]
             conversation_history.append({"role": "assistant", "content": assistant_message})
+            logger.info(f"MiniMax API调用成功, response_length={len(assistant_message)}")
             return assistant_message
         else:
-            return f"API错误: {result_json.get('base_resp', {}).get('status_msg', '未知错误')}"
+            error_msg = result_json.get('base_resp', {}).get('status_msg', '未知错误')
+            logger.error(f"MiniMax API错误: {error_msg}")
+            return f"API错误: {error_msg}"
     except Exception as e:
+        logger.error(f"MiniMax API请求失败: {str(e)}")
         return f"请求失败: {str(e)}"
     finally:
         conn.close()
@@ -506,6 +601,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
+        client_ip = self.client_address[0]
         try:
             if self.path == "/chat":
                 content_length = int(self.headers.get("Content-Length", 0))
@@ -519,6 +615,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     if token_required == 'yes':
                         expected_token = config.get('access_token', '')
                         if not expected_token or token != expected_token:
+                            logger.warning(f"[{client_ip}] POST /chat - 认证失败")
                             self.send_response(401)
                             self.send_header("Content-Type", "application/json; charset=utf-8")
                             self.send_header('Access-Control-Allow-Origin', '*')
@@ -537,6 +634,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                         self.wfile.write(b'{"error": "No message provided"}')
                         return
 
+                    logger.info(f"[{client_ip}] POST /chat - provider={provider or 'default'}, msg_len={len(message)}")
                     response = call_api(message, provider, model, ollama_host)
 
                     self.send_response(200)
@@ -546,6 +644,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({"response": response}, ensure_ascii=False).encode('utf-8'))
 
                 except Exception as e:
+                    logger.error(f"[{client_ip}] POST /chat 错误: {str(e)}")
                     self.send_response(500)
                     self.send_header('Access-Control-Allow-Origin', '*')
                     self.end_headers()
@@ -567,9 +666,11 @@ class NanobotHandler(BaseHTTPRequestHandler):
                         self.wfile.write(b'{"error": "No text provided"}')
                         return
 
+                    logger.info(f"[{client_ip}] POST /tts - voice={voice_id}, text_len={len(text)}")
                     audio_data, error = call_minimax_tts(text, voice_id)
 
                     if error:
+                        logger.error(f"[{client_ip}] POST /tts 错误: {error}")
                         self.send_response(500)
                         self.send_header("Content-Type", "application/json; charset=utf-8")
                         self.send_header('Access-Control-Allow-Origin', '*')
@@ -585,6 +686,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     self.wfile.write(audio_data)
 
                 except Exception as e:
+                    logger.error(f"[{client_ip}] POST /tts 异常: {str(e)}")
                     self.send_response(500)
                     self.send_header('Access-Control-Allow-Origin', '*')
                     self.end_headers()
@@ -624,6 +726,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
             pass
 
     def do_GET(self):
+        client_ip = self.client_address[0]
         try:
             if self.path == "/health":
                 self.send_response(200)
@@ -652,10 +755,12 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 cookie_header = self.headers.get('Cookie', '')
                 has_cookie = 'hupo_token=' in cookie_header
                 if has_token or has_cookie:
+                    logger.warning(f"[{client_ip}] GET {self.path} - Token验证失败")
                     self.send_response(302)
                     self.send_header("Location", "/?error=1")
                     self.end_headers()
                 else:
+                    logger.info(f"[{client_ip}] GET {self.path} - 显示登录页面")
                     self.send_login_page()
                 return
 
@@ -668,6 +773,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
             file_path = os.path.normpath(os.path.join(WEB_ROOT, path.lstrip('/')))
             
             if not file_path.startswith(WEB_ROOT):
+                logger.warning(f"[{client_ip}] GET {self.path} - 路径遍历攻击尝试")
                 self.send_response(403)
                 self.end_headers()
                 self.wfile.write(b'Forbidden')
@@ -692,6 +798,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 except ConnectionResetError:
                     pass
                 except Exception as e:
+                    logger.error(f"[{client_ip}] GET {self.path} - 文件读取错误: {str(e)}")
                     try:
                         self.send_response(500)
                         self.end_headers()
@@ -699,6 +806,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     except:
                         pass
             else:
+                logger.warning(f"[{client_ip}] GET {self.path} - 文件不存在")
                 try:
                     self.send_response(404)
                     self.end_headers()
@@ -711,25 +819,31 @@ class NanobotHandler(BaseHTTPRequestHandler):
             pass
 
 if __name__ == "__main__":
-    print(f"AI Bridge starting on port {PORT}...")
-    print(f"Config file: {CONFIG_FILE}")
-    print(f"API endpoint: POST http://localhost:{PORT}/chat")
-    print(f"Active provider: {config.get('active_provider', 'minimax')}")
-    print()
-    print("Available providers:")
+    logger.info("="*50)
+    logger.info("AI Bridge 启动中...")
+    logger.info("="*50)
+    logger.info(f"端口: {PORT}")
+    logger.info(f"配置文件: {CONFIG_FILE}")
+    logger.info(f"日志文件: {LOG_FILE}")
+    logger.info(f"API端点: POST http://localhost:{PORT}/chat")
+    logger.info(f"当前提供者: {config.get('active_provider', 'minimax')}")
+    logger.info("")
+    logger.info("可用提供者:")
     for provider in ['minimax', 'ollama', 'openrouter']:
         provider_config = get_provider_config(provider)
         api_key = provider_config.get('api_key', '')
         if api_key and api_key != 'EMPTY':
-            print(f"  - {provider}: ✓ configured")
+            logger.info(f"  - {provider}: ✓ 已配置")
         elif provider == 'ollama':
             api_base = provider_config.get('api_base', '')
-            print(f"  - {provider}: ✓ local ({api_base})")
+            logger.info(f"  - {provider}: ✓ 本地 ({api_base})")
         else:
-            print(f"  - {provider}: ✗ not configured")
-    print()
-    print("To switch provider, change 'active_provider' in config.json")
-    print("Environment variables can override config (MINIMAX_API_KEY, MINIMAX_GROUP_ID)")
+            logger.info(f"  - {provider}: ✗ 未配置")
+    logger.info("")
+    logger.info("切换提供者请修改 config.json 中的 'active_provider'")
+    logger.info("环境变量可覆盖配置 (MINIMAX_API_KEY, MINIMAX_GROUP_ID)")
+    logger.info("="*50)
 
     server = HTTPServer(("0.0.0.0", PORT), NanobotHandler)
+    logger.info(f"服务器已启动，监听端口 {PORT}")
     server.serve_forever()

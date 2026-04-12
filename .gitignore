@@ -6,6 +6,9 @@ config.json
 *.temp
 *.log
 
+# 日志目录
+logs/
+
 # 音频临时文件
 temp_*.webm
 temp_*.pcm
