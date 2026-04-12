@@ -4264,7 +4264,7 @@ function startQuickBattle(){
     startBattle(randomEnemy);
 }
 let lastAIResponseTime=0;
-const AI_RESPONSE_COOLDOWN=15000;
+const AI_RESPONSE_COOLDOWN=5000;
 async function generateAIResponse(context,fallbackTexts){
     const now=Date.now();
     if(now-lastAIResponseTime<AI_RESPONSE_COOLDOWN){
