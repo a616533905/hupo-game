@@ -39,7 +39,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cp -r $SCRIPT_DIR/* $INSTALL_DIR/
 
 echo "[5/7] 配置日志轮转..."
-cp $INSTALL_DIR/logrotate.conf /etc/logrotate.d/hupo-game
+cp $INSTALL_DIR/logrotate.conf /etc/logrotate.d/hupo-game 2>/dev/null || true
 
 echo "[6/7] 安装 Systemd 服务..."
 cp $INSTALL_DIR/hupo-bridge.service /etc/systemd/system/
@@ -51,6 +51,7 @@ systemctl enable hupo-voice
 echo "[7/7] 设置权限..."
 chmod +x $INSTALL_DIR/start.sh
 chmod +x $INSTALL_DIR/install.sh
+chmod +x $INSTALL_DIR/status.sh
 chmod 644 /etc/systemd/system/hupo-bridge.service
 chmod 644 /etc/systemd/system/hupo-voice.service
 
@@ -66,9 +67,12 @@ echo "启动服务:"
 echo "  systemctl start hupo-bridge"
 echo "  systemctl start hupo-voice"
 echo ""
+echo "或使用启动脚本:"
+echo "  cd $INSTALL_DIR && ./start.sh"
+echo ""
 echo "查看状态:"
+echo "  ./status.sh"
 echo "  systemctl status hupo-bridge"
-echo "  systemctl status hupo-voice"
 echo ""
 echo "查看日志:"
 echo "  journalctl -u hupo-bridge -f"
