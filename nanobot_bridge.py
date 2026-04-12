@@ -503,179 +503,199 @@ class NanobotHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
-        if self.path == "/chat":
-            content_length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_length).decode("utf-8")
+        try:
+            if self.path == "/chat":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_length).decode("utf-8")
 
-            try:
-                data = json.loads(body)
-                token = data.get("token", "")
+                try:
+                    data = json.loads(body)
+                    token = data.get("token", "")
 
-                token_required = config.get('token_required', 'no')
-                if token_required == 'yes':
-                    expected_token = config.get('access_token', '')
-                    if not expected_token or token != expected_token:
-                        self.send_response(401)
+                    token_required = config.get('token_required', 'no')
+                    if token_required == 'yes':
+                        expected_token = config.get('access_token', '')
+                        if not expected_token or token != expected_token:
+                            self.send_response(401)
+                            self.send_header("Content-Type", "application/json; charset=utf-8")
+                            self.send_header('Access-Control-Allow-Origin', '*')
+                            self.end_headers()
+                            self.wfile.write(b'{"error": "Unauthorized: invalid token"}')
+                            return
+
+                    message = data.get("message", "")
+                    provider = data.get("provider", None)
+                    model = data.get("model", None)
+                    ollama_host = data.get("ollama_host", None)
+
+                    if not message:
+                        self.send_response(400)
+                        self.end_headers()
+                        self.wfile.write(b'{"error": "No message provided"}')
+                        return
+
+                    response = call_api(message, provider, model, ollama_host)
+
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"response": response}, ensure_ascii=False).encode('utf-8'))
+
+                except Exception as e:
+                    self.send_response(500)
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+            elif self.path == "/tts":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_length).decode("utf-8")
+
+                try:
+                    data = json.loads(body)
+                    text = data.get("text", "")
+                    voice_id = data.get("voice_id", "female-tianmei")
+
+                    if not text:
+                        self.send_response(400)
                         self.send_header("Content-Type", "application/json; charset=utf-8")
                         self.send_header('Access-Control-Allow-Origin', '*')
                         self.end_headers()
-                        self.wfile.write(b'{"error": "Unauthorized: invalid token"}')
+                        self.wfile.write(b'{"error": "No text provided"}')
                         return
 
-                message = data.get("message", "")
-                provider = data.get("provider", None)
-                model = data.get("model", None)
-                ollama_host = data.get("ollama_host", None)
+                    audio_data, error = call_minimax_tts(text, voice_id)
 
-                if not message:
-                    self.send_response(400)
-                    self.end_headers()
-                    self.wfile.write(b'{"error": "No message provided"}')
-                    return
+                    if error:
+                        self.send_response(500)
+                        self.send_header("Content-Type", "application/json; charset=utf-8")
+                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"error": error}, ensure_ascii=False).encode('utf-8'))
+                        return
 
-                response = call_api(message, provider, model, ollama_host)
-
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({"response": response}, ensure_ascii=False).encode('utf-8'))
-
-            except Exception as e:
-                self.send_response(500)
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
-        elif self.path == "/tts":
-            content_length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_length).decode("utf-8")
-
-            try:
-                data = json.loads(body)
-                text = data.get("text", "")
-                voice_id = data.get("voice_id", "female-tianmei")
-
-                if not text:
-                    self.send_response(400)
-                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "audio/mpeg")
                     self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_header("Content-Length", len(audio_data))
                     self.end_headers()
-                    self.wfile.write(b'{"error": "No text provided"}')
-                    return
+                    self.wfile.write(audio_data)
 
-                audio_data, error = call_minimax_tts(text, voice_id)
-
-                if error:
+                except Exception as e:
                     self.send_response(500)
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+            elif self.path == "/asr":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_length)
+
+                try:
+                    audio_data, error = call_minimax_asr(body, "webm")
+
+                    if error:
+                        self.send_response(500)
+                        self.send_header("Content-Type", "application/json; charset=utf-8")
+                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"error": error}, ensure_ascii=False).encode('utf-8'))
+                        return
+
+                    self.send_response(200)
                     self.send_header("Content-Type", "application/json; charset=utf-8")
                     self.send_header('Access-Control-Allow-Origin', '*')
                     self.end_headers()
-                    self.wfile.write(json.dumps({"error": error}, ensure_ascii=False).encode('utf-8'))
-                    return
+                    self.wfile.write(json.dumps({"text": audio_data}, ensure_ascii=False).encode('utf-8'))
 
-                self.send_response(200)
-                self.send_header("Content-Type", "audio/mpeg")
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.send_header("Content-Length", len(audio_data))
-                self.end_headers()
-                self.wfile.write(audio_data)
-
-            except Exception as e:
-                self.send_response(500)
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
-        elif self.path == "/asr":
-            content_length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_length)
-
-            try:
-                audio_data, error = call_minimax_asr(body, "webm")
-
-                if error:
+                except Exception as e:
                     self.send_response(500)
-                    self.send_header("Content-Type", "application/json; charset=utf-8")
                     self.send_header('Access-Control-Allow-Origin', '*')
                     self.end_headers()
-                    self.wfile.write(json.dumps({"error": error}, ensure_ascii=False).encode('utf-8'))
-                    return
-
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.send_header('Access-Control-Allow-Origin', '*')
+                    self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+            else:
+                self.send_response(404)
                 self.end_headers()
-                self.wfile.write(json.dumps({"text": audio_data}, ensure_ascii=False).encode('utf-8'))
-
-            except Exception as e:
-                self.send_response(500)
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
-        else:
-            self.send_response(404)
-            self.end_headers()
+        except BrokenPipeError:
+            pass
+        except ConnectionResetError:
+            pass
 
     def do_GET(self):
-        if self.path == "/health":
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            self.wfile.write(b'{"status": "ok"}')
-            return
-        
-        if self.path == "/model":
-            active_provider = config.get('active_provider', 'minimax')
-            provider_config = get_provider_config(active_provider)
-            model = provider_config.get('model', 'unknown')
-
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            self.wfile.write(json.dumps({"model": f"{active_provider}/{model}"}, ensure_ascii=False).encode('utf-8'))
-            return
-
-        if not self.check_token():
-            self.send_login_page()
-            return
-
-        parsed = urlparse(self.path)
-        path = parsed.path
-        
-        if path == '/':
-            path = '/index.html'
-        
-        file_path = os.path.normpath(os.path.join(WEB_ROOT, path.lstrip('/')))
-        
-        if not file_path.startswith(WEB_ROOT):
-            self.send_response(403)
-            self.end_headers()
-            self.wfile.write(b'Forbidden')
-            return
-        
-        if os.path.isfile(file_path):
-            mime_type, _ = mimetypes.guess_type(file_path)
-            if mime_type is None:
-                mime_type = 'application/octet-stream'
-            
-            try:
-                with open(file_path, 'rb') as f:
-                    content = f.read()
-                
+        try:
+            if self.path == "/health":
                 self.send_response(200)
-                self.send_header("Content-Type", mime_type)
-                self.send_header("Content-Length", len(content))
+                self.send_header("Content-Type", "application/json")
+                self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
-                self.wfile.write(content)
-            except Exception as e:
-                self.send_response(500)
+                self.wfile.write(b'{"status": "ok"}')
+                return
+            
+            if self.path == "/model":
+                active_provider = config.get('active_provider', 'minimax')
+                provider_config = get_provider_config(active_provider)
+                model = provider_config.get('model', 'unknown')
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
-                self.wfile.write(f'Internal Server Error: {str(e)}'.encode('utf-8'))
-        else:
-            self.send_response(404)
-            self.end_headers()
-            self.wfile.write(b'Not Found')
+                self.wfile.write(json.dumps({"model": f"{active_provider}/{model}"}, ensure_ascii=False).encode('utf-8'))
+                return
+
+            if not self.check_token():
+                self.send_login_page()
+                return
+
+            parsed = urlparse(self.path)
+            path = parsed.path
+            
+            if path == '/':
+                path = '/index.html'
+            
+            file_path = os.path.normpath(os.path.join(WEB_ROOT, path.lstrip('/')))
+            
+            if not file_path.startswith(WEB_ROOT):
+                self.send_response(403)
+                self.end_headers()
+                self.wfile.write(b'Forbidden')
+                return
+            
+            if os.path.isfile(file_path):
+                mime_type, _ = mimetypes.guess_type(file_path)
+                if mime_type is None:
+                    mime_type = 'application/octet-stream'
+                
+                try:
+                    with open(file_path, 'rb') as f:
+                        content = f.read()
+                    
+                    self.send_response(200)
+                    self.send_header("Content-Type", mime_type)
+                    self.send_header("Content-Length", len(content))
+                    self.end_headers()
+                    self.wfile.write(content)
+                except BrokenPipeError:
+                    pass
+                except ConnectionResetError:
+                    pass
+                except Exception as e:
+                    try:
+                        self.send_response(500)
+                        self.end_headers()
+                        self.wfile.write(f'Internal Server Error: {str(e)}'.encode('utf-8'))
+                    except:
+                        pass
+            else:
+                try:
+                    self.send_response(404)
+                    self.end_headers()
+                    self.wfile.write(b'Not Found')
+                except:
+                    pass
+        except BrokenPipeError:
+            pass
+        except ConnectionResetError:
+            pass
 
 if __name__ == "__main__":
     print(f"AI Bridge starting on port {PORT}...")
