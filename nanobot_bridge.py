@@ -828,6 +828,10 @@ class NanobotHandler(BaseHTTPRequestHandler):
         
         try:
             if self.path == "/health":
+                if client_ip not in ('127.0.0.1', '::1'):
+                    self.send_response(404)
+                    self.end_headers()
+                    return
                 stats = get_system_stats()
                 health_data = {
                     "status": "ok",
@@ -839,13 +843,16 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 }
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
-                self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 self.wfile.write(json.dumps(health_data).encode('utf-8'))
                 prometheus_metrics['requests_success'] += 1
                 return
             
             if self.path == "/metrics":
+                if client_ip not in ('127.0.0.1', '::1'):
+                    self.send_response(404)
+                    self.end_headers()
+                    return
                 self.send_response(200)
                 self.send_header("Content-Type", "text/plain; version=0.0.4")
                 self.end_headers()
