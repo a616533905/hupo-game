@@ -69,6 +69,24 @@ def check_rate_limit(client_ip):
     rate_limit_data[client_ip].append(now)
     return True
 
+def cleanup_rate_limit_data():
+    """定期清理过期的频率限制数据"""
+    while True:
+        time.sleep(300)
+        now = time.time()
+        ips_to_remove = []
+        for ip in rate_limit_data:
+            rate_limit_data[ip] = [t for t in rate_limit_data[ip] if now - t < RATE_LIMIT_WINDOW]
+            if not rate_limit_data[ip]:
+                ips_to_remove.append(ip)
+        for ip in ips_to_remove:
+            del rate_limit_data[ip]
+        if ips_to_remove:
+            logger.debug(f"清理了 {len(ips_to_remove)} 个过期的IP频率限制记录")
+
+cleanup_thread = threading.Thread(target=cleanup_rate_limit_data, daemon=True)
+cleanup_thread.start()
+
 def get_system_stats():
     """获取系统状态"""
     return {
@@ -750,6 +768,21 @@ class NanobotHandler(BaseHTTPRequestHandler):
 
                 try:
                     data = json.loads(body)
+                    
+                    token = data.get("token", "")
+                    token_required = config.get('token_required', 'no')
+                    if token_required == 'yes':
+                        expected_token = config.get('access_token', '')
+                        if not expected_token or token != expected_token:
+                            logger.warning(f"[{client_ip}] POST /tts - 认证失败")
+                            prometheus_metrics['requests_error'] += 1
+                            self.send_response(401)
+                            self.send_header("Content-Type", "application/json; charset=utf-8")
+                            self.send_header('Access-Control-Allow-Origin', '*')
+                            self.end_headers()
+                            self.wfile.write(b'{"error": "Unauthorized: invalid token"}')
+                            return
+                    
                     text = data.get("text", "")
                     voice_id = data.get("voice_id", "female-tianmei")
 
@@ -791,6 +824,23 @@ class NanobotHandler(BaseHTTPRequestHandler):
             elif self.path == "/asr":
                 content_length = int(self.headers.get("Content-Length", 0))
                 body = self.rfile.read(content_length)
+                
+                token_required = config.get('token_required', 'no')
+                if token_required == 'yes':
+                    expected_token = config.get('access_token', '')
+                    auth_header = self.headers.get('Authorization', '')
+                    if auth_header.startswith('Bearer '):
+                        token = auth_header[7:]
+                    else:
+                        token = ''
+                    if not expected_token or token != expected_token:
+                        logger.warning(f"[{client_ip}] POST /asr - 认证失败")
+                        self.send_response(401)
+                        self.send_header("Content-Type", "application/json; charset=utf-8")
+                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.end_headers()
+                        self.wfile.write(b'{"error": "Unauthorized: invalid token"}')
+                        return
 
                 try:
                     audio_data, error = call_minimax_asr(body, "webm")
