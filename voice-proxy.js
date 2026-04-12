@@ -31,20 +31,32 @@ const BAIDU_SECRET_KEY = baidu.secret_key || '';
 function audioToPcm(audioBase64, format) {
     return new Promise((resolve, reject) => {
         const ext = format || 'webm';
-        const tempAudio = path.join(__dirname, 'temp_' + Date.now() + '.' + ext);
-        const tempPcm = path.join(__dirname, 'temp_' + Date.now() + '.pcm');
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(7);
+        const tempAudio = path.join(__dirname, `temp_${timestamp}_${randomSuffix}.${ext}`);
+        const tempPcm = path.join(__dirname, `temp_${timestamp}_${randomSuffix}.pcm`);
 
         const audioBuffer = Buffer.from(audioBase64, 'base64');
         fs.writeFileSync(tempAudio, audioBuffer);
 
-        exec(`ffmpeg -y -i "${tempAudio}" -f s16le -acodec pcm_s16le -ar 16000 -ac 1 "${tempPcm}"`, (error, stdout, stderr) => {
+        const { spawn } = require('child_process');
+        const ffmpeg = spawn('ffmpeg', [
+            '-y', '-i', tempAudio,
+            '-f', 's16le', '-acodec', 'pcm_s16le',
+            '-ar', '16000', '-ac', '1', tempPcm
+        ]);
+
+        let stderr = '';
+        ffmpeg.stderr.on('data', (data) => { stderr += data; });
+
+        ffmpeg.on('close', (code) => {
             try {
                 fs.unlinkSync(tempAudio);
             } catch (e) {}
 
-            if (error) {
+            if (code !== 0) {
                 try { fs.unlinkSync(tempPcm); } catch (e) {}
-                reject(new Error('音频转换失败: ' + error.message));
+                reject(new Error('音频转换失败: ' + stderr));
                 return;
             }
 
@@ -59,6 +71,14 @@ function audioToPcm(audioBase64, format) {
             } catch (e) {
                 reject(e);
             }
+        });
+
+        ffmpeg.on('error', (err) => {
+            try {
+                fs.unlinkSync(tempAudio);
+                fs.unlinkSync(tempPcm);
+            } catch (e) {}
+            reject(new Error('ffmpeg启动失败: ' + err.message));
         });
     });
 }
