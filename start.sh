@@ -22,10 +22,32 @@ echo "  API端口: $API_PORT"
 echo "  语音端口: $VOICE_PORT"
 echo ""
 
+cleanup_port() {
+    local port=$1
+    local service=$2
+    echo "  检查端口 $port ($service)..."
+
+    pid=$(lsof -t -i:$port 2>/dev/null)
+    if [ -n "$pid" ]; then
+        echo "    发现端口 $port 被占用，PID: $pid"
+        proc_name=$(ps -p $pid -o comm= 2>/dev/null || echo "未知进程")
+        echo "    进程名: $proc_name"
+        echo "    正在关闭..."
+        kill -9 $pid 2>/dev/null
+        sleep 1
+        if lsof -t -i:$port 2>/dev/null > /dev/null; then
+            echo "    警告: 端口 $port 仍然被占用"
+        else
+            echo "    已关闭"
+        fi
+    else
+        echo "    端口 $port 空闲"
+    fi
+}
+
 echo "[2/4] 清理端口..."
-pkill -f "nanobot_bridge.py" 2>/dev/null
-pkill -f "voice-proxy.js" 2>/dev/null
-sleep 2
+cleanup_port $API_PORT "AI Bridge"
+cleanup_port $VOICE_PORT "Voice Proxy"
 
 echo "[3/4] 启动 AI Bridge (端口 $API_PORT, 含Web服务)..."
 API_PORT=$API_PORT VOICE_PORT=$VOICE_PORT python3 nanobot_bridge.py &

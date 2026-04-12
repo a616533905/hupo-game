@@ -27,14 +27,23 @@ if ! command -v node &> /dev/null; then
     apt-get install -y nodejs
 fi
 
-echo "[2/7] 安装 Python 依赖..."
-if command -v pip3 &> /dev/null; then
-    pip3 install psutil --break-system-packages 2>/dev/null || pip3 install psutil
-elif command -v pip &> /dev/null; then
-    pip install psutil --break-system-packages 2>/dev/null || pip install psutil
+echo "[2/7] 安装 Python 依赖 (psutil)..."
+if python3 -c "import psutil" 2>/dev/null; then
+    echo "  psutil 已安装，跳过"
 else
-    echo "尝试使用 apt 安装 psutil..."
-    apt-get install -y python3-psutil
+    echo "  尝试使用 apt 安装 psutil (推荐)..."
+    if apt-get install -y python3-psutil 2>/dev/null; then
+        echo "  psutil 安装成功 (apt)"
+    else
+        echo "  apt 安装失败，尝试使用 pip..."
+        if command -v pip3 &> /dev/null; then
+            pip3 install psutil --break-system-packages 2>/dev/null || pip3 install psutil
+        elif command -v pip &> /dev/null; then
+            pip install psutil --break-system-packages 2>/dev/null || pip install psutil
+        else
+            echo "  警告: 无法安装 psutil，请手动安装"
+        fi
+    fi
 fi
 
 echo "[3/7] 创建安装目录..."

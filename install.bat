@@ -25,8 +25,17 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-echo [2/4] 安装 Python 依赖...
-pip install psutil
+echo [2/4] 安装 Python 依赖 (psutil)...
+python -c "import psutil" >nul 2>nul
+if %ERRORLEVEL% equ 0 (
+    echo   psutil 已安装，跳过
+) else (
+    echo   正在安装 psutil...
+    pip install psutil
+    if %ERRORLEVEL% neq 0 (
+        echo   警告: psutil 安装失败，请手动运行: pip install psutil
+    )
+)
 
 echo [3/4] 创建日志目录...
 if not exist "%INSTALL_DIR%logs" mkdir "%INSTALL_DIR%logs"
