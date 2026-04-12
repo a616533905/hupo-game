@@ -128,6 +128,15 @@ const server = http.createServer(async (req, res) => {
     }
 
     const parsedUrl = url.parse(req.url, true);
+    const ACCESS_TOKEN = config.access_token || '';
+    const TOKEN_REQUIRED = config.token_required || 'no';
+
+    function verifyToken(reqToken) {
+        if (TOKEN_REQUIRED !== 'yes' || !ACCESS_TOKEN) {
+            return true;
+        }
+        return reqToken === ACCESS_TOKEN;
+    }
 
     if (parsedUrl.pathname === '/voice/config') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -140,6 +149,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (parsedUrl.pathname === '/voice/token') {
+        const queryToken = parsedUrl.query.token || '';
+        if (!verifyToken(queryToken)) {
+            console.log('Token验证失败: /voice/token');
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Unauthorized: invalid token' }));
+            return;
+        }
+        
         if (VOICE_PROVIDER !== 'baidu') {
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: '当前语音提供商不是百度' }));
@@ -173,7 +190,18 @@ const server = http.createServer(async (req, res) => {
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
             try {
-                const { speech, token, provider, format } = JSON.parse(body);
+                const { speech, token, provider, format, access_token } = JSON.parse(body);
+                
+                if (!verifyToken(access_token)) {
+                    console.log('Token验证失败: /voice/recognize');
+                    res.writeHead(401, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        success: false,
+                        error: 'Unauthorized: invalid token'
+                    }));
+                    return;
+                }
+                
                 const useProvider = provider || VOICE_PROVIDER;
                 const audioFormat = format || 'webm';
                 console.log('收到识别请求, 提供商:', useProvider, '格式:', audioFormat, '音频base64长度:', speech.length);

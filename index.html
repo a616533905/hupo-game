@@ -4507,7 +4507,9 @@ function isBrowserVoiceSupported(){
 async function getBaiduToken(){
     if(baiduToken)return baiduToken;
     try{
-        const res=await fetch(ENV_CONFIG.getVoiceUrl('/voice/token'));
+        const accessToken=RUNTIME_CONFIG.accessToken||'';
+        const url=ENV_CONFIG.getVoiceUrl('/voice/token')+'?token='+encodeURIComponent(accessToken);
+        const res=await fetch(url);
         const data=await res.json();
         if(data.access_token){
             baiduToken=data.access_token;
@@ -4719,7 +4721,8 @@ async function sendToBaidu(audioBlob){
         const reader=new FileReader();
         reader.onload=async()=>{
             const base64Audio=reader.result.split(',')[1];
-            let requestBody={speech:base64Audio,provider:provider,format:currentAudioFormat};
+            const accessToken=RUNTIME_CONFIG.accessToken||'';
+            let requestBody={speech:base64Audio,provider:provider,format:currentAudioFormat,access_token:accessToken};
             
             if(provider==='baidu'){
                 const token=await getBaiduToken();
