@@ -1,87 +1,137 @@
 @echo off
 setlocal enabledelayedexpansion
-chcp 65001 >nul
-set PYTHONIOENCODING=utf-8
 title Game Server Startup
 
 echo ========================================
-echo   琥珀冒险 - 游戏服务器启动脚本
+echo   Game Server Startup Script
 echo ========================================
 echo.
 
 cd /d "%~dp0"
 
-echo [1/4] 读取配置文件...
+echo [1/5] Loading configuration...
 for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty server | Select-Object -ExpandProperty api_port"') do set API_PORT=%%a
 for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty server | Select-Object -ExpandProperty voice_port"') do set VOICE_PORT=%%a
 for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty access_token"') do set ACCESS_TOKEN=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty server | Select-Object -ExpandProperty ssl_cert_file"') do set SSL_CERT=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty server | Select-Object -ExpandProperty ssl_key_file"') do set SSL_KEY=%%a
 
-if "%API_PORT%"=="" set API_PORT=80
+if "%API_PORT%"=="" set API_PORT=443
 if "%VOICE_PORT%"=="" set VOICE_PORT=85
 if "%ACCESS_TOKEN%"=="" set ACCESS_TOKEN=hupo_secret_token_2024
 
-echo   API端口: %API_PORT%
-echo   语音端口: %VOICE_PORT%
+echo   API Port: %API_PORT%
+echo   Voice Port: %VOICE_PORT%
+if "%SSL_CERT%" neq "" (
+    echo   SSL Cert: %SSL_CERT%
+) else (
+    echo   SSL Cert: Not configured
+)
 echo.
 
-echo [2/4] 清理端口...
-echo   检查端口 %API_PORT% (AI Bridge)...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%API_PORT% " ^| findstr "LISTENING" ^| findstr /v "0.0.0.0" ^| findstr /v ":::"') do (
-    echo     发现端口 %API_PORT% 被占用，PID: %%a
-    for /f "tokens=1" %%b in ('tasklist /FI "PID eq %%a" /NH ^| findstr "PID"') do (
-        set PROC_NAME=%%b
+echo [2/5] Checking ports...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%API_PORT% " ^| findstr "LISTENING"') do (
+    echo   Closing port %API_PORT% PID: %%a
+    taskkill /F /PID %%a >nul 2>&1
+)
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%VOICE_PORT% " ^| findstr "LISTENING"') do (
+    echo   Closing port %VOICE_PORT% PID: %%a
+    taskkill /F /PID %%a >nul 2>&1
+)
+if "%SSL_CERT%" neq "" (
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":80 " ^| findstr "LISTENING"') do (
+        echo   Closing port 80 PID: %%a ^(HTTP redirect^)
+        taskkill /F /PID %%a >nul 2>&1
     )
-    for /f "tokens=1" %%b in ('wmic process where ProcessId=%%a get Name 2^|findstr ".exe"') do set PROC_NAME=%%b
-    echo     进程名: !PROC_NAME!
-    echo     正在关闭...
-    taskkill /F /PID %%a >nul 2>&1
 )
 timeout /t 1 /nobreak >nul
-for %%a in (%API_PORT%) do echo     端口 %API_PORT% 已清理
+echo   Ports cleared
+echo.
 
-echo   检查端口 %VOICE_PORT% (Voice Proxy)...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%VOICE_PORT% " ^| findstr "LISTENING" ^| findstr /v "0.0.0.0" ^| findstr /v ":::"') do (
-    echo     发现端口 %VOICE_PORT% 被占用，PID: %%a
-    for /f "tokens=1" %%b in ('wmic process where ProcessId=%%a get Name 2^|findstr ".exe"') do set PROC_NAME=%%b
-    echo     进程名: !PROC_NAME!
-    echo     正在关闭...
-    taskkill /F /PID %%a >nul 2>&1
+echo [3/5] Checking SSL certificates...
+if "%SSL_CERT%" neq "" (
+    if exist "%SSL_CERT%" (
+        echo   Certificate exists: %SSL_CERT%
+    ) else (
+        echo   Generating self-signed SSL certificate...
+        for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr "IPv4"') do (
+            set LAN_IP=%%a
+            goto :got_ip
+        )
+        :got_ip
+        set LAN_IP=!LAN_IP: =!
+        echo   Local IP: !LAN_IP!
+
+        echo [req] > openssl.cnf
+        echo distinguished_name = req_distinguished_name >> openssl.cnf
+        echo prompt = no >> openssl.cnf
+        echo [req_distinguished_name] >> openssl.cnf
+        echo CN = !LAN_IP! >> openssl.cnf
+
+        openssl req -x509 -newkey rsa:2048 -keyout "%SSL_KEY%" -out "%SSL_CERT%" -days 365 -nodes -subj "/CN=!LAN_IP!" -config openssl.cnf >nul 2>&1
+        if errorlevel 1 (
+            echo   Error: Certificate generation failed, SSL disabled
+            set SSL_CERT=
+            set SSL_KEY=
+        ) else (
+            echo   Certificate generated: %SSL_CERT%
+            del openssl.cnf 2>nul
+        )
+    )
+) else (
+    echo   No SSL certificate configured, skipping
 )
-timeout /t 1 /nobreak >nul
-for %%a in (%VOICE_PORT%) do echo     端口 %VOICE_PORT% 已清理
+echo.
 
-timeout /t 2 /nobreak >nul
+echo [4/5] Starting AI Bridge (port %API_PORT%)...
+if "%SSL_CERT%" neq "" (
+    start "AI Bridge" cmd /k "set SSL_CERT_FILE=%SSL_CERT%&& set SSL_KEY_FILE=%SSL_KEY%&& set API_PORT=%API_PORT%&& set VOICE_PORT=%VOICE_PORT%&& python nanobot_bridge.py"
+) else (
+    start "AI Bridge" cmd /k "set API_PORT=%API_PORT%&& set VOICE_PORT=%VOICE_PORT%&& python nanobot_bridge.py"
+)
 
-echo [3/4] 启动 AI Bridge (端口 %API_PORT%, 含Web服务)...
-start "AI Bridge" cmd /k "set API_PORT=%API_PORT%&& set VOICE_PORT=%VOICE_PORT%&& python nanobot_bridge.py"
-
-echo [4/4] 启动语音代理 (端口 %VOICE_PORT%)...
+echo [5/5] Starting voice proxy (port %VOICE_PORT%)...
 start "Voice Proxy" cmd /k "set VOICE_PORT=%VOICE_PORT%&& node voice-proxy.js"
 
 timeout /t 3 /nobreak >nul
 
 echo.
 echo ========================================
-echo   所有服务已启动！
+echo   Server Started Successfully
 echo ========================================
 echo.
-echo   本地访问:  http://localhost:%API_PORT%
-for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do (
-    set IP=%%a
+
+for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr "IPv4"') do (
+    set LAN_IP=%%a
     goto :show_ip
 )
 :show_ip
-echo   局域网访问: http:%IP%:%API_PORT%
+set LAN_IP=!LAN_IP: =!
+
+if "%SSL_CERT%" neq "" (
+    echo   Local:         https://localhost:%API_PORT%
+    echo   Network:       https://!LAN_IP!:%API_PORT%
+    echo   ^(First visit may show certificate warning^)
+    echo.
+    echo   HTTP traffic will redirect to HTTPS
+) else (
+    echo   Local:         http://localhost:%API_PORT%
+    echo   Network:       http://!LAN_IP!:%API_PORT%
+)
 echo.
-echo   API端口: %API_PORT% (集成Web服务)
-echo   语音端口: %VOICE_PORT%
-echo.
-echo   Token访问: http://localhost:%API_PORT%/?token=%ACCESS_TOKEN%
+echo   Voice Port: %VOICE_PORT%
+echo   Token param: ?token=%ACCESS_TOKEN%
 echo.
 echo ========================================
 echo.
-echo 提示: 请确保防火墙允许这些端口访问
-echo       手机访问时请使用局域网IP地址
+
+if "%SSL_CERT%" neq "" (
+    echo Note: First visit may show self-signed certificate warning
+    echo       Accept on mobile to enable HTTPS
+) else (
+    echo Note: Make sure firewall allows these ports
+    echo       Use local IP address for mobile access
+)
 echo.
 
 timeout /t 10 /nobreak >nul

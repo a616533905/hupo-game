@@ -641,7 +641,7 @@ body.snow .snowfall{display:block}
 <h4>📊 状态</h4>
 <div class="status-display" id="settingsStatus">
 <span class="status-mode">模式: 服务器</span>
-<span class="status-api">API: localhost:80</span>
+<span class="status-api">API: 加载中...</span>
 <span class="status-model">模型: MiniMax</span>
 </div>
 </div>
@@ -930,10 +930,10 @@ const RUNTIME_CONFIG={
     mode:'server',
     server:{
         host:'localhost',
-        apiPort:80,
-        webPort:80,
+        apiPort:443,
+        webPort:443,
         voicePort:85,
-        remoteHost:'http://117.72.177.240/'
+        remoteHost:'https://117.72.177.240/'
     },
     local:{
         type:'ollama',
@@ -975,7 +975,7 @@ const RUNTIME_CONFIG={
     },
     setServer(host,apiPort,voicePort){
         this.server.host=host;
-        this.server.apiPort=apiPort||80;
+        this.server.apiPort=apiPort||443;
         this.server.voicePort=voicePort||85;
         this.save();
     },
@@ -1006,19 +1006,22 @@ const ENV_CONFIG={
     get currentMode(){
         return RUNTIME_CONFIG.mode;
     },
+    get isHttps(){
+        return location.protocol==='https:';
+    },
     get apiBase(){
         const cfg=RUNTIME_CONFIG;
         const modelSource=localStorage.getItem('hupo_model_source')||'remote';
+        const proto=this.isHttps?'https:':'http:';
         if(cfg.mode==='remote'&&cfg.server.remoteHost){
             let host=cfg.server.remoteHost.replace(/\/$/,'');
             if(host.startsWith('http'))return host;
             if(host.includes(':')&&!host.startsWith('[')){
-                return `http://${host}`;
+                return `${proto}//${host}`;
             }
-            return `http://${host}:${cfg.server.apiPort}`;
+            return `${proto}//${host}:${cfg.server.apiPort}`;
         }
-        if(this.isLocal)return `http://${location.hostname}:${cfg.server.apiPort}`;
-        return `http://${location.hostname}:${cfg.server.apiPort}`;
+        return `${proto}//${location.hostname}:${cfg.server.apiPort}`;
     },
     get voiceBase(){
         const cfg=RUNTIME_CONFIG;
@@ -1030,14 +1033,23 @@ const ENV_CONFIG={
             }
             return `http://${host}:${cfg.server.voicePort}`;
         }
-        if(this.isLocal)return `http://${location.hostname}:${cfg.server.voicePort}`;
         return `http://${location.hostname}:${cfg.server.voicePort}`;
     },
     getApiUrl(path){
-        return this.apiBase+path;
+        let url=this.apiBase+path;
+        const token=RUNTIME_CONFIG.accessToken;
+        if(token&&path!=='/config'){
+            url+=(url.includes('?')?'&':'?')+'token='+encodeURIComponent(token);
+        }
+        return url;
     },
     getVoiceUrl(path){
-        return this.voiceBase+path;
+        let url=this.voiceBase+path;
+        const token=RUNTIME_CONFIG.accessToken;
+        if(token){
+            url+=(url.includes('?')?'&':'?')+'token='+encodeURIComponent(token);
+        }
+        return url;
     },
     isOfflineMode(){
         const modelSource=localStorage.getItem('hupo_model_source')||'remote';
@@ -2256,26 +2268,12 @@ async function loadVoiceConfig(){
     const baiduConfig=window.gameConfig?.baidu||{};
     const baiduConfigured=!!(baiduConfig.api_key&&baiduConfig.secret_key);
     const savedProvider=localStorage.getItem('hupo_voice_provider');
-    try{
-        const r=await fetch(ENV_CONFIG.getVoiceUrl('/voice/config'));
-        if(r.ok){
-            const cfg=await r.json();
-            voiceProvider=savedProvider||cfg.provider||'browser';
-            document.getElementById('voiceProvider').value=voiceProvider;
-            document.getElementById('voiceStatus').innerHTML=`
-                <span class="voice-browser">${browserSupported?'✓':'✗'} 浏览器: ${browserSupported?'可用':'不支持'}</span>
-                <span class="voice-baidu">${cfg.baidu?'✓':'✗'} 百度: ${cfg.baidu?'已配置':'未配置'}</span>
-            `;
-        }
-    }catch(e){
-        console.log('Voice config load failed:',e);
-        voiceProvider=savedProvider||'browser';
-        document.getElementById('voiceProvider').value=voiceProvider;
-        document.getElementById('voiceStatus').innerHTML=`
-            <span class="voice-browser">${browserSupported?'✓':'✗'} 浏览器: ${browserSupported?'可用':'不支持'}</span>
-            <span class="voice-baidu">${baiduConfigured?'✓':'✗'} 百度: ${baiduConfigured?'已配置':'未配置'}</span>
-        `;
-    }
+    voiceProvider=savedProvider||'browser';
+    document.getElementById('voiceProvider').value=voiceProvider;
+    document.getElementById('voiceStatus').innerHTML=`
+        <span class="voice-browser">${browserSupported?'✓':'✗'} 浏览器: ${browserSupported?'可用':'不支持'}</span>
+        <span class="voice-baidu">${baiduConfigured?'✓':'✗'} 百度: ${baiduConfigured?'已配置':'未配置'}</span>
+    `;
 }
 function updateVoiceProvider(){
     const provider=document.getElementById('voiceProvider').value;
@@ -4283,7 +4281,7 @@ async function generateAIResponse(context,fallbackTexts){
             provider=localStorage.getItem('hupo_api_provider')||window.gameConfig?.active_provider||'minimax';
             model=localStorage.getItem('hupo_remote_model')||window.gameConfig?.[provider]?.model||'';
         }
-        const r=await fetch(ENV_CONFIG.getApiUrl('/chat'),{
+        const r=await fetch(ENV_CONFIG.getApiUrl('/'),{
             method:'POST',
             headers:{'Content-Type':'application/json'},
             body:JSON.stringify({
@@ -4344,7 +4342,7 @@ async function sendMessage(){
             provider=localStorage.getItem('hupo_api_provider')||window.gameConfig?.active_provider||'minimax';
             model=localStorage.getItem('hupo_remote_model')||window.gameConfig?.[provider]?.model||'';
         }
-        const r=await fetch(ENV_CONFIG.getApiUrl('/chat'),{
+        const r=await fetch(ENV_CONFIG.getApiUrl('/'),{
             method:'POST',
             headers:{'Content-Type':'application/json'},
             body:JSON.stringify({
@@ -4378,17 +4376,13 @@ function getSysPrompt(){
 【可用指令】喂食/玩耍/抚摸/冒险/打怪/商店/任务/技能/训练场/家园/图鉴/签到/转盘/装备/合成/剧情/存档/竞技场/亲密度/日记/皮肤/成就/休息/睡觉/医院/状态/帮助`
 }
 document.getElementById('messageInput').addEventListener('keypress',e=>{if(e.key==='Enter')sendMessage()});
-async function loadModelInfo(){
+function loadModelInfo(){
     const modelSource=localStorage.getItem('hupo_model_source')||'remote';
     if(modelSource==='ollama'){
         const model=localStorage.getItem('hupo_ollama_model')||window.gameConfig?.ollama?.model||window.gameConfig?.local?.ollama?.model||'Ollama';
         document.getElementById('modelTag').innerHTML='🤖 '+model.split('/').pop();
     }else{
-        try{
-            const r=await fetch(ENV_CONFIG.getApiUrl('/model'));
-            const d=await r.json();
-            document.getElementById('modelTag').innerHTML='🤖 '+(d.model||'Unknown').split('/').pop()
-        }catch(e){document.getElementById('modelTag').innerHTML='🤖 离线模式'}
+        document.getElementById('modelTag').innerHTML='🤖 AI';
     }
 }
 function showNpcDialog(npc){
@@ -4524,16 +4518,16 @@ async function getBaiduToken(){
     }
 }
 function checkMediaSupport(){
-    const isHTTPS=location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
+    const isSecureContext=window.isSecureContext||location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
     const hasMediaDevices=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
     const hasLegacyGetUserMedia=!!(navigator.getUserMedia||navigator.webkitGetUserMedia||navigator.mozGetUserMedia||navigator.msGetUserMedia);
     const hasMediaRecorder=typeof MediaRecorder!=='undefined';
     return{
-        isHTTPS,
+        isSecureContext,
         hasMediaDevices,
         hasLegacyGetUserMedia,
         hasMediaRecorder,
-        isSupported:isHTTPS&&(hasMediaDevices||hasLegacyGetUserMedia)&&hasMediaRecorder
+        isSupported:(hasMediaDevices||hasLegacyGetUserMedia)&&hasMediaRecorder
     };
 }
 async function initVoice(){
@@ -4546,18 +4540,41 @@ async function initVoice(){
         return true;
     }
     const support=checkMediaSupport();
-    if(!support.isHTTPS){
-        addMessage('⚠️ 注意：HTTP环境下部分浏览器可能无法使用麦克风，如遇问题请使用HTTPS访问','bot');
+    if(!support.isSecureContext){
+        addMessage('⚠️ 当前为HTTP环境，浏览器可能限制麦克风访问。建议使用HTTPS或localhost访问','bot');
     }
     if(!support.hasMediaDevices&&!support.hasLegacyGetUserMedia){
-        addMessage('⚠️ 你的浏览器不支持录音功能，请使用Chrome/Safari/Edge浏览器','bot');
+        if(!support.isSecureContext){
+            addMessage('❌ HTTP环境下浏览器禁用了麦克风API，请使用HTTPS访问或通过localhost访问','bot');
+        }else{
+            addMessage('⚠️ 你的浏览器不支持录音功能，请使用Chrome/Safari/Edge浏览器','bot');
+        }
         return false;
     }
     if(!support.hasMediaRecorder){
         addMessage('⚠️ 你的浏览器不支持MediaRecorder，请更新浏览器','bot');
         return false;
     }
-    return true;
+    try{
+        if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+            const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+            stream.getTracks().forEach(track=>track.stop());
+        }
+        return true;
+    }catch(e){
+        if(e.name==='NotAllowedError'||e.name==='PermissionDeniedError'){
+            addMessage('❌ 麦克风权限被拒绝，请在浏览器设置中允许访问麦克风','bot');
+        }else if(e.name==='NotFoundError'){
+            addMessage('❌ 未找到麦克风设备','bot');
+        }else if(e.name==='NotReadableError'){
+            addMessage('❌ 麦克风被其他应用占用','bot');
+        }else if(!support.isSecureContext){
+            addMessage('❌ HTTP环境下浏览器拒绝了麦克风访问，请使用HTTPS访问','bot');
+        }else{
+            addMessage('❌ 无法访问麦克风：'+e.message,'bot');
+        }
+        return false;
+    }
 }
 async function toggleVoice(){
     const provider=getVoiceProvider();
@@ -6454,7 +6471,7 @@ function initRuntimeConfigFromGameConfig(){
         RUNTIME_CONFIG.mode=cfg.runtime_mode;
     }
     if(cfg.server){
-        RUNTIME_CONFIG.server.apiPort=cfg.server.api_port||80;
+        RUNTIME_CONFIG.server.apiPort=cfg.server.api_port||443;
         RUNTIME_CONFIG.server.voicePort=cfg.server.voice_port||85;
         if(cfg.server.remote_host&&!localStorage.getItem('hupo_runtime_config')){
             RUNTIME_CONFIG.server.remoteHost=cfg.server.remote_host;
