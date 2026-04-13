@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import http.client
+import ssl
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess
 import threading
@@ -299,6 +300,11 @@ except (ValueError, TypeError):
     logger.warning("API_PORT 环境变量格式错误，使用默认端口 80")
     PORT = 80
 
+HTTPS_DOMAIN = os.environ.get('HTTPS_DOMAIN', config.get('https_domain', ''))
+SSL_CERT_FILE = os.environ.get('SSL_CERT_FILE', config.get('ssl_cert_file', ''))
+SSL_KEY_FILE = os.environ.get('SSL_KEY_FILE', config.get('ssl_key_file', ''))
+USE_HTTPS = bool(SSL_CERT_FILE and SSL_KEY_FILE)
+
 def get_provider_config(provider_name):
     """获取指定提供者的配置"""
     return config.get(provider_name, {})
@@ -532,9 +538,12 @@ def call_ollama_api(message, model_override=None, host_override=None):
         host = parts[0]
         port = int(parts[1])
 
+    logger.info(f"调用Ollama API, model={model}, host={host}:{port}")
+
     if not check_ollama_running(host, port):
-        print("Ollama 服务未运行，正在启动...")
+        logger.warning("Ollama 服务未运行，正在启动...")
         if not start_ollama_service():
+            logger.error("无法启动 Ollama 服务")
             return "Ollama错误: 无法启动 Ollama 服务，请手动运行 'ollama serve'"
     
     ensure_ollama_model(model, host, port)
@@ -569,9 +578,10 @@ def call_ollama_api(message, model_override=None, host_override=None):
             result_json = json.loads(result)
             if "choices" in result_json and len(result_json["choices"]) > 0:
                 return result_json["choices"][0]["message"]["content"]
+            logger.warning(f"OpenAI API 无有效响应: {result[:200]}")
             return None
         except Exception as e:
-            print(f"OpenAI API 错误: {e}")
+            logger.warning(f"OpenAI API 错误: {e}")
             return None
         finally:
             conn.close()
@@ -585,9 +595,10 @@ def call_ollama_api(message, model_override=None, host_override=None):
             result_json = json.loads(result)
             if "message" in result_json:
                 return result_json["message"].get("content", "")
+            logger.warning(f"Native API 无有效响应: {result[:200]}")
             return None
         except Exception as e:
-            print(f"Native API 错误: {e}")
+            logger.warning(f"Native API 错误: {e}")
             return None
         finally:
             conn.close()
@@ -596,15 +607,19 @@ def call_ollama_api(message, model_override=None, host_override=None):
         result = try_openai_api()
         if result:
             conversation_history.append({"role": "assistant", "content": result})
+            logger.info(f"Ollama API调用成功(OpenAI格式), response_length={len(result)}")
             return result
 
         result = try_native_api()
         if result:
             conversation_history.append({"role": "assistant", "content": result})
+            logger.info(f"Ollama API调用成功(Native格式), response_length={len(result)}")
             return result
 
+        logger.error(f"Ollama无法获取响应, model={model}")
         return "Ollama错误: 无法获取响应，请检查模型是否已下载 (ollama pull " + model + ")"
     except Exception as e:
+        logger.error(f"Ollama请求失败: {str(e)}")
         return f"Ollama请求失败: {str(e)}"
 
 def call_openrouter_api(message, model_override=None):
@@ -613,11 +628,16 @@ def call_openrouter_api(message, model_override=None):
 
     provider_config = get_provider_config('openrouter')
     api_key = provider_config.get('api_key', '')
-    model = model_override or provider_config.get('model', 'openrouter/auto')
+    config_model = provider_config.get('model', 'openrouter/auto')
+    if model_override and '/' in model_override and not model_override.startswith('MiniMax'):
+        model = model_override
+    else:
+        model = config_model
 
     if not api_key:
         return "错误: OpenRouter API未配置（请在config.json中设置api_key）"
 
+    logger.info(f"调用OpenRouter API, model={model}, message_length={len(message)}")
     conversation_history.append({"role": "user", "content": message})
 
     if len(conversation_history) > MAX_HISTORY_LENGTH:
@@ -634,8 +654,8 @@ def call_openrouter_api(message, model_override=None):
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
-        "HTTP-Referer": "http://localhost:80",
-        "X-Title": "Nanobot Game"
+        "HTTP-Referer": "https://localhost",
+        "X-Title": "HupoGame"
     }
 
     try:
@@ -647,10 +667,14 @@ def call_openrouter_api(message, model_override=None):
         if "choices" in result_json and len(result_json["choices"]) > 0:
             assistant_message = result_json["choices"][0]["message"]["content"]
             conversation_history.append({"role": "assistant", "content": assistant_message})
+            logger.info(f"OpenRouter API调用成功, response_length={len(assistant_message)}")
             return assistant_message
         else:
-            return f"OpenRouter错误: {result_json.get('error', {}).get('message', '未知错误')}"
+            error_msg = result_json.get('error', {}).get('message', '未知错误')
+            logger.error(f"OpenRouter API错误: {error_msg}")
+            return f"OpenRouter错误: {error_msg}"
     except Exception as e:
+        logger.error(f"OpenRouter请求失败: {str(e)}")
         return f"OpenRouter请求失败: {str(e)}"
     finally:
         conn.close()
@@ -667,6 +691,25 @@ def call_api(message, provider=None, model=None, ollama_host=None):
         return call_minimax_api(message, model)
     else:
         return call_minimax_api(message, model)
+
+class HTTPtoHTTPSRedirectHandler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        pass
+
+    def do_GET(self):
+        if HTTPS_DOMAIN:
+            redirect_url = f"https://{HTTPS_DOMAIN}{self.path}"
+        else:
+            redirect_url = f"https://{self.headers.get('Host', 'localhost')}{self.path}"
+        self.send_response(301)
+        self.send_header("Location", redirect_url)
+        self.send_header("Connection", "close")
+        self.end_headers()
+
+    do_POST = do_GET
+    do_HEAD = do_GET
+    do_PUT = do_GET
+    do_DELETE = do_GET
 
 class NanobotHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -730,11 +773,12 @@ class NanobotHandler(BaseHTTPRequestHandler):
             return
         
         try:
-            if self.path == "/chat":
+            path_only = self.path.split('?')[0]
+            if path_only == "/":
                 increment_metric('chat_requests')
                 content_length = int(self.headers.get("Content-Length", 0))
                 if content_length > MAX_CONTENT_LENGTH:
-                    logger.warning(f"[{client_ip}] POST /chat - 请求体过大: {content_length}")
+                    logger.warning(f"[{client_ip}] POST / - 请求体过大: {content_length}")
                     self.send_response(413)
                     self.send_header("Content-Type", "application/json; charset=utf-8")
                     self.send_header('Access-Control-Allow-Origin', '*')
@@ -919,6 +963,16 @@ class NanobotHandler(BaseHTTPRequestHandler):
         client_ip = self.client_address[0]
         increment_metric('requests_total')
         
+        if HTTPS_DOMAIN:
+            forwarded_proto = self.headers.get('X-Forwarded-Proto', '')
+            if forwarded_proto != 'https':
+                https_url = f"https://{HTTPS_DOMAIN}{self.path}"
+                logger.info(f"[{client_ip}] HTTP -> HTTPS 重定向: {https_url}")
+                self.send_response(301)
+                self.send_header("Location", https_url)
+                self.end_headers()
+                return
+        
         try:
             if self.path == "/health":
                 if client_ip not in ('127.0.0.1', '::1'):
@@ -1067,7 +1121,19 @@ if __name__ == "__main__":
     logger.info("="*50)
 
     server = HTTPServer(("0.0.0.0", PORT), NanobotHandler)
-    
+
+    if USE_HTTPS:
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ssl_context.load_cert_chain(SSL_CERT_FILE, SSL_KEY_FILE)
+        server.socket = ssl_context.wrap_socket(server.socket, server_side=True)
+        logger.info(f"HTTPS 已启用，证书: {SSL_CERT_FILE}")
+
+        redirect_server = HTTPServer(("0.0.0.0", 80), HTTPtoHTTPSRedirectHandler)
+        redirect_server_thread = threading.Thread(target=redirect_server.serve_forever)
+        redirect_server_thread.daemon = True
+        redirect_server_thread.start()
+        logger.info("HTTP -> HTTPS 重定向已启用 (端口 80)")
+
     def graceful_shutdown(signum, frame):
         logger.info("收到关闭信号，正在优雅关闭...")
         logger.info("等待当前请求完成...")
@@ -1078,7 +1144,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, graceful_shutdown)
     signal.signal(signal.SIGINT, graceful_shutdown)
     
-    logger.info(f"服务器已启动，监听端口 {PORT}")
+    logger.info(f"服务器已启动，监听端口 {PORT} ({'HTTPS' if USE_HTTPS else 'HTTP'})")
     logger.info("按 Ctrl+C 或发送 SIGTERM 信号可优雅关闭")
     
     try:

@@ -7,11 +7,13 @@ echo ""
 
 cd "$(dirname "$0")"
 
-echo "[1/4] 读取配置文件..."
+echo "[1/5] 读取配置文件..."
 if [ -f "config.json" ]; then
     API_PORT=$(grep -o '"api_port"[[:space:]]*:[[:space:]]*[0-9]*' config.json | grep -o '[0-9]*$')
     VOICE_PORT=$(grep -o '"voice_port"[[:space:]]*:[[:space:]]*[0-9]*' config.json | grep -o '[0-9]*$')
     ACCESS_TOKEN=$(grep -o '"access_token"[[:space:]]*:[[:space:]]*"[^"]*"' config.json | sed 's/.*:.*"\([^"]*\)"/\1/')
+    SSL_CERT=$(grep -o '"ssl_cert_file"[[:space:]]*:[[:space:]]*"[^"]*"' config.json | sed 's/.*:.*"\([^"]*\)"/\1/')
+    SSL_KEY=$(grep -o '"ssl_key_file"[[:space:]]*:[[:space:]]*"[^"]*"' config.json | sed 's/.*:.*"\([^"]*\)"/\1/')
 fi
 
 API_PORT=${API_PORT:-80}
@@ -45,16 +47,49 @@ cleanup_port() {
     fi
 }
 
-echo "[2/4] 清理端口..."
+echo "[2/5] 清理端口..."
 cleanup_port $API_PORT "AI Bridge"
 cleanup_port $VOICE_PORT "Voice Proxy"
 
-echo "[3/4] 启动 AI Bridge (端口 $API_PORT, 含Web服务)..."
-API_PORT=$API_PORT VOICE_PORT=$VOICE_PORT python3 nanobot_bridge.py &
+echo "[3/5] 检查SSL证书..."
+generate_ssl_certs() {
+    local cert_file="$1"
+    local key_file="$2"
+    local common_name="$3"
+
+    if [ -f "$cert_file" ] && [ -f "$key_file" ]; then
+        echo "  证书已存在: $cert_file"
+        return 0
+    fi
+
+    echo "  正在生成自签名SSL证书..."
+    if command -v openssl &> /dev/null; then
+        openssl req -x509 -newkey rsa:2048 -keyout "$key_file" -out "$cert_file" \
+            -days 365 -nodes -subj "/CN=$common_name" 2>/dev/null
+        if [ $? -eq 0 ]; then
+            echo "  证书已生成: $cert_file"
+            return 0
+        fi
+    fi
+    echo "  警告: 无法生成证书，SSL功能将不可用"
+    return 1
+}
+
+if [ -n "$SSL_CERT" ] && [ -n "$SSL_KEY" ]; then
+    IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+    if [ -n "$IP" ]; then
+        generate_ssl_certs "$SSL_CERT" "$SSL_KEY" "$IP" || true
+    fi
+else
+    echo "  未配置SSL证书，跳过"
+fi
+
+echo "[4/5] 启动 AI Bridge (端口 $API_PORT, 含Web服务)..."
+SSL_CERT_FILE="$SSL_CERT" SSL_KEY_FILE="$SSL_KEY" API_PORT=$API_PORT VOICE_PORT=$VOICE_PORT python3 nanobot_bridge.py &
 API_PID=$!
 echo "API Server PID: $API_PID"
 
-echo "[4/4] 启动语音代理 (端口 $VOICE_PORT)..."
+echo "[5/5] 启动语音代理 (端口 $VOICE_PORT)..."
 VOICE_PORT=$VOICE_PORT node voice-proxy.js &
 VOICE_PID=$!
 echo "Voice Server PID: $VOICE_PID"
@@ -66,18 +101,19 @@ echo "========================================"
 echo "  所有服务已启动！"
 echo "========================================"
 echo ""
-echo "  本地访问:  http://localhost:$API_PORT"
+echo "  本地访问:  https://localhost:$API_PORT"
 
 IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 if [ -n "$IP" ]; then
-    echo "  局域网访问: http://$IP:$API_PORT"
+    echo "  局域网访问: https://$IP:$API_PORT"
+    echo "  (首次访问需在浏览器中信任自签名证书)"
 fi
 
 echo ""
-echo "  API端口: $API_PORT (集成Web服务)"
+echo "  API端口: $API_PORT (HTTPS)"
 echo "  语音端口: $VOICE_PORT"
 echo ""
-echo "  Token访问: http://localhost:$API_PORT/?token=$ACCESS_TOKEN"
+echo "  Token访问: https://localhost:$API_PORT/?token=$ACCESS_TOKEN"
 echo ""
 echo "========================================"
 echo ""
