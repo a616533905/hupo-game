@@ -16,7 +16,7 @@ if [ -f "config.json" ]; then
     SSL_KEY=$(grep -o '"ssl_key_file"[[:space:]]*:[[:space:]]*"[^"]*"' config.json | sed 's/.*:.*"\([^"]*\)"/\1/')
 fi
 
-API_PORT=${API_PORT:-80}
+API_PORT=${API_PORT:-443}
 VOICE_PORT=${VOICE_PORT:-85}
 ACCESS_TOKEN=${ACCESS_TOKEN:-hupo_secret_token_2024}
 
