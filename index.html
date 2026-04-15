@@ -4095,10 +4095,10 @@ function showPartnerDetail(id){
     h+=`<p>属性加成: ${bonusText}</p>`;
     h+=`<p>技能: ${p.skill}</p>`;
     h+='<div style="margin-top:15px">';
-    h+=`<button onclick="removePartner('${id}')" style="background:#e74c3c">解散伙伴</button> `;
-    h+='<button onclick="openPartnerShop()" class="secondary">返回</button>';
+    h+='<button onclick="openPartnerShop()" class="secondary">🔄 切换伙伴</button> ';
+    h+=`<button onclick="removePartner('${id}')" style="background:#e74c3c">解散</button>`;
     h+='</div></div>';
-    document.getElementById('eventExtra').innerHTML=h;
+    showEvent(`👥 ${p.name}`,p.desc,h);
 }
 function removePartner(id){
     const p=partners.find(x=>x.id===id);
