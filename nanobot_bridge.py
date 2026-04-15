@@ -303,7 +303,13 @@ except (ValueError, TypeError):
 HTTPS_DOMAIN = os.environ.get('HTTPS_DOMAIN', config.get('https_domain', ''))
 SSL_CERT_FILE = os.environ.get('SSL_CERT_FILE', config.get('ssl_cert_file', ''))
 SSL_KEY_FILE = os.environ.get('SSL_KEY_FILE', config.get('ssl_key_file', ''))
-USE_HTTPS = bool(SSL_CERT_FILE and SSL_KEY_FILE)
+USE_HTTPS_ENV = os.environ.get('USE_HTTPS', '')
+if USE_HTTPS_ENV.lower() in ('1', 'true', 'yes'):
+    USE_HTTPS = bool(SSL_CERT_FILE and SSL_KEY_FILE)
+elif USE_HTTPS_ENV.lower() in ('0', 'false', 'no'):
+    USE_HTTPS = False
+else:
+    USE_HTTPS = bool(SSL_CERT_FILE and SSL_KEY_FILE)
 
 def get_provider_config(provider_name):
     """获取指定提供者的配置"""
