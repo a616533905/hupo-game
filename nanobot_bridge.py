@@ -294,12 +294,6 @@ def get_config():
 
 config = get_config()
 
-try:
-    PORT = int(os.environ.get('API_PORT')) if os.environ.get('API_PORT') else config.get('port', 80)
-except (ValueError, TypeError):
-    logger.warning("API_PORT 环境变量格式错误，使用默认端口 80")
-    PORT = 80
-
 HTTPS_DOMAIN = os.environ.get('HTTPS_DOMAIN', config.get('https_domain', ''))
 SSL_CERT_FILE = os.environ.get('SSL_CERT_FILE', config.get('ssl_cert_file', ''))
 SSL_KEY_FILE = os.environ.get('SSL_KEY_FILE', config.get('ssl_key_file', ''))
@@ -310,6 +304,12 @@ elif USE_HTTPS_ENV.lower() in ('0', 'false', 'no'):
     USE_HTTPS = False
 else:
     USE_HTTPS = bool(SSL_CERT_FILE and SSL_KEY_FILE)
+
+server_config = config.get('server', {})
+if USE_HTTPS:
+    PORT = int(os.environ.get('API_PORT')) if os.environ.get('API_PORT') else server_config.get('https_port', 443)
+else:
+    PORT = int(os.environ.get('API_PORT')) if os.environ.get('API_PORT') else server_config.get('http_port', 80)
 
 def get_provider_config(provider_name):
     """获取指定提供者的配置"""

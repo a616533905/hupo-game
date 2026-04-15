@@ -45,13 +45,15 @@ echo.
 cd /d "%~dp0"
 
 echo [1/6] Loading configuration...
-for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty server | Select-Object -ExpandProperty api_port"') do set API_PORT=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty server | Select-Object -ExpandProperty http_port"') do set HTTP_PORT=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty server | Select-Object -ExpandProperty https_port"') do set HTTPS_PORT=%%a
 for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty server | Select-Object -ExpandProperty voice_port"') do set VOICE_PORT=%%a
 for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty access_token"') do set ACCESS_TOKEN=%%a
 for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty server | Select-Object -ExpandProperty ssl_cert_file"') do set SSL_CERT=%%a
 for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty server | Select-Object -ExpandProperty ssl_key_file"') do set SSL_KEY=%%a
 
-if "%API_PORT%"=="" set API_PORT=8080
+if "%HTTP_PORT%"=="" set HTTP_PORT=80
+if "%HTTPS_PORT%"=="" set HTTPS_PORT=443
 if "%VOICE_PORT%"=="" set VOICE_PORT=85
 if "%ACCESS_TOKEN%"=="" set ACCESS_TOKEN=hupo_secret_token_2024
 
@@ -71,6 +73,12 @@ if "%SELECTED_MODE%"=="" (
         set USE_HTTPS=0
         set SELECTED_MODE=HTTP
     )
+)
+
+if "%USE_HTTPS%"=="1" (
+    set "API_PORT=%HTTPS_PORT%"
+) else (
+    set "API_PORT=%HTTP_PORT%"
 )
 
 echo.
