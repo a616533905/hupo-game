@@ -6471,7 +6471,8 @@ function initRuntimeConfigFromGameConfig(){
         RUNTIME_CONFIG.mode=cfg.runtime_mode;
     }
     if(cfg.server){
-        RUNTIME_CONFIG.server.apiPort=cfg.server.api_port||443;
+        const isHttps=location.protocol==='https:';
+        RUNTIME_CONFIG.server.apiPort=isHttps?(cfg.server.https_port||443):(cfg.server.http_port||80);
         RUNTIME_CONFIG.server.voicePort=cfg.server.voice_port||85;
         if(cfg.server.remote_host&&!localStorage.getItem('hupo_runtime_config')){
             RUNTIME_CONFIG.server.remoteHost=cfg.server.remote_host;

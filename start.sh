@@ -1,13 +1,10 @@
 #!/bin/bash
 
-echo "========================================"
-echo "  Hupo Game Server Startup Script"
-echo "========================================"
-echo ""
-
 cd "$(dirname "$0")"
 
 USE_HTTPS=0
+RUN_DAEMON=0
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         --https|-s)
@@ -18,11 +15,16 @@ while [[ $# -gt 0 ]]; do
             USE_HTTPS=0
             shift
             ;;
+        --daemon|-d)
+            RUN_DAEMON=1
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--https|-s] [--http|-h]"
-            echo "  --https, -s    Enable HTTPS (default: disabled)"
-            echo "  --http,  -h    Enable HTTP only"
+            echo "Usage: $0 [--https|-s] [--http|-h] [--daemon|-d]"
+            echo "  --https, -s    Enable HTTPS"
+            echo "  --http,  -h    Enable HTTP only (default)"
+            echo "  --daemon, -d   Run in background (disconnect SSH safe)"
             exit 1
             ;;
     esac
@@ -35,16 +37,24 @@ echo ""
 
 echo "[1/6] Loading configuration..."
 if [ -f "config.json" ]; then
-    API_PORT=$(grep -o '"api_port"[[:space:]]*:[[:space:]]*[0-9]*' config.json | grep -o '[0-9]*$')
+    HTTP_PORT=$(grep -o '"http_port"[[:space:]]*:[[:space:]]*[0-9]*' config.json | grep -o '[0-9]*$')
+    HTTPS_PORT=$(grep -o '"https_port"[[:space:]]*:[[:space:]]*[0-9]*' config.json | grep -o '[0-9]*$')
     VOICE_PORT=$(grep -o '"voice_port"[[:space:]]*:[[:space:]]*[0-9]*' config.json | grep -o '[0-9]*$')
     ACCESS_TOKEN=$(grep -o '"access_token"[[:space:]]*:[[:space:]]*"[^"]*"' config.json | sed 's/.*:.*"\([^"]*\)"/\1/')
     SSL_CERT=$(grep -o '"ssl_cert_file"[[:space:]]*:[[:space:]]*"[^"]*"' config.json | sed 's/.*:.*"\([^"]*\)"/\1/')
     SSL_KEY=$(grep -o '"ssl_key_file"[[:space:]]*:[[:space:]]*"[^"]*"' config.json | sed 's/.*:.*"\([^"]*\)"/\1/')
 fi
 
-API_PORT=${API_PORT:-8080}
+HTTP_PORT=${HTTP_PORT:-80}
+HTTPS_PORT=${HTTPS_PORT:-443}
 VOICE_PORT=${VOICE_PORT:-85}
 ACCESS_TOKEN=${ACCESS_TOKEN:-hupo_secret_token_2024}
+
+if [ $USE_HTTPS -eq 1 ]; then
+    API_PORT=${API_PORT:-$HTTPS_PORT}
+else
+    API_PORT=${API_PORT:-$HTTP_PORT}
+fi
 
 echo "  API Port: $API_PORT"
 echo "  Voice Port: $VOICE_PORT"
@@ -119,20 +129,53 @@ else
 fi
 
 echo "[4/6] Starting AI Bridge (port $API_PORT)..."
-if [ $USE_HTTPS -eq 1 ]; then
-    USE_HTTPS=1 SSL_CERT_FILE="$SSL_CERT" SSL_KEY_FILE="$SSL_KEY" API_PORT=$API_PORT VOICE_PORT=$VOICE_PORT python3 nanobot_bridge.py &
-else
-    USE_HTTPS=0 API_PORT=$API_PORT VOICE_PORT=$VOICE_PORT python3 nanobot_bridge.py &
-fi
-API_PID=$!
-echo "  AI Bridge PID: $API_PID"
+if [ $RUN_DAEMON -eq 1 ]; then
+    LOG_DIR="logs"
+    mkdir -p "$LOG_DIR"
+    if [ $USE_HTTPS -eq 1 ]; then
+        nohup env USE_HTTPS=1 SSL_CERT_FILE="$SSL_CERT" SSL_KEY_FILE="$SSL_KEY" API_PORT=$API_PORT VOICE_PORT=$VOICE_PORT python3 nanobot_bridge.py > "$LOG_DIR/bridge.log" 2>&1 &
+    else
+        nohup env USE_HTTPS=0 API_PORT=$API_PORT VOICE_PORT=$VOICE_PORT python3 nanobot_bridge.py > "$LOG_DIR/bridge.log" 2>&1 &
+    fi
+    API_PID=$!
+    echo "  AI Bridge PID: $API_PID (background)"
 
-echo "[5/6] Starting voice proxy (port $VOICE_PORT)..."
-VOICE_PORT=$VOICE_PORT node voice-proxy.js &
-VOICE_PID=$!
-echo "  Voice Proxy PID: $VOICE_PID"
+    echo "[5/6] Starting voice proxy (port $VOICE_PORT)..."
+    nohup env VOICE_PORT=$VOICE_PORT node voice-proxy.js > "$LOG_DIR/voice.log" 2>&1 &
+    VOICE_PID=$!
+    echo "  Voice Proxy PID: $VOICE_PID (background)"
+else
+    if [ $USE_HTTPS -eq 1 ]; then
+        USE_HTTPS=1 SSL_CERT_FILE="$SSL_CERT" SSL_KEY_FILE="$SSL_KEY" API_PORT=$API_PORT VOICE_PORT=$VOICE_PORT python3 nanobot_bridge.py &
+    else
+        USE_HTTPS=0 API_PORT=$API_PORT VOICE_PORT=$VOICE_PORT python3 nanobot_bridge.py &
+    fi
+    API_PID=$!
+    echo "  AI Bridge PID: $API_PID"
+
+    echo "[5/6] Starting voice proxy (port $VOICE_PORT)..."
+    VOICE_PORT=$VOICE_PORT node voice-proxy.js &
+    VOICE_PID=$!
+    echo "  Voice Proxy PID: $VOICE_PID"
+fi
 
 sleep 3
+
+if [ $RUN_DAEMON -eq 1 ]; then
+    echo ""
+    echo "========================================"
+    echo "  Server Running in Background"
+    echo "========================================"
+    echo ""
+    echo "  Logs: logs/bridge.log, logs/voice.log"
+    echo ""
+    echo "  To stop:"
+    echo "    kill $API_PID $VOICE_PID"
+    echo ""
+    echo "========================================"
+    echo ""
+    exit 0
+fi
 
 echo ""
 echo "========================================"
