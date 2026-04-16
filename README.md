@@ -104,7 +104,8 @@ hupo-game/
 {
     "runtime_mode": "server",
     "server": {
-        "api_port": 80,
+        "http_port": 80,
+        "https_port": 443,
         "voice_port": 85,
         "remote_host": "http://你的服务器IP/"
     },
