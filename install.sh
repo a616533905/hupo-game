@@ -94,7 +94,7 @@ if [ -n "$DOMAIN" ] && [ "$IS_IP" = false ]; then
 
 $DOMAIN {
     encode gzip
-    reverse_proxy localhost:8080
+    reverse_proxy localhost:80
 }
 
 http://$DOMAIN {
@@ -102,14 +102,15 @@ http://$DOMAIN {
 }
 CADDYEOF
     
-    sed -i 's/"api_port": 80/"api_port": 8080/' $INSTALL_DIR/config.json
-    sed -i 's/"web_port": 80/"web_port": 8080/' $INSTALL_DIR/config.json
-    sed -i 's/"port": 80/"port": 8080/' $INSTALL_DIR/config.json
+    sed -i 's/"api_port": 80/"api_port": 80/' $INSTALL_DIR/config.json
+    sed -i 's/"web_port": 80/"web_port": 80/' $INSTALL_DIR/config.json
+    sed -i 's/"http_port": 80/"http_port": 80/' $INSTALL_DIR/config.json
+    sed -i 's/"https_port": 443/"https_port": 443/' $INSTALL_DIR/config.json
     
     if grep -q '"https_domain"' $INSTALL_DIR/config.json; then
         sed -i "s/\"https_domain\": \"[^\"]*\"/\"https_domain\": \"$DOMAIN\"/" $INSTALL_DIR/config.json
     else
-        sed -i "s/\"port\": 8080/\"port\": 8080,\n    \"https_domain\": \"$DOMAIN\"/" $INSTALL_DIR/config.json
+        sed -i "s/\"https_port\": 443/\"https_port\": 443,\n    \"https_domain\": \"$DOMAIN\"/" $INSTALL_DIR/config.json
     fi
     
     if systemctl restart caddy; then
@@ -120,9 +121,10 @@ CADDYEOF
         echo "Caddy 启动失败，可能是域名未解析到本机"
         echo "请检查: journalctl -xeu caddy.service"
         echo "将使用 HTTP 模式"
-        sed -i 's/"api_port": 8080/"api_port": 80/' $INSTALL_DIR/config.json
-        sed -i 's/"web_port": 8080/"web_port": 80/' $INSTALL_DIR/config.json
-        sed -i 's/"port": 8080/"port": 80/' $INSTALL_DIR/config.json
+        sed -i 's/"api_port": 80/"api_port": 80/' $INSTALL_DIR/config.json
+        sed -i 's/"web_port": 80/"web_port": 80/' $INSTALL_DIR/config.json
+        sed -i 's/"http_port": 80/"http_port": 80/' $INSTALL_DIR/config.json
+        sed -i 's/"https_port": 443/"https_port": 443/' $INSTALL_DIR/config.json
         systemctl stop caddy 2>/dev/null
         systemctl disable caddy 2>/dev/null
     fi
@@ -131,13 +133,14 @@ elif [ -n "$DOMAIN" ] && [ "$IS_IP" = true ]; then
     cat > /etc/caddy/Caddyfile << CADDYEOF
 :80 {
     encode gzip
-    reverse_proxy localhost:8080
+    reverse_proxy localhost:80
 }
 CADDYEOF
     
-    sed -i 's/"api_port": 80/"api_port": 8080/' $INSTALL_DIR/config.json
-    sed -i 's/"web_port": 80/"web_port": 8080/' $INSTALL_DIR/config.json
-    sed -i 's/"port": 80/"port": 8080/' $INSTALL_DIR/config.json
+    sed -i 's/"api_port": 80/"api_port": 80/' $INSTALL_DIR/config.json
+    sed -i 's/"web_port": 80/"web_port": 80/' $INSTALL_DIR/config.json
+    sed -i 's/"http_port": 80/"http_port": 80/' $INSTALL_DIR/config.json
+    sed -i 's/"https_port": 443/"https_port": 443/' $INSTALL_DIR/config.json
     
     if systemctl restart caddy; then
         systemctl enable caddy
@@ -145,9 +148,10 @@ CADDYEOF
         echo "访问地址: http://$DOMAIN"
     else
         echo "Caddy 启动失败"
-        sed -i 's/"api_port": 8080/"api_port": 80/' $INSTALL_DIR/config.json
-        sed -i 's/"web_port": 8080/"web_port": 80/' $INSTALL_DIR/config.json
-        sed -i 's/"port": 8080/"port": 80/' $INSTALL_DIR/config.json
+        sed -i 's/"api_port": 80/"api_port": 80/' $INSTALL_DIR/config.json
+        sed -i 's/"web_port": 80/"web_port": 80/' $INSTALL_DIR/config.json
+        sed -i 's/"http_port": 80/"http_port": 80/' $INSTALL_DIR/config.json
+        sed -i 's/"https_port": 443/"https_port": 443/' $INSTALL_DIR/config.json
     fi
 else
     echo "跳过域名配置，将使用 HTTP 模式"
@@ -188,8 +192,8 @@ if [ -n "$DOMAIN" ]; then
     echo "HTTP 会自动重定向到 HTTPS"
 else
     echo "API端点:"
-    echo "  健康检查: http://localhost:8080/health"
-    echo "  Prometheus: http://localhost:8080/metrics"
+    echo "  健康检查: http://localhost:80/health"
+    echo "  Prometheus: http://localhost:80/metrics"
 fi
 echo ""
 echo "========================================"
