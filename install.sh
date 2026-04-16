@@ -191,9 +191,10 @@ if [ -n "$DOMAIN" ]; then
     echo "HTTPS 访问地址: https://$DOMAIN"
     echo "HTTP 会自动重定向到 HTTPS"
 else
-    echo "API端点:"
-    echo "  健康检查: http://localhost:80/health"
-    echo "  Prometheus: http://localhost:80/metrics"
+    echo "【配置信息】"
+    echo "  HTTP端口: 80"
+    echo "  HTTPS端口: 443"
+    echo "  Voice端口: 85"
 fi
 echo ""
 echo "========================================"
