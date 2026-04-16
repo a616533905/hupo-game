@@ -3,10 +3,12 @@
     
     "server": {
         "host": "localhost",
-        "api_port": 80,
-        "web_port": 80,
+        "http_port": 80,
+        "https_port": 443,
         "voice_port": 85,
-        "remote_host": "http://你的服务器IP/"
+        "remote_host": "http://你的服务器IP/",
+        "ssl_cert_file": "cert.pem",
+        "ssl_key_file": "key.pem"
     },
     
     "local": {
@@ -17,9 +19,8 @@
         }
     },
     
-    "port": 80,
     "access_token": "your_token_here",
-    "token_required": "no",
+    "token_required": "yes/no",
     
     "minimax": {
         "api_key": "你的MiniMax API Key",

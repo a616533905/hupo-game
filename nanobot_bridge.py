@@ -198,7 +198,6 @@ document.getElementById('tokenInput').addEventListener('keypress',function(e){
 </html>'''
 
 REQUIRED_CONFIG_FIELDS = {
-    'port': int,
     'access_token': str,
     'active_provider': str,
 }
@@ -236,10 +235,14 @@ def validate_config(cfg):
     
     if 'server' in cfg:
         server_cfg = cfg['server']
-        if 'api_port' in server_cfg and not isinstance(server_cfg['api_port'], int):
-            errors.append("server.api_port 必须是整数")
+        if 'http_port' in server_cfg and not isinstance(server_cfg['http_port'], int):
+            errors.append("server.http_port 必须是整数")
+        if 'https_port' in server_cfg and not isinstance(server_cfg['https_port'], int):
+            errors.append("server.https_port 必须是整数")
         if 'voice_port' in server_cfg and not isinstance(server_cfg['voice_port'], int):
             errors.append("server.voice_port 必须是整数")
+    else:
+        warnings.append("缺少 server 配置，将使用默认端口")
     
     return errors, warnings
 
@@ -294,9 +297,11 @@ def get_config():
 
 config = get_config()
 
+server_config = config.get('server', {})
+
 HTTPS_DOMAIN = os.environ.get('HTTPS_DOMAIN', config.get('https_domain', ''))
-SSL_CERT_FILE = os.environ.get('SSL_CERT_FILE', config.get('ssl_cert_file', ''))
-SSL_KEY_FILE = os.environ.get('SSL_KEY_FILE', config.get('ssl_key_file', ''))
+SSL_CERT_FILE = os.environ.get('SSL_CERT_FILE', server_config.get('ssl_cert_file', ''))
+SSL_KEY_FILE = os.environ.get('SSL_KEY_FILE', server_config.get('ssl_key_file', ''))
 USE_HTTPS_ENV = os.environ.get('USE_HTTPS', '')
 if USE_HTTPS_ENV.lower() in ('1', 'true', 'yes'):
     USE_HTTPS = bool(SSL_CERT_FILE and SSL_KEY_FILE)
@@ -305,7 +310,6 @@ elif USE_HTTPS_ENV.lower() in ('0', 'false', 'no'):
 else:
     USE_HTTPS = bool(SSL_CERT_FILE and SSL_KEY_FILE)
 
-server_config = config.get('server', {})
 if USE_HTTPS:
     PORT = int(os.environ.get('API_PORT')) if os.environ.get('API_PORT') else server_config.get('https_port', 443)
 else:

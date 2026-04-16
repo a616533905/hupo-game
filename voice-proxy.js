@@ -9,6 +9,42 @@ const MAX_BODY_SIZE = 10 * 1024 * 1024;
 const ALLOWED_FORMATS = ['webm', 'mp3', 'wav', 'ogg', 'm4a', 'aac'];
 
 const CONFIG_FILE = path.join(__dirname, 'config.json');
+const LOG_DIR = path.join(__dirname, 'logs');
+
+if (!fs.existsSync(LOG_DIR)) {
+    fs.mkdirSync(LOG_DIR, { recursive: true });
+}
+
+function getLogFileName() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `voice_${year}${month}${day}.log`;
+}
+
+function formatTimestamp() {
+    const now = new Date();
+    return now.toISOString().replace('T', ' ').substring(0, 19);
+}
+
+function log(level, message) {
+    const timestamp = formatTimestamp();
+    const logLine = `${timestamp} [${level}] ${message}`;
+    
+    console.log(logLine);
+    
+    const logFile = path.join(LOG_DIR, getLogFileName());
+    fs.appendFileSync(logFile, logLine + '\n', 'utf8');
+}
+
+function logInfo(message) {
+    log('INFO', message);
+}
+
+function logError(message) {
+    log('ERROR', message);
+}
 
 function loadConfig() {
     try {
@@ -17,7 +53,7 @@ function loadConfig() {
             return JSON.parse(data);
         }
     } catch (e) {
-        console.error('配置文件加载失败:', e.message);
+        logError('配置文件加载失败: ' + e.message);
     }
     return {};
 }
@@ -93,9 +129,9 @@ async function recognizeBaidu(speech, token, format) {
     let pcmData;
     try {
         pcmData = await audioToPcm(speech, format || 'webm');
-        console.log('百度PCM转换成功, 长度:', pcmData.len, 'bytes');
+        logInfo('百度PCM转换成功, 长度: ' + pcmData.len + ' bytes');
     } catch (convertError) {
-        console.error('PCM转换失败:', convertError.message);
+        logError('PCM转换失败: ' + convertError.message);
         pcmData = { base64: speech, len: Buffer.from(speech, 'base64').length };
     }
 
@@ -110,7 +146,7 @@ async function recognizeBaidu(speech, token, format) {
         len: pcmData.len
     };
 
-    console.log('发送到百度API, len:', pcmData.len);
+    logInfo('发送到百度API, len: ' + pcmData.len);
 
     const apiRes = await fetch('https://vop.baidu.com/server_api', {
         method: 'POST',
@@ -121,7 +157,7 @@ async function recognizeBaidu(speech, token, format) {
     });
     
     const data = await apiRes.json();
-    console.log('百度API响应:', JSON.stringify(data));
+    logInfo('百度API响应: ' + JSON.stringify(data));
     
     if (data.err_no === 0 && data.result && data.result.length > 0) {
         return {
@@ -163,7 +199,7 @@ const server = http.createServer(async (req, res) => {
     if (parsedUrl.pathname === '/voice/config') {
         const queryToken = parsedUrl.query.token || '';
         if (!verifyToken(queryToken)) {
-            console.log('Token验证失败: /voice/config');
+            logInfo('Token验证失败: /voice/config');
             res.writeHead(401, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Unauthorized: invalid token' }));
             return;
@@ -180,7 +216,7 @@ const server = http.createServer(async (req, res) => {
     if (parsedUrl.pathname === '/voice/token') {
         const queryToken = parsedUrl.query.token || '';
         if (!verifyToken(queryToken)) {
-            console.log('Token验证失败: /voice/token');
+            logInfo('Token验证失败: /voice/token');
             res.writeHead(401, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Unauthorized: invalid token' }));
             return;
@@ -203,11 +239,11 @@ const server = http.createServer(async (req, res) => {
                 method: 'POST'
             });
             const data = await tokenRes.json();
-            console.log('Token响应:', JSON.stringify(data));
+            logInfo('Token响应: ' + JSON.stringify(data));
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(data));
         } catch (e) {
-            console.error('Token错误:', e);
+            logError('Token错误: ' + e);
             res.writeHead(500, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: e.message }));
         }
@@ -246,7 +282,7 @@ const server = http.createServer(async (req, res) => {
                 }
                 
                 if (!verifyToken(access_token)) {
-                    console.log('Token验证失败: /voice/recognize');
+                    logInfo('Token验证失败: /voice/recognize');
                     res.writeHead(401, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ 
                         success: false,
@@ -257,7 +293,7 @@ const server = http.createServer(async (req, res) => {
                 
                 const useProvider = provider || VOICE_PROVIDER;
                 const audioFormat = format || 'webm';
-                console.log('收到识别请求, 提供商:', useProvider, '格式:', audioFormat, '音频base64长度:', speech.length);
+                logInfo('收到识别请求, 提供商: ' + useProvider + ' 格式: ' + audioFormat + ' 音频base64长度: ' + speech.length);
 
                 if (useProvider === 'baidu') {
                     if (!BAIDU_API_KEY || !BAIDU_SECRET_KEY) {
@@ -281,7 +317,7 @@ const server = http.createServer(async (req, res) => {
                     }));
                 }
             } catch (e) {
-                console.error('识别错误:', e);
+                logError('识别错误: ' + e);
                 res.writeHead(500, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ 
                     success: false,
@@ -297,21 +333,21 @@ const server = http.createServer(async (req, res) => {
     res.end('Not Found');
 });
 
-console.log('语音代理服务器配置加载完成');
-console.log('配置文件:', CONFIG_FILE);
-console.log('当前语音提供商:', VOICE_PROVIDER);
-console.log('');
-console.log('语音提供商状态:');
+logInfo('语音代理服务器配置加载完成');
+logInfo('配置文件: ' + CONFIG_FILE);
+logInfo('当前语音提供商: ' + VOICE_PROVIDER);
+logInfo('');
+logInfo('语音提供商状态:');
 
 if (BAIDU_API_KEY && BAIDU_SECRET_KEY) {
-    console.log('  百度API: ✓ 已配置');
+    logInfo('  百度API: ✓ 已配置');
 } else {
-    console.log('  百度API: ✗ 未配置（请在config.json中设置baidu.api_key和baidu.secret_key）');
+    logInfo('  百度API: ✗ 未配置（请在config.json中设置baidu.api_key和baidu.secret_key）');
 }
 
-console.log('');
+logInfo('');
 const PORT = parseInt(process.env.VOICE_PORT) || config.server?.voice_port || 85;
 server.listen(PORT, '0.0.0.0', () => {
-    console.log('语音代理服务器运行在 http://0.0.0.0:' + PORT);
-    console.log('局域网访问: http://<你的IP>:' + PORT);
+    logInfo('语音代理服务器运行在 http://0.0.0.0:' + PORT);
+    logInfo('局域网访问: http://<你的IP>:' + PORT);
 });
