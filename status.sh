@@ -50,9 +50,17 @@ echo "【端口监听】"
 netstat -tlnp 2>/dev/null | grep -E ":($HTTP_PORT|$VOICE_PORT)\s" | awk '{print "  " $4}' || ss -tlnp | grep -E ":($HTTP_PORT|$VOICE_PORT)\s" | awk '{print "  " $4}'
 echo ""
 
-echo "【最近日志】"
-echo "  --- Bridge (最后5条) ---"
-tail -5 /root/hupo-game/logs/bridge_*.log 2>/dev/null | head -5 || echo "  暂无日志"
+echo "【最近错误日志】"
+LOG_DIR="/root/hupo-game/logs"
+if [ -d "$LOG_DIR" ]; then
+    echo "  --- Bridge 错误 (最近10条) ---"
+    grep '\[ERROR\]' "$LOG_DIR"/bridge_*.log 2>/dev/null | tail -10 | while read line; do echo "    $line"; done
+    echo ""
+    echo "  --- Voice 错误 (最近10条) ---"
+    grep '\[ERROR\]' "$LOG_DIR"/voice_*.log 2>/dev/null | tail -10 | while read line; do echo "    $line"; done
+else
+    echo "  日志目录不存在"
+fi
 echo ""
 
 echo "【请求统计】"
@@ -72,6 +80,27 @@ echo ""
 echo "【配置信息】"
 echo "  HTTP端口: $HTTP_PORT"
 echo "  Voice端口: $VOICE_PORT"
+echo ""
+
+echo "========================================"
+echo ""
+read -p "按回车键查看完整日志..."
+echo ""
+
+echo "【Bridge 完整日志 (最近30行)】"
+if [ -f "$LOG_DIR"/bridge_*.log ]; then
+    tail -30 "$LOG_DIR"/bridge_*.log 2>/dev/null | head -30
+else
+    echo "  未找到 Bridge 日志"
+fi
+echo ""
+
+echo "【Voice 完整日志 (最近30行)】"
+if [ -f "$LOG_DIR"/voice_*.log ]; then
+    tail -30 "$LOG_DIR"/voice_*.log 2>/dev/null | head -30
+else
+    echo "  未找到 Voice 日志"
+fi
 echo ""
 
 echo "========================================"

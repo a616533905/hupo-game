@@ -72,5 +72,40 @@ if %ERRORLEVEL% equ 0 (
 )
 echo.
 
+echo [Recent Errors from Logs]
+set LOG_DIR=logs
+if exist "%LOG_DIR%" (
+    echo   Bridge Log (last 10 errors):
+    powershell -Command "Get-Content '%LOG_DIR%\bridge_*.log' -ErrorAction SilentlyContinue | Select-String '\[ERROR\]' | Select-Object -Last 10 | ForEach-Object { '    ' + $_.Line }"
+    echo.
+    echo   Voice Log (last 10 errors):
+    powershell -Command "Get-Content '%LOG_DIR%\voice_*.log' -ErrorAction SilentlyContinue | Select-String '\[ERROR\]' | Select-Object -Last 10 | ForEach-Object { '    ' + $_.Line }"
+) else (
+    echo   No logs directory found
+)
+echo.
+
+echo ========================================
+echo.
+echo Press any key to view full recent logs...
+pause >nul
+echo.
+
+echo [Recent Bridge Log (last 30 lines)]
+if exist "%LOG_DIR%\bridge_*.log" (
+    powershell -Command "Get-Content '%LOG_DIR%\bridge_*.log' -Tail 30 -ErrorAction SilentlyContinue"
+) else (
+    echo   No bridge log found
+)
+echo.
+
+echo [Recent Voice Log (last 30 lines)]
+if exist "%LOG_DIR%\voice_*.log" (
+    powershell -Command "Get-Content '%LOG_DIR%\voice_*.log' -Tail 30 -ErrorAction SilentlyContinue"
+) else (
+    echo   No voice log found
+)
+echo.
+
 echo ========================================
 pause
