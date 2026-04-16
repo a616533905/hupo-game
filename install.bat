@@ -41,9 +41,10 @@ echo [3/4] 创建日志目录...
 if not exist "%INSTALL_DIR%logs" mkdir "%INSTALL_DIR%logs"
 
 echo [4/4] 设置防火墙规则...
-netsh advfirewall firewall show rule name="Hupo Game API" >nul 2>nul
+netsh advfirewall firewall show rule name="Hupo Game HTTP" >nul 2>nul
 if %ERRORLEVEL% neq 0 (
-    netsh advfirewall firewall add rule name="Hupo Game API" dir=in action=allow protocol=tcp localport=80
+    netsh advfirewall firewall add rule name="Hupo Game HTTP" dir=in action=allow protocol=tcp localport=80
+    netsh advfirewall firewall add rule name="Hupo Game HTTPS" dir=in action=allow protocol=tcp localport=443
     netsh advfirewall firewall add rule name="Hupo Game Voice" dir=in action=allow protocol=tcp localport=85
     echo 防火墙规则已添加
 ) else (
@@ -58,13 +59,17 @@ echo.
 echo 配置文件: %INSTALL_DIR%config.json
 echo 日志目录: %INSTALL_DIR%logs\
 echo.
-echo 启动服务:
-echo   方式1: 双击 start.bat
-echo   方式2: 运行 python nanobot_bridge.py
+echo 【端口配置】
+echo   HTTP端口: 80
+echo   HTTPS端口: 443
+echo   Voice端口: 85
 echo.
-echo API端点:
-echo   健康检查: http://localhost:80/health
-echo   Prometheus: http://localhost:80/metrics
+echo 【启动方式】
+echo   双击 start.bat 或运行: start.bat
+echo.
+echo 【HTTPS配置】
+echo   启动时选择 HTTPS 模式: start.bat --https
+echo   或交互选择: start.bat
 echo.
 echo ========================================
 pause
