@@ -1,75 +1,75 @@
 @echo off
 chcp 65001 >nul
 echo ========================================
-echo   琥珀冒险 - 安装脚本 (Windows)
+echo   Hupo Game - Installation Script (Windows)
 echo ========================================
 echo.
 
 set INSTALL_DIR=%~dp0
 
-echo [1/4] 检查依赖...
+echo [1/4] Checking dependencies...
 
 where python >nul 2>nul
 if %ERRORLEVEL% neq 0 (
-    echo 错误: 未找到 Python，请先安装 Python 3.8+
-    echo 下载地址: https://www.python.org/downloads/
+    echo Error: Python not found, please install Python 3.8+
+    echo Download: https://www.python.org/downloads/
     pause
     exit /b 1
 )
 
 where node >nul 2>nul
 if %ERRORLEVEL% neq 0 (
-    echo 错误: 未找到 Node.js，请先安装 Node.js 18+
-    echo 下载地址: https://nodejs.org/
+    echo Error: Node.js not found, please install Node.js 18+
+    echo Download: https://nodejs.org/
     pause
     exit /b 1
 )
 
-echo [2/4] 安装 Python 依赖 (psutil)...
+echo [2/4] Installing Python dependencies (psutil)...
 python -c "import psutil" >nul 2>nul
 if %ERRORLEVEL% equ 0 (
-    echo   psutil 已安装，跳过
+    echo   psutil already installed, skipping
 ) else (
-    echo   正在安装 psutil...
+    echo   Installing psutil...
     pip install psutil
     if %ERRORLEVEL% neq 0 (
-        echo   警告: psutil 安装失败，请手动运行: pip install psutil
+        echo   Warning: psutil installation failed, please run manually: pip install psutil
     )
 )
 
-echo [3/4] 创建日志目录...
+echo [3/4] Creating log directory...
 if not exist "%INSTALL_DIR%logs" mkdir "%INSTALL_DIR%logs"
 
-echo [4/4] 设置防火墙规则...
+echo [4/4] Setting firewall rules...
 netsh advfirewall firewall show rule name="Hupo Game HTTP" >nul 2>nul
 if %ERRORLEVEL% neq 0 (
     netsh advfirewall firewall add rule name="Hupo Game HTTP" dir=in action=allow protocol=tcp localport=80
     netsh advfirewall firewall add rule name="Hupo Game HTTPS" dir=in action=allow protocol=tcp localport=443
     netsh advfirewall firewall add rule name="Hupo Game Voice" dir=in action=allow protocol=tcp localport=85
-    echo 防火墙规则已添加
+    echo Firewall rules added
 ) else (
-    echo 防火墙规则已存在
+    echo Firewall rules already exist
 )
 
 echo.
 echo ========================================
-echo   安装完成！
+echo   Installation Complete!
 echo ========================================
 echo.
-echo 配置文件: %INSTALL_DIR%config.json
-echo 日志目录: %INSTALL_DIR%logs\
+echo Config file: %INSTALL_DIR%config.json
+echo Log directory: %INSTALL_DIR%logs\
 echo.
-echo 【端口配置】
-echo   HTTP端口: 80
-echo   HTTPS端口: 443
-echo   Voice端口: 85
+echo [Port Configuration]
+echo   HTTP Port: 80
+echo   HTTPS Port: 443
+echo   Voice Port: 85
 echo.
-echo 【启动方式】
-echo   双击 start.bat 或运行: start.bat
+echo [Start Server]
+echo   Double-click start.bat or run: start.bat
 echo.
-echo 【HTTPS配置】
-echo   启动时选择 HTTPS 模式: start.bat --https
-echo   或交互选择: start.bat
+echo [HTTPS Configuration]
+echo   Start with HTTPS mode: start.bat --https
+echo   Or interactive selection: start.bat
 echo.
 echo ========================================
 pause
