@@ -5,6 +5,19 @@ echo "  琥珀冒险 - 服务状态"
 echo "========================================"
 echo ""
 
+CONFIG_FILE="/root/hupo-game/config.json"
+
+load_config() {
+    if [ -f "$CONFIG_FILE" ]; then
+        HTTP_PORT=$(grep -o '"http_port"[[:space:]]*:[[:space:]]*[0-9]*' "$CONFIG_FILE" | grep -o '[0-9]*$' | head -1)
+        VOICE_PORT=$(grep -o '"voice_port"[[:space:]]*:[[:space:]]*[0-9]*' "$CONFIG_FILE" | grep -o '[0-9]*$' | head -1)
+    fi
+    HTTP_PORT=${HTTP_PORT:-80}
+    VOICE_PORT=${VOICE_PORT:-85}
+}
+
+load_config
+
 echo "【服务状态】"
 systemctl is-active hupo-bridge > /dev/null 2>&1 && echo "  hupo-bridge: 运行中" || echo "  hupo-bridge: 未运行"
 systemctl is-active hupo-voice > /dev/null 2>&1 && echo "  hupo-voice: 运行中" || echo "  hupo-voice: 未运行"
@@ -34,7 +47,7 @@ fi
 echo ""
 
 echo "【端口监听】"
-netstat -tlnp 2>/dev/null | grep -E ":(80|85)\s" | awk '{print "  " $4 " - " $7}' || ss -tlnp | grep -E ":(80|85)\s" | awk '{print "  " $4}'
+netstat -tlnp 2>/dev/null | grep -E ":($HTTP_PORT|$VOICE_PORT)\s" | awk '{print "  " $4}' || ss -tlnp | grep -E ":($HTTP_PORT|$VOICE_PORT)\s" | awk '{print "  " $4}'
 echo ""
 
 echo "【最近日志】"
@@ -44,7 +57,7 @@ echo ""
 
 echo "【请求统计】"
 if command -v curl &> /dev/null; then
-    STATS=$(curl -s http://127.0.0.1:80/health 2>/dev/null)
+    STATS=$(curl -s http://127.0.0.1:$HTTP_PORT/health 2>/dev/null)
     if [ -n "$STATS" ]; then
         echo "  总请求: $(echo $STATS | python3 -c "import sys,json; print(json.load(sys.stdin).get('requests_total','N/A'))" 2>/dev/null || echo 'N/A')"
         echo "  运行时间: $(echo $STATS | python3 -c "import sys,json; d=json.load(sys.stdin); print(round(d.get('uptime',0)/3600,1), '小时')" 2>/dev/null || echo 'N/A')"
@@ -54,6 +67,11 @@ if command -v curl &> /dev/null; then
 else
     echo "  需要 curl 命令"
 fi
+echo ""
+
+echo "【配置信息】"
+echo "  HTTP端口: $HTTP_PORT"
+echo "  Voice端口: $VOICE_PORT"
 echo ""
 
 echo "========================================"
