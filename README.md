@@ -104,10 +104,13 @@ hupo-game/
 {
     "runtime_mode": "server",
     "server": {
+        "host": "localhost",
         "http_port": 80,
         "https_port": 443,
         "voice_port": 85,
-        "remote_host": "http://你的服务器IP/"
+        "remote_host": "http://你的服务器IP/",
+        "ssl_cert_file": "cert.pem",
+        "ssl_key_file": "key.pem"
     },
     "access_token": "your_token",
     "token_required": "no",
