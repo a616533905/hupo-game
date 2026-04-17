@@ -57,6 +57,7 @@ systemctl enable hupo-voice
 
 echo "[6/6] 设置权限..."
 chmod +x $INSTALL_DIR/start.sh
+chmod +x $INSTALL_DIR/stop.sh
 chmod +x $INSTALL_DIR/install.sh
 chmod +x $INSTALL_DIR/status.sh
 chmod 644 /etc/systemd/system/hupo-bridge.service
@@ -84,8 +85,10 @@ echo "  启动时选择 HTTPS 模式: ./start.sh --https"
 echo "  或交互选择: ./start.sh"
 echo ""
 echo "【常用命令】"
+echo "  启动服务: ./start.sh"
+echo "  停止服务: ./stop.sh"
+echo "  强制停止: ./stop.sh --force"
 echo "  查看状态: ./status.sh"
-echo "  查看日志: journalctl -u hupo-bridge -f"
-echo "  停止服务: systemctl stop hupo-bridge hupo-voice"
+echo "  查看日志: ./status.sh --logs"
 echo ""
 echo "========================================"
