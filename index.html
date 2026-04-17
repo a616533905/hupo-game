@@ -959,13 +959,20 @@ const RUNTIME_CONFIG={
             const savedMode=localStorage.getItem('hupo_runtime_mode');
             if(savedMode)this.mode=savedMode;
         }
+        if(!this.accessToken){
+            const cfg=window.gameConfig;
+            if(cfg&&cfg.access_token){
+                this.accessToken=cfg.access_token;
+            }
+        }
     },
     save(){
         localStorage.setItem('hupo_runtime_config',JSON.stringify({
             mode:this.mode,
             server:this.server,
             local:this.local,
-            cloud:this.cloud
+            cloud:this.cloud,
+            accessToken:this.accessToken
         }));
     },
     setMode(mode){
