@@ -1,5 +1,7 @@
 # 配置文件（包含敏感信息）
 config.json
+server.ini
+server_account.txt
 
 # 临时文件
 *.tmp
