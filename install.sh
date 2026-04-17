@@ -64,13 +64,22 @@ chmod +x $INSTALL_DIR/health_check.sh
 chmod 644 /etc/systemd/system/hupo-bridge.service
 chmod 644 /etc/systemd/system/hupo-voice.service
 
-echo "[7/7] 配置健康检查 (Cron)..."
-CRON_JOB="*/5 * * * * $INSTALL_DIR/health_check.sh >> $INSTALL_DIR/logs/health_check.log 2>&1"
+echo "[7/7] 配置定时任务 (Cron)..."
+CRON_HEALTH="*/5 * * * * $INSTALL_DIR/health_check.sh >> $INSTALL_DIR/logs/health_check.log 2>&1"
+CRON_AUDIT="0 3 * * * $INSTALL_DIR/log_auditor.py 24 >> $INSTALL_DIR/logs/audit_cron.log 2>&1"
+
 if ! crontab -l 2>/dev/null | grep -q "health_check.sh"; then
-    (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
-    echo "  已添加健康检查定时任务 (每5分钟)"
+    (crontab -l 2>/dev/null; echo "$CRON_HEALTH") | crontab -
+    echo "  已添加健康检查任务 (每5分钟)"
 else
     echo "  健康检查任务已存在"
+fi
+
+if ! crontab -l 2>/dev/null | grep -q "log_auditor.py"; then
+    (crontab -l 2>/dev/null; echo "$CRON_AUDIT") | crontab -
+    echo "  已添加日志审计任务 (每天凌晨3点)"
+else
+    echo "  日志审计任务已存在"
 fi
 
 echo ""
