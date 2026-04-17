@@ -7,7 +7,7 @@ import os
 import sys
 import http.client
 import ssl
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import HTTPServer, BaseHTTPRequestHandler, ThreadingHTTPServer
 import subprocess
 import threading
 import time
@@ -1229,7 +1229,7 @@ if __name__ == "__main__":
     logger.info("环境变量可覆盖配置 (MINIMAX_API_KEY, MINIMAX_GROUP_ID)")
     logger.info("="*50)
 
-    server = HTTPServer(("0.0.0.0", PORT), NanobotHandler)
+    server = ThreadingHTTPServer(("0.0.0.0", PORT), NanobotHandler)
 
     if USE_HTTPS:
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -1237,7 +1237,7 @@ if __name__ == "__main__":
         server.socket = ssl_context.wrap_socket(server.socket, server_side=True)
         logger.info(f"HTTPS 已启用，证书: {SSL_CERT_FILE}")
 
-        redirect_server = HTTPServer(("0.0.0.0", 80), HTTPtoHTTPSRedirectHandler)
+        redirect_server = ThreadingHTTPServer(("0.0.0.0", 80), HTTPtoHTTPSRedirectHandler)
         redirect_server_thread = threading.Thread(target=redirect_server.serve_forever)
         redirect_server_thread.daemon = True
         redirect_server_thread.start()
