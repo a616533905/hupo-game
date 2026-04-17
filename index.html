@@ -572,14 +572,6 @@ body.snow .snowfall{display:block}
 </div>
 <div class="settings-content">
 <div class="settings-section">
-<h4>🖥️ 服务器设置</h4>
-<div class="setting-item">
-<label>服务器地址</label>
-<input type="text" id="serverHost" disabled value="自动检测">
-</div>
-<div class="setting-note">💡 自动使用当前网页地址</div>
-</div>
-<div class="settings-section">
 <h4>🎤 语音识别设置</h4>
 <div class="setting-item">
 <label>语音提供商</label>
@@ -965,46 +957,20 @@ const RUNTIME_CONFIG={
             accessToken:this.accessToken
         }));
     },
-    setMode(mode){
-        this.mode=mode;
-        localStorage.setItem('hupo_runtime_mode',mode);
-        this.save();
-    },
-    setServer(host,apiPort,voicePort){
-        this.server.host=host;
-        this.server.apiPort=apiPort||443;
-        this.server.voicePort=voicePort||85;
-        this.save();
-    },
     setLocal(type,config){
         this.local.type=type;
         if(type==='ollama'){
             this.local.ollama=Object.assign(this.local.ollama,config);
         }
         this.save();
-    },
-    setCloud(provider,apiKey){
-        this.cloud.provider=provider;
-        this.cloud.apiKey=apiKey;
-        this.save();
     }
 };
 const ENV_CONFIG={
-    get isLocal(){
-        return location.hostname==='localhost'||location.hostname==='127.0.0.1'||location.protocol==='file:';
-    },
-    get isApp(){
-        return typeof AndroidApp!=='undefined';
-    },
-    get currentMode(){
-        return RUNTIME_CONFIG.mode;
-    },
     get isHttps(){
         return location.protocol==='https:';
     },
     get apiBase(){
         const cfg=RUNTIME_CONFIG;
-        const modelSource=localStorage.getItem('hupo_model_source')||'remote';
         const proto=this.isHttps?'https:':'http:';
         return `${proto}//${location.hostname}:${cfg.server.apiPort}`;
     },
@@ -2091,8 +2057,6 @@ function loadSettingsToUI(){
     if(savedConfig){
         try{saved=JSON.parse(savedConfig);}catch(e){}
     }
-    const mode=saved.mode||gameCfg.runtime_mode||'server';
-    document.getElementById('serverHost').value=`${location.hostname}:${RUNTIME_CONFIG.server.apiPort}`;
     document.getElementById('voiceProvider').value=getVoiceProvider();
     loadModelSettingsToUI();
     updateSettingsVisibility();
@@ -2122,7 +2086,6 @@ function updateSettingsVisibility(){
     document.getElementById('ollamaModelSection').style.display=modelSource==='ollama'?'block':'none';
 }
 function updateSettingsStatus(){
-    const apiInfo=`${location.hostname}:${RUNTIME_CONFIG.server.apiPort}`;
     const modelSource=document.getElementById('modelSource').value;
     const sourceNames={remote:'远程 API',ollama:'Ollama'};
     let modelInfo='';
@@ -2134,7 +2097,6 @@ function updateSettingsStatus(){
         modelInfo=document.getElementById('ollamaModel').value||'未设置';
     }
     document.getElementById('settingsStatus').innerHTML=`
-        <span class="status-mode">服务器：${apiInfo}</span>
         <span class="status-model">模型：${sourceNames[modelSource]} (${modelInfo})</span>
     `;
 }
@@ -4443,8 +4405,7 @@ function isBrowserVoiceSupported(){
 async function getBaiduToken(){
     if(baiduToken)return baiduToken;
     try{
-        const accessToken=RUNTIME_CONFIG.accessToken||'';
-        const url=ENV_CONFIG.getVoiceUrl('/voice/token')+'?token='+encodeURIComponent(accessToken);
+        const url=ENV_CONFIG.getVoiceUrl('/voice/token');
         const res=await fetch(url);
         const data=await res.json();
         if(data.access_token){
