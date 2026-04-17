@@ -178,8 +178,8 @@ const sslCertFile = config.server?.ssl_cert_file || config.ssl_cert_file || conf
 const sslKeyFile = config.server?.ssl_key_file || config.ssl_key_file || config.ssl?.key || '';
 
 logInfo('SSL配置检查:');
-logInfo('  ssl_cert_file: ' + (config.ssl_cert_file || '未配置'));
-logInfo('  ssl_key_file: ' + (config.ssl_key_file || '未配置'));
+logInfo('  ssl_cert_file: ' + (config.server?.ssl_cert_file || config.ssl_cert_file || '未配置'));
+logInfo('  ssl_key_file: ' + (config.server?.ssl_key_file || config.ssl_key_file || '未配置'));
 logInfo('  cert文件存在: ' + (sslCertFile && fs.existsSync(sslCertFile) ? '是' : '否'));
 logInfo('  key文件存在: ' + (sslKeyFile && fs.existsSync(sslKeyFile) ? '是' : '否'));
 
