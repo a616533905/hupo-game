@@ -159,7 +159,7 @@ hupo-game/
     },
     "openrouter": {
         "api_key": "你的API密钥",
-        "model": "openrouter/auto"
+        "model": "google/gemini-2.0-flash-exp:free"
     },
     "baidu": {
         "api_key": "百度API Key",
@@ -171,16 +171,12 @@ hupo-game/
 
 ### Token 认证
 
-启用 Token 认证保护 API：
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| `token_required` | `"yes"` | 启用 Token 认证，保护 API |
+| `token_required` | `"no"` | 关闭 Token 认证（默认） |
 
-```json
-{
-    "access_token": "your_secure_token",
-    "token_required": "yes"
-}
-```
-
-访问方式：
+启用 Token 认证后，访问方式：
 - URL 参数: `?token=your_secure_token`
 - Cookie: `hupo_token=your_secure_token`
 - Authorization 头: `Bearer your_secure_token`
@@ -190,15 +186,35 @@ hupo-game/
 | 提供商 | 说明 | 默认模型 |
 |--------|------|----------|
 | minimax | MiniMax AI（推荐） | MiniMax-M2.7 |
-| openrouter | OpenRouter API | openrouter/auto |
+| openrouter | OpenRouter API | google/gemini-2.0-flash-exp:free |
 | ollama | 本地 Ollama | gemma3:270m |
+
+#### OpenRouter 配置指南
+
+1. **注册账号**: 访问 [OpenRouter](https://openrouter.ai/) 注册账号
+2. **获取 API Key**: 登录后进入 [Keys](https://openrouter.ai/keys) 页面创建 API Key
+3. **免费模型**: OpenRouter 提供多个免费模型，推荐：
+   - `google/gemini-2.0-flash-exp:free` - Google Gemini（推荐）
+   - `meta-llama/llama-3.3-8b-instruct:free` - Meta Llama
+   - `deepseek/deepseek-r1:free` - DeepSeek R1
+   - `qwen/qwen-2.5-72b-instruct:free` - 通义千问
+4. **查看模型**: 访问 [Models](https://openrouter.ai/models) 查看所有可用模型
+
+#### 百度语音配置指南
+
+1. **注册账号**: 访问 [百度智能云](https://cloud.baidu.com/) 注册账号
+2. **创建应用**: 进入 [语音技术](https://console.bce.baidu.com/ai/#/ai/speech/overview/index) 创建应用
+3. **获取密钥**: 在应用详情页获取 `API Key` 和 `Secret Key`
+4. **免费额度**: 百度语音提供免费调用额度，足够个人使用
 
 ### 支持的语音提供商
 
-| 提供商 | 说明 |
-|--------|------|
-| baidu | 百度语音识别（推荐） |
-| browser | 浏览器原生语音识别 |
+| 提供商 | 说明 | 要求 |
+|--------|------|------|
+| baidu | 百度语音识别（推荐） | 需要配置 API Key |
+| browser | 浏览器原生语音识别 | ⚠️ 需要客户端能访问 Google 服务 |
+
+> ⚠️ **注意**: 浏览器原生语音识别依赖 Google Web Speech API，客户端需要能够访问 Google 服务器。在中国大陆可能无法正常使用，建议使用百度语音识别。
 
 ---
 
