@@ -538,9 +538,102 @@ body.snow .snowfall{display:block}
 .tutorial-dots .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.2)}
 .tutorial-dots .dot.active{background:var(--accent)}
 .tutorial-pointer{position:absolute;width:20px;height:20px;background:var(--accent);border-radius:50%;animation:pulse 1.5s infinite;z-index:10000;pointer-events:none}
+.rotate-prompt{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#16213e);z-index:99998;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px}
+.rotate-prompt .icon{font-size:60px;margin-bottom:20px;animation:bounce 2s infinite}
+.rotate-prompt h2{font-size:24px;color:#fff;margin-bottom:10px}
+.rotate-prompt p{font-size:14px;color:var(--text-dim)}
+@media screen and (max-width:768px) and (orientation:portrait){
+body.portrait-mode .rotate-prompt{display:flex}
+body.portrait-mode .container,body.portrait-mode .top-right-btns,body.portrait-mode .mobile-menu-btn{display:none!important}
+}
+@media screen and (max-width:768px) and (orientation:portrait){
+body.portrait-mode .container{grid-template-columns:1fr!important;padding:10px;gap:10px}
+body.portrait-mode .cat-panel{order:1;padding:12px}
+body.portrait-mode .cat-sprite{width:120px;height:120px}
+body.portrait-mode .main-panel{order:2;min-height:200px}
+body.portrait-mode .right-panel{order:3;display:none;position:fixed;bottom:0;left:0;right:0;top:auto;max-height:60vh;border-radius:20px 20px 0 0;z-index:var(--z-popup);transform:translateY(100%);transition:transform 0.3s}
+body.portrait-mode .right-panel.show{display:flex;transform:translateY(0)}
+body.portrait-mode .actions{grid-template-columns:repeat(4,1fr);gap:6px}
+body.portrait-mode .action-btn{padding:10px 8px;font-size:12px;min-height:44px;border-radius:10px}
+body.portrait-mode .top-btn{padding:8px 14px;font-size:13px;border-radius:20px}
+body.portrait-mode .mobile-menu-btn{display:flex;align-items:center;justify-content:center;bottom:20px;left:20px;width:60px;height:60px;font-size:28px}
+body.portrait-mode .stat-label{font-size:12px}
+body.portrait-mode .bar-container{height:10px}
+body.portrait-mode .cat-name{font-size:20px}
+body.portrait-mode .level-display{font-size:13px;padding:8px 14px}
+body.portrait-mode .main-header h2{font-size:18px}
+body.portrait-mode .main-header p{font-size:12px}
+body.portrait-mode .message{font-size:14px;padding:10px 14px}
+body.portrait-mode .chat-input-area input{font-size:14px;padding:10px 14px}
+body.portrait-mode .chat-input-area button{padding:10px 18px;font-size:14px}
+body.portrait-mode .voice-btn{min-width:48px;min-height:48px}
+body.portrait-mode .event-popup{max-width:95%;max-height:90vh;padding:15px}
+body.portrait-mode .event-popup button{min-height:48px;font-size:15px}
+body.portrait-mode .battle-skill-btn{padding:12px 16px;font-size:13px;min-height:48px}
+body.portrait-mode .shop-item{padding:14px;min-height:60px}
+body.portrait-mode .shop-item .icon{font-size:24px}
+body.portrait-mode .shop-item .name{font-size:13px}
+body.portrait-mode .quest-item{padding:12px;min-height:50px}
+body.portrait-mode .map-item{padding:12px;min-height:50px}
+body.portrait-mode .map-item .map-icon{font-size:24px}
+body.portrait-mode .map-item .map-name{font-size:13px}
+body.portrait-mode .skill-slot{width:50px;height:50px;font-size:22px}
+body.portrait-mode .partner-slot{width:40px;height:40px;font-size:18px}
+body.portrait-mode .battle-cat-sprite{width:80px;height:80px}
+body.portrait-mode .battle-enemy .sprite{font-size:60px}
+body.portrait-mode .battle-hp-bar{width:120px;height:14px}
+body.portrait-mode .battle-log{max-height:80px;font-size:12px}
+body.portrait-mode .settings-panel{max-width:95%;padding:15px}
+body.portrait-mode .settings-section{padding:12px}
+body.portrait-mode .setting-item label{font-size:13px}
+body.portrait-mode .setting-item input,.setting-item select{font-size:14px;padding:10px}
+body.portrait-mode .tutorial-box{max-width:95%;padding:20px}
+body.portrait-mode .tutorial-box h3{font-size:16px}
+body.portrait-mode .tutorial-box p{font-size:13px}
+body.portrait-mode .tutorial-box button{padding:14px 28px;font-size:14px;min-height:48px}
+body.portrait-mode .mini-panel h3{font-size:13px}
+body.portrait-mode .battle-btns button{padding:10px;font-size:12px;min-height:44px}
+}
+.portrait-notice{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--bg-card);padding:20px;border-radius:15px;text-align:center;z-index:var(--z-popup);display:none;max-width:300px}
+.portrait-notice.show{display:block}
+.portrait-notice h3{color:var(--accent);margin-bottom:10px;font-size:16px}
+.portrait-notice p{color:var(--text-dim);font-size:12px;margin-bottom:15px}
+.portrait-notice button{padding:10px 20px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;cursor:pointer;font-size:14px}
+.save-notification{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(39,174,96,0.95);color:#fff;padding:12px 24px;border-radius:25px;display:flex;align-items:center;gap:8px;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:var(--z-top);opacity:0;transition:all 0.3s ease;pointer-events:none}
+.save-notification.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.save-notification .icon{font-size:18px}
+@keyframes enemyHit{0%{transform:translateX(0)}20%{transform:translateX(-15px) rotate(-5deg)}40%{transform:translateX(10px) rotate(3deg)}60%{transform:translateX(-5px) rotate(-2deg)}80%{transform:translateX(3px) rotate(1deg)}100%{transform:translateX(0) rotate(0)}}
+@keyframes catHit{0%{transform:translateX(0)}20%{transform:translateX(15px) rotate(5deg)}40%{transform:translateX(-10px) rotate(-3deg)}60%{transform:translateX(5px) rotate(2deg)}80%{transform:translateX(-3px) rotate(-1deg)}100%{transform:translateX(0) rotate(0)}}
+@keyframes screenShake{0%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(2px)}100%{transform:translateX(0)}}
+@keyframes damageFloat{0%{opacity:1;transform:translateY(0) scale(1)}50%{opacity:1;transform:translateY(-30px) scale(1.2)}100%{opacity:0;transform:translateY(-60px) scale(0.8)}}
+@keyframes flashFade{0%{opacity:0.5}100%{opacity:0}}
+@keyframes skillParticleexplosion{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--tx,50px),var(--ty,50px)) scale(0)}}
+@keyframes skillParticlespiral{0%{opacity:1;transform:rotate(0deg) translateX(0)}100%{opacity:0;transform:rotate(360deg) translateX(60px)}}
+@keyframes skillParticlezigzag{0%{opacity:1;transform:translate(0,0)}50%{transform:translate(30px,-20px)}100%{opacity:0;transform:translate(60px,0)}}
+@keyframes skillParticlerise{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-80px)}}
+@keyframes skillParticlewave{0%{opacity:1;transform:translateX(0) scaleY(1)}100%{opacity:0;transform:translateX(80px) scaleY(0.5)}}
+@keyframes skillParticleburst{0%{opacity:1;transform:scale(0)}100%{opacity:0;transform:scale(2)}}
+.damage-number{font-family:'Segoe UI',sans-serif}
+.damage-number.critical{font-size:28px!important;animation:damageFloat 1.2s ease-out forwards}
 </style>
 </head>
 <body class="sunny">
+<div class="rotate-prompt" id="rotatePrompt">
+<div class="icon">📱</div>
+<h2>请旋转设备</h2>
+<p>为了获得最佳体验，请将设备横屏使用</p>
+<p style="margin-top:15px;font-size:12px;color:var(--accent)">或点击下方按钮继续竖屏游玩</p>
+<button onclick="continuePortrait()" style="margin-top:15px;padding:12px 24px;border:none;border-radius:25px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:14px;cursor:pointer">继续竖屏游玩</button>
+</div>
+<div class="portrait-notice" id="portraitNotice">
+<h3>📱 竖屏模式</h3>
+<p>当前为竖屏模式，按钮已放大优化。建议横屏游玩获得最佳体验。</p>
+<button onclick="closePortraitNotice()">知道了</button>
+</div>
+<div class="save-notification" id="saveNotification">
+<span class="icon">💾</span>
+<span class="text">游戏已保存</span>
+</div>
 <div class="intro-screen" id="introScreen">
 <div class="logo">🐱</div>
 <h1>琥珀猫冒险</h1>
@@ -1060,7 +1153,28 @@ function playSound(type){
             battle:()=>{osc.frequency.setValueAtTime(150,now);osc.frequency.exponentialRampToValueAtTime(300,now+0.1);osc.frequency.exponentialRampToValueAtTime(150,now+0.2);gain.gain.setValueAtTime(0.3,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.25);osc.start(now);osc.stop(now+0.25)},
             victory:()=>{osc.frequency.setValueAtTime(523,now);osc.frequency.setValueAtTime(659,now+0.15);osc.frequency.setValueAtTime(784,now+0.3);gain.gain.setValueAtTime(0.3,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.45);osc.start(now);osc.stop(now+0.45)},
             defeat:()=>{osc.frequency.setValueAtTime(400,now);osc.frequency.exponentialRampToValueAtTime(200,now+0.3);gain.gain.setValueAtTime(0.3,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.4);osc.start(now);osc.stop(now+0.4)},
-            evolve:()=>{osc.frequency.setValueAtTime(300,now);osc.frequency.setValueAtTime(400,now+0.1);osc.frequency.setValueAtTime(500,now+0.2);osc.frequency.setValueAtTime(600,now+0.3);osc.frequency.setValueAtTime(800,now+0.4);gain.gain.setValueAtTime(0.3,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.5);osc.start(now);osc.stop(now+0.5)}
+            evolve:()=>{osc.frequency.setValueAtTime(300,now);osc.frequency.setValueAtTime(400,now+0.1);osc.frequency.setValueAtTime(500,now+0.2);osc.frequency.setValueAtTime(600,now+0.3);osc.frequency.setValueAtTime(800,now+0.4);gain.gain.setValueAtTime(0.3,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.5);osc.start(now);osc.stop(now+0.5)},
+            attack:()=>{osc.type='sawtooth';osc.frequency.setValueAtTime(200,now);osc.frequency.exponentialRampToValueAtTime(100,now+0.1);gain.gain.setValueAtTime(0.25,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.12);osc.start(now);osc.stop(now+0.12)},
+            hit:()=>{osc.type='square';osc.frequency.setValueAtTime(150,now);osc.frequency.exponentialRampToValueAtTime(50,now+0.15);gain.gain.setValueAtTime(0.2,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.15);osc.start(now);osc.stop(now+0.15)},
+            critical:()=>{osc.type='sawtooth';osc.frequency.setValueAtTime(300,now);osc.frequency.setValueAtTime(500,now+0.05);osc.frequency.exponentialRampToValueAtTime(100,now+0.2);gain.gain.setValueAtTime(0.3,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.2);osc.start(now);osc.stop(now+0.2)},
+            heal:()=>{osc.type='sine';osc.frequency.setValueAtTime(400,now);osc.frequency.setValueAtTime(500,now+0.1);osc.frequency.setValueAtTime(600,now+0.2);gain.gain.setValueAtTime(0.2,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.25);osc.start(now);osc.stop(now+0.25)},
+            skill:()=>{osc.type='triangle';osc.frequency.setValueAtTime(600,now);osc.frequency.exponentialRampToValueAtTime(1200,now+0.1);osc.frequency.exponentialRampToValueAtTime(400,now+0.2);gain.gain.setValueAtTime(0.25,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.25);osc.start(now);osc.stop(now+0.25)},
+            fire:()=>{osc.type='sawtooth';osc.frequency.setValueAtTime(100,now);osc.frequency.exponentialRampToValueAtTime(400,now+0.15);gain.gain.setValueAtTime(0.25,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.2);osc.start(now);osc.stop(now+0.2)},
+            ice:()=>{osc.type='sine';osc.frequency.setValueAtTime(800,now);osc.frequency.exponentialRampToValueAtTime(200,now+0.2);gain.gain.setValueAtTime(0.2,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.25);osc.start(now);osc.stop(now+0.25)},
+            lightning:()=>{osc.type='square';osc.frequency.setValueAtTime(50,now);osc.frequency.setValueAtTime(200,now+0.02);osc.frequency.setValueAtTime(50,now+0.04);osc.frequency.setValueAtTime(200,now+0.06);osc.frequency.setValueAtTime(50,now+0.08);gain.gain.setValueAtTime(0.25,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.15);osc.start(now);osc.stop(now+0.15)},
+            shield:()=>{osc.type='sine';osc.frequency.setValueAtTime(300,now);osc.frequency.setValueAtTime(400,now+0.1);osc.frequency.setValueAtTime(500,now+0.2);gain.gain.setValueAtTime(0.15,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.25);osc.start(now);osc.stop(now+0.25)},
+            poison:()=>{osc.type='sawtooth';osc.frequency.setValueAtTime(200,now);osc.frequency.exponentialRampToValueAtTime(50,now+0.3);gain.gain.setValueAtTime(0.15,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.3);osc.start(now);osc.stop(now+0.3)},
+            shop:()=>{osc.frequency.setValueAtTime(500,now);osc.frequency.setValueAtTime(700,now+0.05);osc.frequency.setValueAtTime(900,now+0.1);gain.gain.setValueAtTime(0.15,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.15);osc.start(now);osc.stop(now+0.15)},
+            buy:()=>{osc.frequency.setValueAtTime(800,now);osc.frequency.setValueAtTime(1000,now+0.05);gain.gain.setValueAtTime(0.2,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.1);osc.start(now);osc.stop(now+0.1)},
+            sell:()=>{osc.frequency.setValueAtTime(600,now);osc.frequency.setValueAtTime(800,now+0.05);gain.gain.setValueAtTime(0.2,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.1);osc.start(now);osc.stop(now+0.1)},
+            quest:()=>{osc.frequency.setValueAtTime(400,now);osc.frequency.setValueAtTime(600,now+0.1);osc.frequency.setValueAtTime(800,now+0.2);gain.gain.setValueAtTime(0.2,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.25);osc.start(now);osc.stop(now+0.25)},
+            complete:()=>{osc.frequency.setValueAtTime(600,now);osc.frequency.setValueAtTime(800,now+0.1);osc.frequency.setValueAtTime(1000,now+0.2);osc.frequency.setValueAtTime(1200,now+0.3);gain.gain.setValueAtTime(0.25,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.4);osc.start(now);osc.stop(now+0.4)},
+            achievement:()=>{osc.frequency.setValueAtTime(500,now);osc.frequency.setValueAtTime(700,now+0.1);osc.frequency.setValueAtTime(900,now+0.2);osc.frequency.setValueAtTime(1100,now+0.3);gain.gain.setValueAtTime(0.3,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.4);osc.start(now);osc.stop(now+0.4)},
+            save:()=>{osc.type='sine';osc.frequency.setValueAtTime(600,now);osc.frequency.setValueAtTime(800,now+0.08);gain.gain.setValueAtTime(0.15,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.12);osc.start(now);osc.stop(now+0.12)},
+            error:()=>{osc.type='square';osc.frequency.setValueAtTime(200,now);osc.frequency.setValueAtTime(150,now+0.1);gain.gain.setValueAtTime(0.2,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.15);osc.start(now);osc.stop(now+0.15)},
+            notification:()=>{osc.type='sine';osc.frequency.setValueAtTime(800,now);osc.frequency.setValueAtTime(1000,now+0.1);gain.gain.setValueAtTime(0.15,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.15);osc.start(now);osc.stop(now+0.15)},
+            sleep:()=>{osc.type='sine';osc.frequency.setValueAtTime(400,now);osc.frequency.exponentialRampToValueAtTime(200,now+0.5);gain.gain.setValueAtTime(0.2,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.6);osc.start(now);osc.stop(now+0.6)},
+            wake:()=>{osc.type='sine';osc.frequency.setValueAtTime(200,now);osc.frequency.exponentialRampToValueAtTime(500,now+0.3);gain.gain.setValueAtTime(0.2,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.35);osc.start(now);osc.stop(now+0.35)}
         };
         if(sounds[type])sounds[type]();
     }catch(e){}
@@ -1847,6 +1961,9 @@ function loadGame(){
                     }
                     if(d.storyChoices)storyChoices=d.storyChoices;
                     if(d.storyEnding)storyEnding=d.storyEnding;
+                    if(d.savedAt){
+                        calculateOfflineRewards(d.savedAt);
+                    }
                     return true;
                 }
             }
@@ -1854,8 +1971,66 @@ function loadGame(){
     }
     return false;
 }
+function calculateOfflineRewards(savedAt){
+    const now=Date.now();
+    const offlineTime=now-savedAt;
+    const maxOfflineTime=8*60*60*1000;
+    const effectiveTime=Math.min(offlineTime,maxOfflineTime);
+    const offlineHours=effectiveTime/(60*60*1000);
+    if(offlineHours<0.5)return;
+    const baseGoldPerHour=10+cat.level*2;
+    const baseExpPerHour=5+cat.level;
+    const goldBonus=cat.evolutionForm?1.5:1;
+    const expBonus=cat.evolutionForm?1.2:1;
+    const offlineGold=Math.floor(offlineHours*baseGoldPerHour*goldBonus);
+    const offlineExp=Math.floor(offlineHours*baseExpPerHour*expBonus);
+    const offlineHungerRecovery=Math.min(30,Math.floor(offlineHours*5));
+    const offlineMpRecovery=Math.min(cat.mpMax*0.5,Math.floor(offlineHours*10));
+    cat.coins+=offlineGold;
+    cat.exp+=offlineExp;
+    cat.hunger=Math.min(GAME_CONSTANTS.MAX_HUNGER,cat.hunger+offlineHungerRecovery);
+    cat.mp=Math.min(cat.mpMax,cat.mp+offlineMpRecovery);
+    if(cat.exp>=cat.expMax){
+        const levelsGained=Math.floor(cat.exp/cat.expMax);
+        for(let i=0;i<levelsGained;i++){
+            cat.exp-=cat.expMax;
+            cat.level++;
+            cat.expMax=Math.floor(100*Math.pow(1.15,cat.level-1));
+            cat.hpMax=100+cat.level*10;
+            cat.mpMax=50+cat.level*5;
+            cat.skillPoints+=1;
+        }
+    }
+    showOfflineRewards(offlineHours,offlineGold,offlineExp,offlineHungerRecovery,offlineMpRecovery);
+}
+function showOfflineRewards(hours,gold,exp,hunger,mp){
+    const timeStr=hours>=1?`${Math.floor(hours)}小时${Math.floor((hours%1)*60)}分`:`${Math.floor(hours*60)}分钟`;
+    let html=`<div style="text-align:center;padding:10px">`;
+    html+=`<div style="font-size:48px;margin-bottom:15px">🌙</div>`;
+    html+=`<p style="color:var(--text-dim);margin-bottom:15px">你离开了 <span style="color:var(--accent)">${timeStr}</span></p>`;
+    html+=`<div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:15px;margin-bottom:15px">`;
+    html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center">`;
+    html+=`<div><div style="font-size:24px">💰</div><div style="color:var(--accent);font-size:18px">+${gold}</div><div style="font-size:12px;color:var(--text-dim)">金币</div></div>`;
+    html+=`<div><div style="font-size:24px">⭐</div><div style="color:var(--accent);font-size:18px">+${exp}</div><div style="font-size:12px;color:var(--text-dim)">经验</div></div>`;
+    if(hunger>0)html+=`<div><div style="font-size:24px">🍖</div><div style="color:var(--accent);font-size:18px">+${hunger}</div><div style="font-size:12px;color:var(--text-dim)">饥饿度</div></div>`;
+    if(mp>0)html+=`<div><div style="font-size:24px">💧</div><div style="color:var(--accent);font-size:18px">+${mp}</div><div style="font-size:12px;color:var(--text-dim)">魔力</div></div>`;
+    html+=`</div></div>`;
+    html+=`<p style="font-size:11px;color:var(--text-dim)">💡 离线收益最多计算8小时</p>`;
+    html+=`</div>`;
+    showEvent('🌙 离线收益','欢迎回来！',html);
+}
 let savePending=false;
 let lastSaveTime=0;
+let saveNotificationTimeout=null;
+function showSaveNotification(){
+    const notification=document.getElementById('saveNotification');
+    if(!notification)return;
+    notification.classList.add('show');
+    if(saveNotificationTimeout)clearTimeout(saveNotificationTimeout);
+    saveNotificationTimeout=setTimeout(()=>{
+        notification.classList.remove('show');
+    },2000);
+}
 function saveGame(immediate=false){
     const now=Date.now();
     if(!immediate&&now-lastSaveTime<GAME_CONSTANTS.SAVE_INTERVAL){
@@ -1870,8 +2045,9 @@ function saveGame(immediate=false){
     }
     lastSaveTime=now;
     try{
-        const saveData={...cat,weather,outfits,achievements,questProgress,currentMap,signInState,wheelState,equipment,intimacyLevel,intimacyPoints,fatigue,arenaRank,arenaPoints,arenaStreak,arenaDailyWins,arenaLastReset,diaryEntries,currentSkin,skillMastery,sleepState,hospitalState,storyProgress,storyChoices,storyEnding};
+        const saveData={...cat,weather,outfits,achievements,questProgress,currentMap,signInState,wheelState,equipment,intimacyLevel,intimacyPoints,fatigue,arenaRank,arenaPoints,arenaStreak,arenaDailyWins,arenaLastReset,diaryEntries,currentSkin,skillMastery,sleepState,hospitalState,storyProgress,storyChoices,storyEnding,savedAt:Date.now()};
         localStorage.setItem(SAVE_KEY,JSON.stringify(saveData));
+        showSaveNotification();
     }catch(e){
         console.log('Save error:',e);
         if(e.name==='QuotaExceededError'){
@@ -2562,7 +2738,10 @@ function useSkill(skillId){
         battleState.enemy.currentHp-=damage;
         const masteryText=masteryBonus>1?`<span style="color:#ffd700">(熟练度x${masteryBonus.toFixed(2)})</span>`:'';
         log+=`琥珀使用${skill.icon}${skill.name}Lv.${skillMastery[skillId].level}${masteryText}造成<span class="damage">${damage}</span>伤害！`;
+        showAttackAnimation('cat',battleState.enemy,true,damage,isCrit);
+        showSkillAnimation(skill.type);
         showBattleEffect(skill.type,damage);
+        playSound(skill.type||'attack');
     }
     if(skill.heal){
         let healAmt=Math.floor(skill.heal*masteryBonus);
@@ -2683,7 +2862,7 @@ function showBattleEffect(type,value){
     if(!container)return;
     const effect=document.createElement('div');
     effect.className='battle-effect';
-    const colors={fire:'#ff6b35',ice:'#74b9ff',lightning:'#fdcb6e',heal:'#00b894',dark:'#636e72',holy:'#ffeaa7',burn:'#ff6b35',freeze:'#74b9ff',poison:'#00b894',stun:'#fdcb6e',bleed:'#e17055'};
+    const colors={fire:'#ff6b35',ice:'#74b9ff',lightning:'#fdcb6e',heal:'#00b894',dark:'#636e72',holy:'#ffeaa7',burn:'#ff6b35',freeze:'#74b9ff',poison:'#00b894',stun:'#fdcb6e',bleed:'#e17055',hit:'#ff4757',critical:'#ff6b35',miss:'#a0a0a0'};
     effect.style.color=colors[type]||'#fff';
     effect.style.fontSize='24px';
     effect.style.fontWeight='bold';
@@ -2693,13 +2872,159 @@ function showBattleEffect(type,value){
     effect.style.transform='translate(-50%,-50%)';
     effect.style.animation='effectPop 0.5s ease-out forwards';
     effect.style.textShadow=`0 0 10px ${colors[type]||'#fff'}`;
-    const icons={fire:'🔥',ice:'❄️',lightning:'⚡',heal:'💚',dark:'🌑',holy:'✨',burn:'🔥',freeze:'❄️',poison:'☠️',stun:'💫',bleed:'💉'};
+    const icons={fire:'🔥',ice:'❄️',lightning:'⚡',heal:'💚',dark:'🌑',holy:'✨',burn:'🔥',freeze:'❄️',poison:'☠️',stun:'💫',bleed:'💉',hit:'💥',critical:'💥',miss:'💨'};
     effect.textContent=icons[type]||'💥';
     if(value>0){
         effect.textContent+=` -${value}`;
     }
     container.appendChild(effect);
     setTimeout(()=>effect.remove(),500);
+}
+function showAttackAnimation(attacker,target,isPlayer,damage,isCritical){
+    const battleScreen=document.getElementById('battleScreen');
+    if(!battleScreen)return;
+    if(isPlayer){
+        const catSprite=battleScreen.querySelector('.battle-cat-sprite');
+        if(catSprite){
+            catSprite.style.transition='transform 0.15s ease-out';
+            catSprite.style.transform='translateX(80px) scale(1.2)';
+            setTimeout(()=>{
+                catSprite.style.transform='translateX(0) scale(1)';
+            },150);
+        }
+        const enemySprite=battleScreen.querySelector('.battle-enemy .sprite');
+        if(enemySprite){
+            setTimeout(()=>{
+                enemySprite.style.animation='enemyHit 0.3s ease-out';
+                setTimeout(()=>{
+                    enemySprite.style.animation='';
+                },300);
+            },150);
+        }
+        if(damage>0){
+            setTimeout(()=>{
+                showDamageNumber(damage,isCritical,'enemy');
+                if(isCritical)showScreenFlash('#ff6b35',0.3);
+            },180);
+        }
+    }else{
+        const enemySprite=battleScreen.querySelector('.battle-enemy .sprite');
+        if(enemySprite){
+            enemySprite.style.transition='transform 0.15s ease-out';
+            enemySprite.style.transform='translateX(-80px) scale(1.2)';
+            setTimeout(()=>{
+                enemySprite.style.transform='translateX(0) scale(1)';
+            },150);
+        }
+        const catSprite=battleScreen.querySelector('.battle-cat-sprite');
+        if(catSprite){
+            setTimeout(()=>{
+                catSprite.style.animation='catHit 0.3s ease-out';
+                setTimeout(()=>{
+                    catSprite.style.animation='';
+                },300);
+            },150);
+        }
+        if(damage>0){
+            setTimeout(()=>{
+                showDamageNumber(damage,false,'player');
+                showScreenShake();
+            },180);
+        }
+    }
+}
+function showDamageNumber(damage,isCritical,target){
+    const battleScreen=document.getElementById('battleScreen');
+    if(!battleScreen)return;
+    const dmgEl=document.createElement('div');
+    dmgEl.className='damage-number'+(isCritical?' critical':'');
+    dmgEl.textContent=isCritical?`暴击! -${damage}`:`-${damage}`;
+    dmgEl.style.cssText=`
+        position:absolute;
+        font-size:${isCritical?'28px':'22px'};
+        font-weight:bold;
+        color:${isCritical?'#ff6b35':'#ff4757'};
+        text-shadow:0 0 10px ${isCritical?'#ff6b35':'#ff4757'};
+        z-index:100;
+        pointer-events:none;
+        animation:damageFloat 1s ease-out forwards;
+    `;
+    if(target==='enemy'){
+        const enemyArea=battleScreen.querySelector('.battle-enemy');
+        if(enemyArea){
+            dmgEl.style.right='80px';
+            dmgEl.style.top='50%';
+            enemyArea.appendChild(dmgEl);
+        }
+    }else{
+        const catArea=battleScreen.querySelector('.battle-cat-area');
+        if(catArea){
+            dmgEl.style.left='80px';
+            dmgEl.style.top='50%';
+            catArea.appendChild(dmgEl);
+        }
+    }
+    setTimeout(()=>dmgEl.remove(),1000);
+}
+function showScreenShake(){
+    const battleScreen=document.getElementById('battleScreen');
+    if(!battleScreen)return;
+    battleScreen.style.animation='screenShake 0.3s ease-out';
+    setTimeout(()=>{
+        battleScreen.style.animation='';
+    },300);
+}
+function showScreenFlash(color,duration){
+    const battleScreen=document.getElementById('battleScreen');
+    if(!battleScreen)return;
+    const flash=document.createElement('div');
+    flash.style.cssText=`
+        position:absolute;
+        top:0;left:0;right:0;bottom:0;
+        background:${color};
+        opacity:0.5;
+        pointer-events:none;
+        z-index:50;
+        animation:flashFade ${duration}s ease-out forwards;
+    `;
+    battleScreen.appendChild(flash);
+    setTimeout(()=>flash.remove(),duration*1000);
+}
+function showSkillAnimation(skillType){
+    const battleScreen=document.getElementById('battleScreen');
+    if(!battleScreen)return;
+    const skillEffects={
+        fire:{icon:'🔥',color:'#ff6b35',pattern:'explosion'},
+        ice:{icon:'❄️',color:'#74b9ff',pattern:'spiral'},
+        lightning:{icon:'⚡',color:'#fdcb6e',pattern:'zigzag'},
+        heal:{icon:'💚',color:'#00b894',pattern:'rise'},
+        dark:{icon:'🌑',color:'#636e72',pattern:'wave'},
+        holy:{icon:'✨',color:'#ffeaa7',pattern:'burst'}
+    };
+    const effect=skillEffects[skillType]||skillEffects.fire;
+    const container=document.createElement('div');
+    container.className='skill-effect-container';
+    container.style.cssText=`
+        position:absolute;
+        top:50%;left:50%;
+        transform:translate(-50%,-50%);
+        z-index:40;
+        pointer-events:none;
+    `;
+    for(let i=0;i<8;i++){
+        const particle=document.createElement('div');
+        particle.textContent=effect.icon;
+        particle.style.cssText=`
+            position:absolute;
+            font-size:32px;
+            animation:skillParticle${effect.pattern} 0.6s ease-out forwards;
+            animation-delay:${i*0.05}s;
+            opacity:0;
+        `;
+        container.appendChild(particle);
+    }
+    battleScreen.appendChild(container);
+    setTimeout(()=>container.remove(),800);
 }
 function enemyTurnAdventure(){
     const enemy=battleState.enemy;
@@ -2728,7 +3053,9 @@ function enemyTurnAdventure(){
     damage=Math.max(1,damage);
     cat.hp-=damage;
     addBattleLog(`${enemy.name}攻击造成<span class="damage">${damage}</span>伤害！`);
+    showAttackAnimation(enemy,'cat',false,damage,false);
     showBattleEffect('hit',damage);
+    playSound('hit');
     processPlayerEffects();
     updateBattleUI();
     if(cat.hp<=0){
@@ -6267,15 +6594,17 @@ function initMusic(){
     });
 }
 const tutorialSteps=[
-    {icon:'👋',title:'欢迎来到琥珀猫冒险',text:'让我们快速了解一下游戏的基本操作吧！',highlight:''},
-    {icon:'🐱',title:'认识琥珀',text:'这是你的猫咪伙伴琥珀！点击它可以互动，增加好感度。琥珀的状态会影响战斗和冒险。',highlight:'💡 状态栏显示HP、MP、饥饿度、快乐值'},
-    {icon:'🍖',title:'照顾琥珀',text:'使用喂食、玩耍、抚摸按钮来照顾琥珀。喂食恢复饥饿度，玩耍增加快乐值，抚摸增加亲密度。',highlight:'💡 喂食还能恢复HP，抚摸有小概率降低疲劳'},
-    {icon:'⚔️',title:'冒险战斗',text:'点击"冒险"按钮进入地图，与怪物战斗获得经验和金币。升级后琥珀会变强！',highlight:'💡 注意HP和MP，战斗会消耗它们'},
-    {icon:'🏪',title:'商店与装备',text:'在商店购买道具和药水，装备可以提升战斗力。别忘了每天签到和转盘抽奖！',highlight:'💡 金币可以通过战斗和任务获得'},
-    {icon:'💤',title:'休息很重要',text:'琥珀会疲劳，记得让它睡觉休息。疲劳过高会影响战斗表现。',highlight:'💡 睡觉可以恢复HP、MP和降低疲劳'},
-    {icon:'🎉',title:'准备就绪！',text:'现在你已经了解了基本操作，开始你的冒险之旅吧！有问题可以随时查看设置。',highlight:'祝你游戏愉快！'}
+    {icon:'👋',title:'欢迎来到琥珀猫冒险',text:'让我们快速了解一下游戏的基本操作吧！',highlight:'',action:null},
+    {icon:'🐱',title:'认识琥珀',text:'这是你的猫咪伙伴琥珀！点击它可以互动，增加好感度。琥珀的状态会影响战斗和冒险。',highlight:'💡 状态栏显示HP、MP、饥饿度、快乐值',action:null,highlightElement:'.cat-sprite'},
+    {icon:'🍖',title:'照顾琥珀',text:'使用喂食、玩耍、抚摸按钮来照顾琥珀。喂食恢复饥饿度，玩耍增加快乐值，抚摸增加亲密度。',highlight:'💡 喂食还能恢复HP，抚摸有小概率降低疲劳',action:null,highlightElement:'.actions'},
+    {icon:'⚔️',title:'冒险战斗',text:'点击"冒险"按钮进入地图，与怪物战斗获得经验和金币。升级后琥珀会变强！',highlight:'💡 注意HP和MP，战斗会消耗它们',action:null,highlightElement:'.right-panel'},
+    {icon:'🏪',title:'商店与装备',text:'在商店购买道具和药水，装备可以提升战斗力。别忘了每天签到和转盘抽奖！',highlight:'💡 金币可以通过战斗和任务获得',action:null},
+    {icon:'💤',title:'休息很重要',text:'琥珀会疲劳，记得让它睡觉休息。疲劳过高会影响战斗表现。',highlight:'💡 睡觉可以恢复HP、MP和降低疲劳',action:null},
+    {icon:'🎮',title:'快捷操作',text:'你可以使用键盘快捷键：F-喂食，P-玩耍，T-抚摸，S-商店，Q-任务，A-冒险，Esc-关闭弹窗',highlight:'💡 快捷键让操作更便捷',action:null},
+    {icon:'🎉',title:'准备就绪！',text:'现在你已经了解了基本操作，开始你的冒险之旅吧！有问题可以随时查看设置。',highlight:'祝你游戏愉快！',action:null}
 ];
 let currentTutorialStep=0;
+let tutorialHighlightOverlay=null;
 function startGame(){
     const introScreen=document.getElementById('introScreen');
     if(introScreen){
@@ -6293,6 +6622,40 @@ function showTutorial(){
         overlay.classList.add('show');
         updateTutorialContent();
     }
+    createTutorialHighlight();
+}
+function createTutorialHighlight(){
+    if(!tutorialHighlightOverlay){
+        tutorialHighlightOverlay=document.createElement('div');
+        tutorialHighlightOverlay.id='tutorialHighlightOverlay';
+        tutorialHighlightOverlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9998;pointer-events:none;transition:all 0.3s';
+        document.body.appendChild(tutorialHighlightOverlay);
+    }
+}
+function highlightElement(selector){
+    if(!selector){
+        if(tutorialHighlightOverlay){
+            tutorialHighlightOverlay.style.boxShadow='none';
+            tutorialHighlightOverlay.style.clipPath='none';
+        }
+        return;
+    }
+    const element=document.querySelector(selector);
+    if(!element){
+        if(tutorialHighlightOverlay){
+            tutorialHighlightOverlay.style.boxShadow='none';
+            tutorialHighlightOverlay.style.clipPath='none';
+        }
+        return;
+    }
+    const rect=element.getBoundingClientRect();
+    const padding=10;
+    const x=rect.left-padding;
+    const y=rect.top-padding;
+    const w=rect.width+padding*2;
+    const h=rect.height+padding*2;
+    tutorialHighlightOverlay.style.clipPath=`polygon(0 0, 0 100%, ${x}px 100%, ${x}px ${y}px, ${x+w}px ${y}px, ${x+w}px ${y+h}px, ${x}px ${y+h}px, ${x}px 100%, 100% 100%, 100% 0)`;
+    element.scrollIntoView({behavior:'smooth',block:'center'});
 }
 function updateTutorialContent(){
     const step=tutorialSteps[currentTutorialStep];
@@ -6310,6 +6673,11 @@ function updateTutorialContent(){
     dotsContainer.innerHTML=tutorialSteps.map((_,i)=>`<div class="dot ${i===currentTutorialStep?'active':''}"></div>`).join('');
     const primaryBtn=document.querySelector('.tutorial-box .btn-primary');
     primaryBtn.textContent=currentTutorialStep===tutorialSteps.length-1?'完成':'下一步';
+    if(step.highlightElement){
+        setTimeout(()=>highlightElement(step.highlightElement),100);
+    }else{
+        highlightElement(null);
+    }
 }
 function nextTutorial(){
     currentTutorialStep++;
@@ -6325,6 +6693,120 @@ function skipTutorial(){
         overlay.classList.remove('show');
     }
     localStorage.setItem('hupo_tutorial_done','true');
+    if(tutorialHighlightOverlay){
+        tutorialHighlightOverlay.remove();
+        tutorialHighlightOverlay=null;
+    }
+}
+let portraitModeEnabled=false;
+function checkOrientation(){
+    const isPortrait=window.innerHeight>window.innerWidth;
+    const isMobile=window.innerWidth<=768;
+    if(isMobile&&isPortrait&&!portraitModeEnabled){
+        document.getElementById('rotatePrompt').style.display='flex';
+        document.body.classList.remove('portrait-mode');
+    }else{
+        document.getElementById('rotatePrompt').style.display='none';
+        if(portraitModeEnabled){
+            document.body.classList.add('portrait-mode');
+        }else{
+            document.body.classList.remove('portrait-mode');
+        }
+    }
+}
+function continuePortrait(){
+    portraitModeEnabled=true;
+    document.getElementById('rotatePrompt').style.display='none';
+    document.body.classList.add('portrait-mode');
+    localStorage.setItem('hupo_portrait_mode','true');
+    if(!localStorage.getItem('hupo_portrait_notice_shown')){
+        document.getElementById('portraitNotice').classList.add('show');
+    }
+}
+function closePortraitNotice(){
+    document.getElementById('portraitNotice').classList.remove('show');
+    localStorage.setItem('hupo_portrait_notice_shown','true');
+}
+function initPortraitMode(){
+    if(localStorage.getItem('hupo_portrait_mode')==='true'){
+        portraitModeEnabled=true;
+    }
+    checkOrientation();
+    window.addEventListener('resize',checkOrientation);
+    window.addEventListener('orientationchange',()=>{
+        setTimeout(checkOrientation,100);
+    });
+}
+function initKeyboardShortcuts(){
+    const shortcuts={
+        'f':{action:()=>feed(),desc:'喂食'},
+        'p':{action:()=>play(),desc:'玩耍'},
+        't':{action:()=>pet(),desc:'抚摸'},
+        's':{action:()=>openShop(),desc:'商店'},
+        'q':{action:()=>openQuests(),desc:'任务'},
+        'a':{action:()=>{document.getElementById('adventureScreen')?.classList.add('show');updateMapList()},desc:'冒险'},
+        'k':{action:()=>openSkillTree(),desc:'技能'},
+        'i':{action:()=>openInventory(),desc:'背包'},
+        'c':{action:()=>openCollection(),desc:'收藏'},
+        'e':{action:()=>openEquipment(),desc:'装备'},
+        'r':{action:()=>{if(battleState)useSkill(0)},desc:'战斗技能1'},
+        '1':{action:()=>{if(battleState)useSkill(0)},desc:'战斗技能1'},
+        '2':{action:()=>{if(battleState)useSkill(1)},desc:'战斗技能2'},
+        '3':{action:()=>{if(battleState)useSkill(2)},desc:'战斗技能3'},
+        '4':{action:()=>{if(battleState)useSkill(3)},desc:'战斗技能4'},
+        'Escape':{action:()=>closeAllPopups(),desc:'关闭弹窗'},
+        'h':{action:()=>showShortcutsHelp(),desc:'帮助'}
+    };
+    document.addEventListener('keydown',(e)=>{
+        if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+        const key=e.key.toLowerCase();
+        if(e.key==='Escape'){
+            e.preventDefault();
+            shortcuts['Escape'].action();
+            return;
+        }
+        if(shortcuts[key]){
+            e.preventDefault();
+            shortcuts[key].action();
+            playSound('click');
+        }
+    });
+    window.gameShortcuts=shortcuts;
+}
+function closeAllPopups(){
+    const popups=[
+        'shopScreen','questScreen','adventureScreen','skillScreen',
+        'inventoryScreen','collectionScreen','equipmentScreen',
+        'settingsPanel','eventPopup','battleScreen','wheelScreen',
+        'signInScreen','diaryScreen','skinShopScreen','storyScreen',
+        'arenaScreen','hospitalScreen','evolutionScreen'
+    ];
+    popups.forEach(id=>{
+        const el=document.getElementById(id);
+        if(el){
+            el.classList.remove('show');
+            if(id==='eventPopup')el.style.display='none';
+        }
+    });
+    const tutorialOverlay=document.getElementById('tutorialOverlay');
+    if(tutorialOverlay)tutorialOverlay.classList.remove('show');
+}
+function showShortcutsHelp(){
+    let html='<div style="max-height:300px;overflow-y:auto">';
+    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+    const shortcuts=window.gameShortcuts||{};
+    const keyNames={
+        'f':'F','p':'P','t':'T','s':'S','q':'Q','a':'A','k':'K','i':'I','c':'C','e':'E','r':'R','h':'H',
+        '1':'1','2':'2','3':'3','4':'4','Escape':'Esc'
+    };
+    for(const[key,info]of Object.entries(shortcuts)){
+        html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(255,255,255,0.05);border-radius:8px">`;
+        html+=`<span style="background:linear-gradient(135deg,#667eea,#764ba2);padding:4px 10px;border-radius:6px;font-family:monospace;font-size:12px">${keyNames[key]||key.toUpperCase()}</span>`;
+        html+=`<span style="font-size:12px">${info.desc}</span>`;
+        html+=`</div>`;
+    }
+    html+='</div></div>';
+    showEvent('⌨️ 快捷键帮助','使用键盘快捷操作游戏',html);
 }
 function checkIntroAndTutorial(){
     const introShown=localStorage.getItem('hupo_intro_shown');
@@ -6337,6 +6819,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     checkIntroAndTutorial();
     initUIElements();
     initMusic();
+    initPortraitMode();
+    initKeyboardShortcuts();
     loadGameConfig();
     if(!loadGame()){
         fetchRealWeather();
