@@ -174,7 +174,16 @@ async function recognizeBaidu(speech, token, format) {
     }
 }
 
-const server = http.createServer(async (req, res) => {
+const sslCertFile = config.server?.ssl_cert_file || config.ssl_cert_file || config.ssl?.cert || '';
+const sslKeyFile = config.server?.ssl_key_file || config.ssl_key_file || config.ssl?.key || '';
+
+logInfo('SSL配置检查:');
+logInfo('  ssl_cert_file: ' + (config.ssl_cert_file || '未配置'));
+logInfo('  ssl_key_file: ' + (config.ssl_key_file || '未配置'));
+logInfo('  cert文件存在: ' + (sslCertFile && fs.existsSync(sslCertFile) ? '是' : '否'));
+logInfo('  key文件存在: ' + (sslKeyFile && fs.existsSync(sslKeyFile) ? '是' : '否'));
+
+const requestHandler = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -331,7 +340,27 @@ const server = http.createServer(async (req, res) => {
 
     res.writeHead(404);
     res.end('Not Found');
-});
+};
+
+let server;
+let protocol = 'http';
+
+if (sslCertFile && sslKeyFile && fs.existsSync(sslCertFile) && fs.existsSync(sslKeyFile)) {
+    try {
+        const sslOptions = {
+            cert: fs.readFileSync(sslCertFile),
+            key: fs.readFileSync(sslKeyFile)
+        };
+        server = https.createServer(sslOptions, requestHandler);
+        protocol = 'https';
+        logInfo('HTTPS 已启用');
+    } catch (e) {
+        logError('SSL证书加载失败: ' + e.message + ', 使用HTTP');
+        server = http.createServer(requestHandler);
+    }
+} else {
+    server = http.createServer(requestHandler);
+}
 
 logInfo('语音代理服务器配置加载完成');
 logInfo('配置文件: ' + CONFIG_FILE);
@@ -348,6 +377,6 @@ if (BAIDU_API_KEY && BAIDU_SECRET_KEY) {
 logInfo('');
 const PORT = parseInt(process.env.VOICE_PORT) || config.server?.voice_port || 85;
 server.listen(PORT, '0.0.0.0', () => {
-    logInfo('语音代理服务器运行在 http://0.0.0.0:' + PORT);
-    logInfo('局域网访问: http://<你的IP>:' + PORT);
+    logInfo('语音代理服务器运行在 ' + protocol + '://0.0.0.0:' + PORT);
+    logInfo('局域网访问: ' + protocol + '://<你的IP>:' + PORT);
 });

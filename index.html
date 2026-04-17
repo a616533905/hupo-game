@@ -1010,7 +1010,8 @@ const ENV_CONFIG={
     },
     get voiceBase(){
         const cfg=RUNTIME_CONFIG;
-        return `http://${location.hostname}:${cfg.server.voicePort}`;
+        const proto=this.isHttps?'https:':'http:';
+        return `${proto}//${location.hostname}:${cfg.server.voicePort}`;
     },
     getApiUrl(path){
         let url=this.apiBase+path;
