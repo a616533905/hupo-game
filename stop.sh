@@ -14,15 +14,19 @@ fi
 
 echo "[1/3] 停止 AI Bridge (Python)..."
 
-BRIDGE_PID=$(pgrep -f "nanobot_bridge.py" | head -1)
-if [ -n "$BRIDGE_PID" ]; then
-    if [ $FORCE_STOP -eq 1 ]; then
-        kill -9 $BRIDGE_PID 2>/dev/null
-    else
-        kill $BRIDGE_PID 2>/dev/null
-    fi
+BRIDGE_PIDS=$(pgrep -f "nanobot_bridge.py" 2>/dev/null)
+if [ -n "$BRIDGE_PIDS" ]; then
+    for PID in $BRIDGE_PIDS; do
+        if [ $FORCE_STOP -eq 1 ]; then
+            kill -9 $PID 2>/dev/null
+        else
+            kill $PID 2>/dev/null
+        fi
+        echo "  已终止进程: $PID"
+    done
     sleep 1
-    if pgrep -f "nanobot_bridge.py" > /dev/null; then
+    REMAINING=$(pgrep -f "nanobot_bridge.py" 2>/dev/null)
+    if [ -n "$REMAINING" ]; then
         echo "  AI Bridge 停止失败"
     else
         echo "  AI Bridge 已停止"
@@ -35,15 +39,19 @@ echo ""
 
 echo "[2/3] 停止 Voice Proxy (Node.js)..."
 
-VOICE_PID=$(pgrep -f "voice-proxy.js" | head -1)
-if [ -n "$VOICE_PID" ]; then
-    if [ $FORCE_STOP -eq 1 ]; then
-        kill -9 $VOICE_PID 2>/dev/null
-    else
-        kill $VOICE_PID 2>/dev/null
-    fi
+VOICE_PIDS=$(pgrep -f "voice-proxy.js" 2>/dev/null)
+if [ -n "$VOICE_PIDS" ]; then
+    for PID in $VOICE_PIDS; do
+        if [ $FORCE_STOP -eq 1 ]; then
+            kill -9 $PID 2>/dev/null
+        else
+            kill $PID 2>/dev/null
+        fi
+        echo "  已终止进程: $PID"
+    done
     sleep 1
-    if pgrep -f "voice-proxy.js" > /dev/null; then
+    REMAINING=$(pgrep -f "voice-proxy.js" 2>/dev/null)
+    if [ -n "$REMAINING" ]; then
         echo "  Voice Proxy 停止失败"
     else
         echo "  Voice Proxy 已停止"
@@ -56,18 +64,26 @@ echo ""
 
 echo "[3/3] 检查端口..."
 
-if netstat -tlnp 2>/dev/null | grep -E ":(80|443|85)\s" > /dev/null; then
-    echo "  警告: 仍有服务占用端口"
-    netstat -tlnp 2>/dev/null | grep -E ":(80|443|85)" | while read line; do
-        echo "    $line"
-    done
-elif ss -tlnp 2>/dev/null | grep -E ":(80|443|85)\s" > /dev/null; then
-    echo "  警告: 仍有服务占用端口"
-    ss -tlnp 2>/dev/null | grep -E ":(80|443|85)" | while read line; do
-        echo "    $line"
-    done
+if command -v netstat &> /dev/null; then
+    if netstat -tlnp 2>/dev/null | grep -E ":(80|443|85)\s" > /dev/null; then
+        echo "  警告: 仍有服务占用端口"
+        netstat -tlnp 2>/dev/null | grep -E ":(80|443|85)" | while read line; do
+            echo "    $line"
+        done
+    else
+        echo "  所有端口已释放"
+    fi
+elif command -v ss &> /dev/null; then
+    if ss -tlnp 2>/dev/null | grep -E ":(80|443|85)\s" > /dev/null; then
+        echo "  警告: 仍有服务占用端口"
+        ss -tlnp 2>/dev/null | grep -E ":(80|443|85)" | while read line; do
+            echo "    $line"
+        done
+    else
+        echo "  所有端口已释放"
+    fi
 else
-    echo "  所有端口已释放"
+    echo "  无法检查端口（netstat/ss 均不可用）"
 fi
 
 echo ""
