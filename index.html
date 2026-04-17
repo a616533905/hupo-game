@@ -6365,7 +6365,12 @@ async function loadGameConfig(){
         }
     }catch(e){
         console.log('配置加载失败，使用默认配置');
-        window.gameConfig={active_provider:'minimax',minimax:{api_key:'',model:'MiniMax-M2.7'}};
+        window.gameConfig={
+            active_provider:'minimax',
+            minimax:{api_key:'',model:'MiniMax-M2.7'},
+            openrouter:{api_key:'',model:'openrouter/auto'},
+            baidu:{api_key:'',secret_key:''}
+        };
     }
 }
 function initRuntimeConfigFromGameConfig(){
