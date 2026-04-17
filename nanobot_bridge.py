@@ -510,11 +510,11 @@ def start_ollama_service():
             time.sleep(1)
             if check_ollama_running():
                 OLLAMA_STARTED = True
-                print("Ollama 服务已启动")
+                logger.info("Ollama 服务已启动")
                 return True
         return False
     except Exception as e:
-        print(f"启动 Ollama 服务失败: {e}")
+        logger.error(f"启动 Ollama 服务失败: {e}")
         return False
 
 def ensure_ollama_model(model, host="localhost", port=11434):
@@ -528,7 +528,7 @@ def ensure_ollama_model(model, host="localhost", port=11434):
         conn.close()
         return True
     except Exception as e:
-        print(f"加载模型失败: {e}")
+        logger.error(f"加载模型失败: {e}")
         return False
 
 def call_ollama_api(message, model_override=None, host_override=None):
