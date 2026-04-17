@@ -74,11 +74,13 @@ hupo-game/
 ├── nanobot_bridge.py     # AI 桥接服务 + Web 服务器
 ├── voice-proxy.js        # 语音代理服务
 ├── start.bat             # Windows 启动脚本
-├── start.sh              # Linux 启动脚本
+├── start.sh              # Linux 启动脚本（默认守护进程模式）
+├── stop.bat              # Windows 停止脚本
+├── stop.sh               # Linux 停止脚本
 ├── install.bat           # Windows 安装脚本
 ├── install.sh            # Linux 安装脚本
 ├── status.bat            # Windows 状态查看脚本
-├── status.sh             # Linux 状态查看脚本
+├── status.sh             # Linux 状态查看脚本（含日志查看）
 ├── hupo-bridge.service   # Systemd 服务配置
 ├── hupo-voice.service    # 语音服务 Systemd 配置
 ├── logrotate.conf        # 日志轮转配置
@@ -222,22 +224,33 @@ curl http://localhost:80/metrics
 ### 启动服务
 
 ```bash
-systemctl start hupo-bridge
-systemctl start hupo-voice
+# Linux - 默认守护进程模式（后台运行）
+./start.sh
+
+# Linux - 前台运行（调试用）
+./start.sh --foreground
+
+# Linux - HTTPS 模式
+./start.sh --https
+
+# Windows
+start.bat
 ```
 
 ### 停止服务
 
 ```bash
-systemctl stop hupo-bridge
-systemctl stop hupo-voice
-```
+# Linux
+./stop.sh
 
-### 重启服务
+# Linux - 强制停止
+./stop.sh --force
 
-```bash
-systemctl restart hupo-bridge
-systemctl restart hupo-voice
+# Windows
+stop.bat
+
+# Windows - 强制停止
+stop.bat --force
 ```
 
 ### 查看状态
@@ -338,10 +351,18 @@ A: 检查 API Key 是否正确，查看控制台错误日志
 A: 默认每IP每分钟100次请求，可在代码中调整限制
 
 **Q: 如何查看系统状态？**
-A: 
+A:
 - Linux: 运行 `./status.sh`
 - Windows: 运行 `status.bat`
 - 或访问 `http://localhost/health`（仅本地）
+
+**Q: 如何查看日志？**
+A:
+- Linux: 运行 `./status.sh` 会显示最近错误和完整日志
+- Windows: 运行 `status.bat` 会显示最近错误和完整日志
+- 或直接查看日志文件：
+  - Bridge 日志: `logs/bridge_YYYYMMDD.log`
+  - Voice 日志: `logs/voice_YYYYMMDD.log`
 
 **Q: Token 认证失败？**
 A: 确保 `config.json` 中 `token_required` 设置为 `yes`，且请求携带正确的 `access_token`
@@ -351,7 +372,17 @@ A: 默认限制 10MB，如需调整请修改 `MAX_CONTENT_LENGTH`
 
 ## 更新日志
 
-### v1.1.0 (最新)
+### v1.2.0 (最新)
+- start.sh 默认启用守护进程模式
+- 添加 stop.bat 和 stop.sh 停止脚本
+- status.bat 和 status.sh 添加日志查看功能
+- voice-proxy.js 添加文件日志功能
+- 修复配置验证逻辑（移除顶层 port 字段验证）
+- 修正 SSL 证书配置读取路径
+- 更新 logrotate.conf 支持 voice 日志轮转
+- 更新 config.example.json 配置结构
+
+### v1.1.0
 - 添加线程安全保护（Prometheus 指标、频率限制数据）
 - 添加 HTTP 请求超时设置（30秒）
 - 添加请求体大小限制（10MB）
