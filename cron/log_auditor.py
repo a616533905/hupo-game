@@ -88,6 +88,14 @@ ERROR_PATTERNS = {
 
 SUSPICIOUS_IPS = {}
 
+def format_tracebacks(tracebacks):
+    result = []
+    for t in tracebacks:
+        result.append('```')
+        result.append(t)
+        result.append('```')
+    return chr(10).join(result)
+
 def load_config():
     with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
         return json.load(f)
@@ -250,7 +258,7 @@ def call_minimax_for_analysis(config, stats):
 {chr(10).join([f'- {e["desc"]}: {e["line"][:80]}...' for e in stats['error_categories']['code_bug'][-5:]]) if stats['error_categories']['code_bug'] else '无'}
 
 ## Python 异常堆栈 (最近2个)
-{chr(10).join([f'```\n{t}\n```' for t in stats['tracebacks'][-2:]]) if stats['tracebacks'] else '无'}
+{format_tracebacks(stats['tracebacks'][-2:]) if stats['tracebacks'] else '无'}
 
 ## 攻击尝试 (最近5条)
 {chr(10).join([f'- [{a["ip"]}] {a["pattern"]}: {a["line"][:80]}...' for a in stats['attacks'][-5:]]) if stats['attacks'] else '无攻击尝试'}
