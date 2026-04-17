@@ -159,7 +159,7 @@ hupo-game/
     },
     "openrouter": {
         "api_key": "你的API密钥",
-        "model": "google/gemini-2.0-flash-exp:free"
+        "model": "arcee-ai/trinity-large-preview:free"
     },
     "baidu": {
         "api_key": "百度API Key",
@@ -186,7 +186,7 @@ hupo-game/
 | 提供商 | 说明 | 默认模型 |
 |--------|------|----------|
 | minimax | MiniMax AI（推荐） | MiniMax-M2.7 |
-| openrouter | OpenRouter API | google/gemini-2.0-flash-exp:free |
+| openrouter | OpenRouter API | arcee-ai/trinity-large-preview:free |
 | ollama | 本地 Ollama | gemma3:270m |
 
 #### OpenRouter 配置指南
@@ -194,7 +194,8 @@ hupo-game/
 1. **注册账号**: 访问 [OpenRouter](https://openrouter.ai/) 注册账号
 2. **获取 API Key**: 登录后进入 [Keys](https://openrouter.ai/keys) 页面创建 API Key
 3. **免费模型**: OpenRouter 提供多个免费模型，推荐：
-   - `google/gemini-2.0-flash-exp:free` - Google Gemini（推荐）
+   - `arcee-ai/trinity-large-preview:free` - Trinity（推荐）
+   - `google/gemini-2.0-flash-exp:free` - Google Gemini
    - `meta-llama/llama-3.3-8b-instruct:free` - Meta Llama
    - `deepseek/deepseek-r1:free` - DeepSeek R1
    - `qwen/qwen-2.5-72b-instruct:free` - 通义千问
