@@ -3,7 +3,7 @@
 cd "$(dirname "$0")"
 
 USE_HTTPS=0
-RUN_DAEMON=0
+RUN_DAEMON=1
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -15,16 +15,20 @@ while [[ $# -gt 0 ]]; do
             USE_HTTPS=0
             shift
             ;;
+        --foreground|-f)
+            RUN_DAEMON=0
+            shift
+            ;;
         --daemon|-d)
             RUN_DAEMON=1
             shift
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--https|-s] [--http|-h] [--daemon|-d]"
+            echo "Usage: $0 [--https|-s] [--http|-h] [--foreground|-f]"
             echo "  --https, -s    Enable HTTPS"
-            echo "  --http,  -h    Enable HTTP only (default)"
-            echo "  --daemon, -d   Run in background (disconnect SSH safe)"
+            echo "  --http,  -h    Enable HTTP only"
+            echo "  --foreground, -f   Run in foreground (override daemon mode)"
             exit 1
             ;;
     esac
