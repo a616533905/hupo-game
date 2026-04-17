@@ -108,7 +108,7 @@ body.snow .snowfall{display:block}
 .chat-input-area input{flex:1;padding:8px 12px;border:2px solid rgba(255,255,255,0.1);border-radius:16px;background:rgba(255,255,255,0.05);color:var(--text);font-size:12px;outline:none}
 .chat-input-area input:focus{border-color:var(--primary)}
 .chat-input-area button{padding:8px 16px;border:none;border-radius:16px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;font-size:12px;cursor:pointer}
-.chat-input-area .voice-btn{padding:8px 10px;border:none;border-radius:50%;background:linear-gradient(135deg,#4ecdc4,#44a08d);color:#fff;font-size:14px;cursor:pointer}
+.chat-input-area .voice-btn{padding:12px;border:none;border-radius:50%;background:linear-gradient(135deg,#4ecdc4,#44a08d);color:#fff;font-size:16px;cursor:pointer;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
 .chat-input-area .voice-btn.recording{background:linear-gradient(135deg,#ff6b6b,#ee5a5a);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
 .chat-history{height:80px;background:#0a0a0a;border-radius:8px;padding:8px;margin:8px;overflow-y:auto;font-size:10px;line-height:1.3;color:#aaa;font-family:monospace;border:1px solid #333}
@@ -152,11 +152,11 @@ body.snow .snowfall{display:block}
 .event-popup.show{transform:translate(-50%,-50%) scale(1)}
 .event-popup h3{color:var(--primary);margin-bottom:10px;font-size:16px;flex-shrink:0}
 .event-popup p{margin-bottom:10px;line-height:1.5;font-size:13px}
-.event-popup button{padding:10px 24px;border:none;border-radius:14px;background:var(--primary);color:#fff;cursor:pointer;margin:3px;font-size:13px;min-height:40px}
+.event-popup button{padding:14px 28px;border:none;border-radius:14px;background:var(--primary);color:#fff;cursor:pointer;margin:5px;font-size:14px;min-height:48px;min-width:100px}
 .event-popup button.secondary{background:rgba(255,255,255,0.1)}
 .event-popup-content{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;padding-bottom:5px}
 .event-popup-footer{margin-top:10px;flex-shrink:0;position:sticky;bottom:0;z-index:100;background:var(--bg-card);padding:15px 10px 10px;border-top:1px solid rgba(255,255,255,0.1)}
-.event-popup-footer button{min-width:120px;min-height:44px;padding:12px 30px}
+.event-popup-footer button{min-width:140px;min-height:48px;padding:14px 32px}
 .shop-tabs{display:flex;gap:5px;margin-bottom:10px}
 .shop-tab{padding:5px 12px;border:none;border-radius:8px;background:rgba(255,255,255,0.1);color:var(--text);cursor:pointer;font-size:11px}
 .shop-tab.active{background:var(--primary);color:#fff}
