@@ -1,6 +1,7 @@
 [Unit]
 Description=Hupo Game Voice Proxy Server
 After=network.target
+Wants=network-online.target
 
 [Service]
 Type=simple
@@ -9,7 +10,9 @@ WorkingDirectory=/root/hupo-game
 ExecStart=/usr/bin/node /root/hupo-game/voice-proxy.js
 ExecStop=/bin/kill -TERM $MAINPID
 Restart=always
-RestartSec=5
+RestartSec=10
+StartLimitIntervalSec=60
+StartLimitBurst=5
 StandardOutput=journal
 StandardError=journal
 
