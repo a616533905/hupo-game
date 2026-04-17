@@ -16,13 +16,7 @@
 
 <div align="center">
 
-| 游戏主界面 | AI 对话 |
-|:---:|:---:|
-| ![游戏主界面](screenshots/game.png) | ![AI 对话](screenshots/chat.png) |
-
-| 战斗系统 | 设置面板 |
-|:---:|:---:|
-| ![战斗系统](screenshots/battle.png) | ![设置面板](screenshots/settings.png) |
+![游戏主界面](screenshots/game.png)
 
 </div>
 
@@ -138,10 +132,7 @@ hupo-game/
     └── voice_*.log        # 语音服务日志
 
 ├── 📸 screenshots/        # 游戏截图
-    ├── game.png           # 游戏主界面
-    ├── chat.png           # AI 对话
-    ├── battle.png         # 战斗系统
-    └── settings.png       # 设置面板
+    └── game.png           # 游戏主界面
 ```
 
 ---
