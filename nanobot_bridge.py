@@ -359,6 +359,7 @@ def call_minimax_api(message, model_override=None):
     try:
         conn.request("POST", path, json.dumps(data), headers)
         response = conn.getresponse()
+        status_code = response.status
         result = response.read().decode('utf-8')
         result_json = json.loads(result)
 
@@ -368,9 +369,15 @@ def call_minimax_api(message, model_override=None):
             logger.info(f"MiniMax API调用成功, response_length={len(assistant_message)}")
             return assistant_message
         else:
-            error_msg = result_json.get('base_resp', {}).get('status_msg', '未知错误')
-            logger.error(f"MiniMax API错误: {error_msg}")
-            return f"API错误: {error_msg}"
+            base_resp = result_json.get('base_resp', {})
+            status_code_resp = base_resp.get('status_code', 'N/A')
+            status_msg = base_resp.get('status_msg', '未知错误')
+            error_msg = result_json.get('error', {}).get('message', '')
+            logger.error(f"MiniMax API错误: HTTP {status_code}, status_code={status_code_resp}, status_msg={status_msg}, error={error_msg}, response={result[:500]}")
+            return f"API错误: {status_msg} (code: {status_code_resp})"
+    except json.JSONDecodeError as e:
+        logger.error(f"MiniMax API响应解析失败: HTTP {status_code}, response={result[:500] if 'result' in dir() else 'N/A'}")
+        return f"响应解析失败: {str(e)}"
     except Exception as e:
         logger.error(f"MiniMax API请求失败: {str(e)}")
         return f"请求失败: {str(e)}"
@@ -414,6 +421,7 @@ def call_minimax_tts(text, voice_id="female-tianmei"):
     try:
         conn.request("POST", path, json.dumps(data), headers)
         response = conn.getresponse()
+        status_code = response.status
         result = response.read().decode('utf-8')
         result_json = json.loads(result)
         
@@ -426,11 +434,18 @@ def call_minimax_tts(text, voice_id="female-tianmei"):
         elif "file_id" in result_json:
             return None, f"异步任务已创建，file_id: {result_json['file_id']}，需要使用File API下载"
         else:
-            error_msg = result_json.get('base_resp', {}).get('status_msg', result_json.get('error', '未知错误'))
+            base_resp = result_json.get('base_resp', {})
+            status_code_resp = base_resp.get('status_code', 'N/A')
+            error_msg = base_resp.get('status_msg', result_json.get('error', '未知错误'))
+            logger.error(f"MiniMax TTS错误: HTTP {status_code}, status_code={status_code_resp}, status_msg={error_msg}, response={result[:500]}")
             if 'token plan not support' in error_msg:
                 return None, "当前Token套餐不支持语音功能，请升级到Plus或更高套餐"
-            return None, f"TTS错误: {error_msg}"
+            return None, f"TTS错误: {error_msg} (code: {status_code_resp})"
+    except json.JSONDecodeError as e:
+        logger.error(f"MiniMax TTS响应解析失败: HTTP {status_code}, response={result[:500] if 'result' in dir() else 'N/A'}")
+        return None, f"TTS响应解析失败: {str(e)}"
     except Exception as e:
+        logger.error(f"MiniMax TTS请求失败: {str(e)}")
         return None, f"TTS请求失败: {str(e)}"
     finally:
         conn.close()
@@ -466,14 +481,23 @@ def call_minimax_asr(audio_data, audio_format="mp3"):
         
         conn.request("POST", path, body, headers)
         response = conn.getresponse()
+        status_code = response.status
         result = response.read().decode('utf-8')
         result_json = json.loads(result)
         
         if "text" in result_json:
             return result_json["text"], None
         else:
-            return None, f"ASR错误: {result_json.get('base_resp', {}).get('status_msg', '未知错误')}"
+            base_resp = result_json.get('base_resp', {})
+            status_code_resp = base_resp.get('status_code', 'N/A')
+            error_msg = base_resp.get('status_msg', '未知错误')
+            logger.error(f"MiniMax ASR错误: HTTP {status_code}, status_code={status_code_resp}, status_msg={error_msg}, response={result[:500]}")
+            return None, f"ASR错误: {error_msg} (code: {status_code_resp})"
+    except json.JSONDecodeError as e:
+        logger.error(f"MiniMax ASR响应解析失败: HTTP {status_code}, response={result[:500] if 'result' in dir() else 'N/A'}")
+        return None, f"ASR响应解析失败: {str(e)}"
     except Exception as e:
+        logger.error(f"MiniMax ASR请求失败: {str(e)}")
         return None, f"ASR请求失败: {str(e)}"
     finally:
         conn.close()
@@ -671,6 +695,7 @@ def call_openrouter_api(message, model_override=None):
     try:
         conn.request("POST", "/api/v1/chat/completions", json.dumps(data), headers)
         response = conn.getresponse()
+        status_code = response.status
         result = response.read().decode('utf-8')
         result_json = json.loads(result)
 
@@ -680,9 +705,15 @@ def call_openrouter_api(message, model_override=None):
             logger.info(f"OpenRouter API调用成功, response_length={len(assistant_message)}")
             return assistant_message
         else:
-            error_msg = result_json.get('error', {}).get('message', '未知错误')
-            logger.error(f"OpenRouter API错误: {error_msg}")
-            return f"OpenRouter错误: {error_msg}"
+            error_info = result_json.get('error', {})
+            error_msg = error_info.get('message', '未知错误')
+            error_code = error_info.get('code', 'N/A')
+            error_type = error_info.get('type', 'N/A')
+            logger.error(f"OpenRouter API错误: HTTP {status_code}, code={error_code}, type={error_type}, message={error_msg}, response={result[:500]}")
+            return f"OpenRouter错误: {error_msg} (code: {error_code})"
+    except json.JSONDecodeError as e:
+        logger.error(f"OpenRouter API响应解析失败: HTTP {status_code}, response={result[:500] if 'result' in dir() else 'N/A'}")
+        return f"响应解析失败: {str(e)}"
     except Exception as e:
         logger.error(f"OpenRouter请求失败: {str(e)}")
         return f"OpenRouter请求失败: {str(e)}"

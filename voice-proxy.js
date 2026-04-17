@@ -162,8 +162,9 @@ async function recognizeBaidu(speech, token, format) {
         body: JSON.stringify(requestBody)
     });
     
+    const httpStatus = apiRes.status;
     const data = await apiRes.json();
-    logInfo('百度API响应: ' + JSON.stringify(data));
+    logInfo('百度API响应: HTTP ' + httpStatus + ', err_no=' + data.err_no + ', err_msg=' + data.err_msg);
     
     if (data.err_no === 0 && data.result && data.result.length > 0) {
         return {
@@ -172,9 +173,12 @@ async function recognizeBaidu(speech, token, format) {
             provider: 'baidu'
         };
     } else {
+        logError('百度识别失败: HTTP ' + httpStatus + ', err_no=' + data.err_no + ', err_msg=' + data.err_msg);
         return {
             success: false,
             error: data.err_msg || '识别失败',
+            err_no: data.err_no,
+            http_status: httpStatus,
             provider: 'baidu'
         };
     }
