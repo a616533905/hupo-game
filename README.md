@@ -150,20 +150,36 @@ hupo-game/
         "ssl_cert_file": "cert.pem",
         "ssl_key_file": "key.pem"
     },
-    "access_token": "your_token",
-    "token_required": "no",
+    "local": {
+        "type": "ollama",
+        "ollama": {
+            "host": "http://127.0.0.1:11434",
+            "model": "gemma3:270m"
+        }
+    },
+    "access_token": "your_token_here",
+    "token_required": "yes/no",
     "minimax": {
-        "api_key": "你的API密钥",
-        "group_id": "你的GroupID",
+        "api_key": "你的MiniMax API Key",
+        "group_id": "你的Group ID",
         "model": "MiniMax-M2.7"
     },
     "openrouter": {
-        "api_key": "你的API密钥",
-        "model": "arcee-ai/trinity-large-preview:free"（可以自行配置）
+        "api_key": "你的OpenRouter API Key",
+        "model": "arcee-ai/trinity-large-preview:free",
+        "api_base": null
+    },
+    "ollama": {
+        "api_key": "EMPTY",
+        "model": "gemma3:270m",
+        "api_base": "http://localhost:11434/v1"
     },
     "baidu": {
-        "api_key": "百度API Key",
-        "secret_key": "百度Secret Key"
+        "api_key": "你的百度API Key",
+        "secret_key": "你的百度Secret Key"
+    },
+    "voice": {
+        "provider": "baidu"
     },
     "active_provider": "minimax"
 }
