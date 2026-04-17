@@ -159,7 +159,7 @@ hupo-game/
     },
     "openrouter": {
         "api_key": "你的API密钥",
-        "model": "arcee-ai/trinity-large-preview:free"
+        "model": "arcee-ai/trinity-large-preview:free"（可以自行配置）
     },
     "baidu": {
         "api_key": "百度API Key",
@@ -392,6 +392,8 @@ ffmpeg -version
 - 🐛 修复默认配置缺少 openrouter 和 baidu 的问题
 - 🐛 修复 voice-proxy.js 日志时间使用 UTC 的问题
 - 📝 README.md 美化更新
+- 📝 添加 OpenRouter 和百度语音配置指南
+- 📝 更新 config.example.json（移除废弃字段）
 
 ### v1.2.0
 - 🚀 start.sh 默认启用守护进程模式
