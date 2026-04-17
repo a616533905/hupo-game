@@ -1,6 +1,7 @@
 [Unit]
 Description=Hupo Game AI Bridge Server
 After=network.target
+Wants=network-online.target
 
 [Service]
 Type=simple
@@ -9,7 +10,9 @@ WorkingDirectory=/root/hupo-game
 ExecStart=/usr/bin/python3 /root/hupo-game/nanobot_bridge.py
 ExecStop=/bin/kill -TERM $MAINPID
 Restart=always
-RestartSec=5
+RestartSec=10
+StartLimitIntervalSec=60
+StartLimitBurst=5
 StandardOutput=journal
 StandardError=journal
 
