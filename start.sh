@@ -88,7 +88,36 @@ cleanup_port() {
     fi
 }
 
-echo "[2/6] Clearing ports..."
+cleanup_process() {
+    local proc_name=$1
+    local display_name=$2
+    echo "  Checking $display_name process..."
+
+    pids=$(pgrep -f "$proc_name" 2>/dev/null)
+    if [ -n "$pids" ]; then
+        for pid in $pids; do
+            echo "    Found $display_name, PID: $pid"
+            echo "    Stopping..."
+            kill -9 $pid 2>/dev/null
+            echo "    Stopped PID: $pid"
+        done
+        sleep 1
+        REMAINING=$(pgrep -f "$proc_name" 2>/dev/null)
+        if [ -n "$REMAINING" ]; then
+            echo "    Warning: $display_name may still be running"
+        else
+            echo "    $display_name stopped"
+        fi
+    else
+        echo "    $display_name not running"
+    fi
+}
+
+echo "[2/6] Stopping existing services..."
+cleanup_process "nanobot_bridge.py" "AI Bridge"
+cleanup_process "voice-proxy.js" "Voice Proxy"
+
+echo "[3/6] Clearing ports..."
 if [ $USE_HTTPS -eq 1 ]; then
     cleanup_port 80 "HTTP Redirect"
 fi
@@ -118,7 +147,7 @@ generate_ssl_certs() {
     return 1
 }
 
-echo "[3/6] Checking SSL certificates..."
+echo "[4/6] Checking SSL certificates..."
 if [ $USE_HTTPS -eq 1 ]; then
     if [ -n "$SSL_CERT" ] && [ -n "$SSL_KEY" ]; then
         IP=$(hostname -I 2>/dev/null | awk '{print $1}')
@@ -132,7 +161,7 @@ else
     echo "  HTTPS disabled, skipping SSL certificates"
 fi
 
-echo "[4/6] Starting AI Bridge (port $API_PORT)..."
+echo "[5/6] Starting AI Bridge (port $API_PORT)..."
 if [ $RUN_DAEMON -eq 1 ]; then
     LOG_DIR="logs"
     mkdir -p "$LOG_DIR"
@@ -144,7 +173,7 @@ if [ $RUN_DAEMON -eq 1 ]; then
     API_PID=$!
     echo "  AI Bridge PID: $API_PID (background)"
 
-    echo "[5/6] Starting voice proxy (port $VOICE_PORT)..."
+    echo "[6/6] Starting voice proxy (port $VOICE_PORT)..."
     nohup env VOICE_PORT=$VOICE_PORT node voice-proxy.js > "$LOG_DIR/voice.log" 2>&1 &
     VOICE_PID=$!
     echo "  Voice Proxy PID: $VOICE_PID (background)"
@@ -157,7 +186,7 @@ else
     API_PID=$!
     echo "  AI Bridge PID: $API_PID"
 
-    echo "[5/6] Starting voice proxy (port $VOICE_PORT)..."
+    echo "[6/6] Starting voice proxy (port $VOICE_PORT)..."
     VOICE_PORT=$VOICE_PORT node voice-proxy.js &
     VOICE_PID=$!
     echo "  Voice Proxy PID: $VOICE_PID"
