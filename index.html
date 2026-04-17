@@ -574,27 +574,18 @@ body.snow .snowfall{display:block}
 <div class="settings-section">
 <h4>🖥️ 服务器设置</h4>
 <div class="setting-item">
-<label>连接模式</label>
-<select id="runtimeMode" onchange="updateRuntimeMode()">
-<option value="server">本地服务器</option>
-<option value="remote">远程服务器</option>
-</select>
-</div>
-<div id="remoteConfigSection" style="display:none">
-<div class="setting-item">
 <label>服务器地址</label>
-<input type="text" id="remoteHost" placeholder="http://117.72.177.240/" onchange="updateRemoteConfig()">
+<input type="text" id="serverHost" disabled value="自动检测">
 </div>
-<div class="setting-note">💡 端口使用默认值，如需修改请编辑 config.json</div>
-</div>
+<div class="setting-note">💡 自动使用当前网页地址</div>
 </div>
 <div class="settings-section">
 <h4>🎤 语音识别设置</h4>
 <div class="setting-item">
 <label>语音提供商</label>
 <select id="voiceProvider" onchange="updateVoiceProvider()">
-<option value="browser">浏览器原生 (推荐)</option>
 <option value="baidu">百度语音</option>
+<option value="browser">浏览器原生 (推荐)</option>
 </select>
 </div>
 <div class="voice-status" id="voiceStatus">
@@ -932,8 +923,7 @@ const RUNTIME_CONFIG={
         host:'localhost',
         apiPort:443,
         webPort:443,
-        voicePort:85,
-        remoteHost:'https://117.72.177.240/'
+        voicePort:85
     },
     local:{
         type:'ollama',
@@ -986,10 +976,6 @@ const RUNTIME_CONFIG={
         this.server.voicePort=voicePort||85;
         this.save();
     },
-    setRemoteServer(host){
-        this.server.remoteHost=host;
-        this.save();
-    },
     setLocal(type,config){
         this.local.type=type;
         if(type==='ollama'){
@@ -1020,26 +1006,10 @@ const ENV_CONFIG={
         const cfg=RUNTIME_CONFIG;
         const modelSource=localStorage.getItem('hupo_model_source')||'remote';
         const proto=this.isHttps?'https:':'http:';
-        if(cfg.mode==='remote'&&cfg.server.remoteHost){
-            let host=cfg.server.remoteHost.replace(/\/$/,'');
-            if(host.startsWith('http'))return host;
-            if(host.includes(':')&&!host.startsWith('[')){
-                return `${proto}//${host}`;
-            }
-            return `${proto}//${host}:${cfg.server.apiPort}`;
-        }
         return `${proto}//${location.hostname}:${cfg.server.apiPort}`;
     },
     get voiceBase(){
         const cfg=RUNTIME_CONFIG;
-        if(cfg.mode==='remote'&&cfg.server.remoteHost){
-            let host=cfg.server.remoteHost.replace(/\/$/,'');
-            if(host.startsWith('http'))return host;
-            if(host.includes(':')&&!host.startsWith('[')){
-                return `http://${host}`;
-            }
-            return `http://${host}:${cfg.server.voicePort}`;
-        }
         return `http://${location.hostname}:${cfg.server.voicePort}`;
     },
     getApiUrl(path){
@@ -2121,9 +2091,7 @@ function loadSettingsToUI(){
         try{saved=JSON.parse(savedConfig);}catch(e){}
     }
     const mode=saved.mode||gameCfg.runtime_mode||'server';
-    const remoteHost=saved.server?.remoteHost||gameCfg.server?.remote_host||'';
-    document.getElementById('runtimeMode').value=mode;
-    document.getElementById('remoteHost').value=remoteHost;
+    document.getElementById('serverHost').value=`${location.hostname}:${RUNTIME_CONFIG.server.apiPort}`;
     document.getElementById('voiceProvider').value=getVoiceProvider();
     loadModelSettingsToUI();
     updateSettingsVisibility();
@@ -2148,22 +2116,12 @@ function loadModelSettingsToUI(){
     }
 }
 function updateSettingsVisibility(){
-    const mode=document.getElementById('runtimeMode').value;
-    document.getElementById('remoteConfigSection').style.display=mode==='remote'?'block':'none';
     const modelSource=document.getElementById('modelSource').value;
     document.getElementById('remoteModelSection').style.display=modelSource==='remote'?'block':'none';
     document.getElementById('ollamaModelSection').style.display=modelSource==='ollama'?'block':'none';
 }
 function updateSettingsStatus(){
-    const mode=document.getElementById('runtimeMode').value;
-    const modeNames={server:'本地服务器',remote:'远程服务器'};
-    let apiInfo='';
-    if(mode==='server'){
-        apiInfo=`localhost:${RUNTIME_CONFIG.server.apiPort}`;
-    }else if(mode==='remote'){
-        const host=RUNTIME_CONFIG.server.remoteHost||'未设置';
-        apiInfo=host.replace(/\/$/,'');
-    }
+    const apiInfo=`${location.hostname}:${RUNTIME_CONFIG.server.apiPort}`;
     const modelSource=document.getElementById('modelSource').value;
     const sourceNames={remote:'远程 API',ollama:'Ollama'};
     let modelInfo='';
@@ -2175,33 +2133,9 @@ function updateSettingsStatus(){
         modelInfo=document.getElementById('ollamaModel').value||'未设置';
     }
     document.getElementById('settingsStatus').innerHTML=`
-        <span class="status-mode">服务器: ${modeNames[mode]||mode}</span>
-        <span class="status-api">地址: ${apiInfo}</span>
-        <span class="status-model">模型: ${sourceNames[modelSource]} (${modelInfo})</span>
+        <span class="status-mode">服务器：${apiInfo}</span>
+        <span class="status-model">模型：${sourceNames[modelSource]} (${modelInfo})</span>
     `;
-}
-function updateRuntimeMode(){
-    const mode=document.getElementById('runtimeMode').value;
-    RUNTIME_CONFIG.setMode(mode);
-    updateSettingsVisibility();
-    updateSettingsStatus();
-    showSaveToast();
-    if(typeof AndroidApp!=='undefined'&&mode==='remote'){
-        const host=RUNTIME_CONFIG.server.remoteHost;
-        const port=RUNTIME_CONFIG.server.apiPort-2;
-        if(host){
-            if(confirm('切换到远程服务器将重新加载页面，确定继续？')){
-                AndroidApp.loadRemoteServer(host,port);
-            }
-        }
-    }
-}
-function updateRemoteConfig(){
-    const host=document.getElementById('remoteHost').value.trim();
-    RUNTIME_CONFIG.setRemoteServer(host);
-    RUNTIME_CONFIG.save();
-    updateSettingsStatus();
-    showSaveToast();
 }
 function updateModelSource(){
     const source=document.getElementById('modelSource').value;
@@ -2269,13 +2203,13 @@ function onLLMStream(token){
 function onLLMResponse(response,success){
     console.log('LLM Response:',success,response);
 }
-let voiceProvider='browser';
+let voiceProvider='baidu';
 async function loadVoiceConfig(){
     const browserSupported=isBrowserVoiceSupported();
     const baiduConfig=window.gameConfig?.baidu||{};
     const baiduConfigured=!!(baiduConfig.api_key&&baiduConfig.secret_key);
     const savedProvider=localStorage.getItem('hupo_voice_provider');
-    voiceProvider=savedProvider||'browser';
+    voiceProvider=savedProvider||'baidu';
     document.getElementById('voiceProvider').value=voiceProvider;
     document.getElementById('voiceStatus').innerHTML=`
         <span class="voice-browser">${browserSupported?'✓':'✗'} 浏览器: ${browserSupported?'可用':'不支持'}</span>
@@ -2299,7 +2233,7 @@ function showSaveToast(){
     },1500);
 }
 function getVoiceProvider(){
-    return localStorage.getItem('hupo_voice_provider')||voiceProvider||'browser';
+    return localStorage.getItem('hupo_voice_provider')||voiceProvider||'baidu';
 }
 function getTime(){return new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}
 function catBounce(){const s=document.getElementById('catSprite');s.classList.remove('bounce','shake','spin');void s.offsetWidth;s.classList.add('bounce')}
@@ -4784,7 +4718,7 @@ async function sendToBaidu(audioBlob){
     }
 }
 let autoSpeak=true;
-let speakMode='tts';
+let speakMode='edge';
 let voiceGender='xiaoyi';
 let userInteracted=false;
 document.addEventListener('click',()=>{userInteracted=true},{once:true});
@@ -6481,9 +6415,6 @@ function initRuntimeConfigFromGameConfig(){
         const isHttps=location.protocol==='https:';
         RUNTIME_CONFIG.server.apiPort=isHttps?(cfg.server.https_port||443):(cfg.server.http_port||80);
         RUNTIME_CONFIG.server.voicePort=cfg.server.voice_port||85;
-        if(cfg.server.remote_host&&!localStorage.getItem('hupo_runtime_config')){
-            RUNTIME_CONFIG.server.remoteHost=cfg.server.remote_host;
-        }
     }
     if(cfg.local?.ollama){
         if(cfg.local.ollama.host)RUNTIME_CONFIG.local.ollama.host=cfg.local.ollama.host;
