@@ -61,6 +61,7 @@ chmod +x $INSTALL_DIR/stop.sh
 chmod +x $INSTALL_DIR/install.sh
 chmod +x $INSTALL_DIR/status.sh
 chmod +x $INSTALL_DIR/cron/health_check.sh
+chmod +x $INSTALL_DIR/cron/log_auditor.py
 chmod 644 /etc/systemd/system/hupo-bridge.service
 chmod 644 /etc/systemd/system/hupo-voice.service
 
