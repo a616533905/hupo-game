@@ -1,104 +1,141 @@
-# 琥珀猫冒险
+<div align="center">
 
-一个可爱的猫咪养成冒险游戏，支持 AI 对话、语音识别、战斗系统、探索冒险等功能。
+# 🐱 琥珀猫冒险
 
-## 功能特性
+**一个可爱的猫咪养成冒险游戏**
 
-- **AI 对话**: 支持多种 AI 提供商（MiniMax、OpenRouter、Ollama）
-- **语音识别**: 百度语音识别，支持多种音频格式
-- **语音合成**: Edge TTS / 浏览器原生 TTS
-- **战斗系统**: 回合制战斗，技能系统，伙伴系统
-- **探索冒险**: 多地图探索，随机事件，NPC 互动
-- **养成系统**: 等级、装备、皮肤、成就
-- **竞技场**: PVP 对战，排名系统
+支持 AI 对话 · 语音识别 · 战斗系统 · 探索冒险
 
-## 生产环境特性
+[功能特性](#-功能特性) · [快速开始](#-快速开始) · [配置说明](#-配置说明) · [API文档](#-api-端点)
 
-### 安全特性
-- **Token 认证**: 所有 API 端点支持 Token 验证
-- **请求频率限制**: 防止单IP滥用API（默认100次/分钟）
-- **请求体大小限制**: 最大 10MB，防止内存耗尽攻击
-- **本地端点保护**: `/health`、`/metrics`、`/model` 仅允许本地访问
-- **格式白名单**: 音频格式验证，防止文件扩展名注入
+</div>
 
-### 稳定性特性
-- **线程安全**: Prometheus 指标和频率限制数据使用锁保护
-- **HTTP 超时**: 所有外部 API 调用设置 30 秒超时
-- **日志记录**: 详细的请求日志，按日期轮转
-- **配置验证**: 启动时自动验证配置文件格式
-- **优雅关闭**: 支持平滑重启，不中断当前请求
+---
 
-### 监控特性
-- **健康检查**: CPU/内存/磁盘监控
-- **Prometheus监控**: 标准指标导出，支持Grafana可视化
-- **Systemd服务**: 开机自启，崩溃自动重启
+## 🎮 功能特性
 
-## 快速开始
+| 功能 | 说明 |
+|------|------|
+| 🤖 **AI 对话** | 支持 MiniMax、OpenRouter、Ollama 多种 AI 提供商 |
+| 🎤 **语音识别** | 百度语音识别，支持多种音频格式 |
+| 🔊 **语音合成** | Edge TTS / 浏览器原生 TTS |
+| ⚔️ **战斗系统** | 回合制战斗，技能系统，伙伴系统 |
+| 🗺️ **探索冒险** | 多地图探索，随机事件，NPC 互动 |
+| 📈 **养成系统** | 等级、装备、皮肤、成就 |
+| 🏆 **竞技场** | PVP 对战，排名系统 |
+
+---
+
+## 🚀 快速开始
 
 ### Windows 用户
 
 ```batch
-# 方式1: 运行安装脚本（推荐首次安装）
+# 首次安装
 install.bat
 
-# 方式2: 直接启动
+# 启动服务
 start.bat
-```
 
-浏览器访问: http://localhost
+# 停止服务
+stop.bat
+
+# 查看状态
+status.bat
+```
 
 ### Linux 服务器部署
 
 ```bash
-# 方式1: 使用安装脚本（推荐）
+# 首次安装
 chmod +x install.sh
 sudo ./install.sh
 
-# 方式2: 手动部署
-chmod +x start.sh
+# 启动服务（默认守护进程模式）
 ./start.sh
+
+# 前台运行（调试用）
+./start.sh --foreground
+
+# 停止服务
+./stop.sh
+
+# 强制停止
+./stop.sh --force
+
+# 查看状态和日志
+./status.sh
 ```
 
-### 手机访问
+### 远程部署
 
-1. 电脑/服务器运行启动脚本
-2. 手机连接同一局域网
-3. 手机浏览器访问显示的局域网地址
+```batch
+# Windows 连接远程服务器
+connect.bat
 
-## 文件说明
+# Windows 部署到远程服务器
+deploy.bat
+```
+
+### 访问游戏
+
+- **本地访问**: http://localhost
+- **局域网访问**: http://你的IP
+- **HTTPS访问**: https://你的IP（需配置SSL证书）
+
+---
+
+## 📁 文件说明
 
 ```
 hupo-game/
-├── index.html            # 游戏主程序（HTML + CSS + JS）
-├── config.json           # 配置文件（AI、语音、服务器）
-├── nanobot_bridge.py     # AI 桥接服务 + Web 服务器
-├── voice-proxy.js        # 语音代理服务
-├── start.bat             # Windows 启动脚本
-├── start.sh              # Linux 启动脚本（默认守护进程模式）
-├── stop.bat              # Windows 停止脚本
-├── stop.sh               # Linux 停止脚本
-├── install.bat           # Windows 安装脚本
-├── install.sh            # Linux 安装脚本
-├── status.bat            # Windows 状态查看脚本
-├── status.sh             # Linux 状态查看脚本（含日志查看）
-├── hupo-bridge.service   # Systemd 服务配置
-├── hupo-voice.service    # 语音服务 Systemd 配置
-├── logrotate.conf        # 日志轮转配置
-├── favicon.ico           # 网站图标
-├── README.md             # 说明文档
-└── logs/                 # 日志目录（自动创建）
+├── 📄 index.html          # 游戏主程序
+├── ⚙️ config.json         # 配置文件
+├── 🐍 nanobot_bridge.py   # AI 桥接服务 + Web 服务器
+├── 📦 voice-proxy.js      # 语音代理服务
+│
+├── 🪟 Windows 脚本
+│   ├── start.bat          # 启动服务
+│   ├── stop.bat           # 停止服务
+│   ├── status.bat         # 查看状态
+│   ├── install.bat        # 安装依赖
+│   ├── connect.bat        # 连接远程服务器
+│   └── deploy.bat         # 部署到远程服务器
+│
+├── 🐧 Linux 脚本
+│   ├── start.sh           # 启动服务（守护进程）
+│   ├── stop.sh            # 停止服务
+│   ├── status.sh          # 查看状态和日志
+│   └── install.sh         # 安装依赖和配置服务
+│
+├── 🔐 SSL 证书
+│   ├── cert.pem           # SSL 证书
+│   └── key.pem            # SSL 私钥
+│
+├── ⚙️ 服务配置
+│   ├── hupo-bridge.service   # Systemd 服务配置
+│   ├── hupo-voice.service    # 语音服务配置
+│   └── logrotate.conf        # 日志轮转配置
+│
+└── 📂 logs/               # 日志目录（自动创建）
+    ├── bridge_*.log       # AI 服务日志
+    └── voice_*.log        # 语音服务日志
 ```
 
-## 环境要求
+---
 
-| 依赖 | 版本要求 | 用途 |
-|------|----------|------|
+## 💻 环境要求
+
+| 依赖 | 版本 | 用途 |
+|------|------|------|
 | Python | 3.8+ | AI 桥接服务 |
 | Node.js | 14+ | 语音代理服务 |
-| ffmpeg | 任意版本 | 音频格式转换（语音识别必需） |
-| psutil | 最新版 | 系统监控（自动安装） |
+| ffmpeg | 任意 | 音频格式转换（语音识别必需） |
+| psutil | 最新 | 系统监控（自动安装） |
 
-## 配置说明
+---
+
+## ⚙️ 配置说明
 
 编辑 `config.json` 配置各项服务：
 
@@ -110,7 +147,6 @@ hupo-game/
         "http_port": 80,
         "https_port": 443,
         "voice_port": 85,
-        "remote_host": "http://你的服务器IP/",
         "ssl_cert_file": "cert.pem",
         "ssl_key_file": "key.pem"
     },
@@ -118,14 +154,16 @@ hupo-game/
     "token_required": "no",
     "minimax": {
         "api_key": "你的API密钥",
-        "group_id": "你的GroupID"
+        "group_id": "你的GroupID",
+        "model": "MiniMax-M2.7"
+    },
+    "openrouter": {
+        "api_key": "你的API密钥",
+        "model": "openrouter/auto"
     },
     "baidu": {
         "api_key": "百度API Key",
         "secret_key": "百度Secret Key"
-    },
-    "voice": {
-        "provider": "baidu"
     },
     "active_provider": "minimax"
 }
@@ -142,19 +180,18 @@ hupo-game/
 }
 ```
 
-启用后，所有 API 请求需要携带 Token：
+访问方式：
 - URL 参数: `?token=your_secure_token`
 - Cookie: `hupo_token=your_secure_token`
-- 请求体: `{"token": "your_secure_token", ...}`
 - Authorization 头: `Bearer your_secure_token`
 
 ### 支持的 AI 提供商
 
-| 提供商 | 说明 |
-|--------|------|
-| minimax | MiniMax AI（推荐） |
-| openrouter | OpenRouter API |
-| ollama | 本地 Ollama |
+| 提供商 | 说明 | 默认模型 |
+|--------|------|----------|
+| minimax | MiniMax AI（推荐） | MiniMax-M2.7 |
+| openrouter | OpenRouter API | openrouter/auto |
+| ollama | 本地 Ollama | gemma3:270m |
 
 ### 支持的语音提供商
 
@@ -163,32 +200,34 @@ hupo-game/
 | baidu | 百度语音识别（推荐） |
 | browser | 浏览器原生语音识别 |
 
-## API 端点
+---
 
-### 主服务 (端口 80)
+## 🔌 API 端点
 
-| 端点 | 方法 | 认证 | 访问限制 | 说明 |
-|------|------|------|----------|------|
-| `/health` | GET | - | 仅本地 | 健康检查（含CPU/内存/磁盘状态） |
-| `/metrics` | GET | - | 仅本地 | Prometheus 监控指标 |
-| `/model` | GET | - | 仅本地 | 获取当前模型信息 |
-| `/chat` | POST | Token | - | AI 对话接口 |
-| `/tts` | POST | Token | - | 语音合成接口 |
-| `/asr` | POST | Bearer | - | 语音识别接口 |
-| `/*` | GET | Token/Cookie | - | 静态文件服务 |
+### 主服务 (端口 80/443)
+
+| 端点 | 方法 | 认证 | 说明 |
+|------|------|------|------|
+| `/health` | GET | ❌ | 健康检查（仅本地访问） |
+| `/metrics` | GET | ❌ | Prometheus 监控指标（仅本地） |
+| `/model` | GET | ❌ | 获取当前模型信息（仅本地） |
+| `/chat` | POST | ✅ | AI 对话接口 |
+| `/tts` | POST | ✅ | 语音合成接口 |
+| `/asr` | POST | ✅ | 语音识别接口 |
+| `/*` | GET | ✅ | 静态文件服务 |
 
 ### 语音服务 (端口 85)
 
 | 端点 | 方法 | 认证 | 说明 |
 |------|------|------|------|
-| `/voice/config` | GET | Token | 获取语音配置 |
-| `/voice/token` | GET | Token | 获取百度语音 Token |
-| `/voice/recognize` | POST | Token | 语音识别接口 |
+| `/voice/config` | GET | ✅ | 获取语音配置 |
+| `/voice/token` | GET | ✅ | 获取百度语音 Token |
+| `/voice/recognize` | POST | ✅ | 语音识别接口 |
 
 ### 健康检查示例
 
 ```bash
-curl http://localhost:80/health
+curl http://localhost/health
 ```
 
 响应：
@@ -198,15 +237,37 @@ curl http://localhost:80/health
     "uptime": 3600.5,
     "cpu_percent": 15.2,
     "memory_percent": 42.8,
-    "disk_percent": 55.0,
-    "requests_total": 1234
+    "disk_percent": 55.0
 }
 ```
 
-### Prometheus 监控
+---
+
+## 🛡️ 安全特性
+
+| 特性 | 说明 |
+|------|------|
+| 🔑 **Token 认证** | 所有 API 端点支持 Token 验证 |
+| 🚦 **频率限制** | 防止单IP滥用（默认100次/分钟） |
+| 📦 **请求限制** | 最大 10MB，防止内存耗尽攻击 |
+| 🔒 **本地保护** | `/health`、`/metrics`、`/model` 仅允许本地访问 |
+| ✅ **格式验证** | 音频格式白名单，防止文件注入 |
+
+---
+
+## 📊 监控特性
+
+| 特性 | 说明 |
+|------|------|
+| 💓 **健康检查** | CPU/内存/磁盘监控 |
+| 📈 **Prometheus** | 标准指标导出，支持 Grafana 可视化 |
+| 🔄 **Systemd** | 开机自启，崩溃自动重启 |
+| 📝 **日志轮转** | 按日期自动轮转，防止日志过大 |
+
+### Prometheus 指标
 
 ```bash
-curl http://localhost:80/metrics
+curl http://localhost/metrics
 ```
 
 可用指标：
@@ -215,82 +276,33 @@ curl http://localhost:80/metrics
 - `hupo_requests_error` - 失败请求数
 - `hupo_chat_requests` - Chat API 请求数
 - `hupo_tts_requests` - TTS API 请求数
-- `hupo_cpu_percent` - CPU 使用率
-- `hupo_memory_percent` - 内存使用率
-- `hupo_uptime_seconds` - 运行时间
 
-## 服务管理
+---
 
-### 启动服务
-
-```bash
-# Linux - 默认守护进程模式（后台运行）
-./start.sh
-
-# Linux - 前台运行（调试用）
-./start.sh --foreground
-
-# Linux - HTTPS 模式
-./start.sh --https
-
-# Windows
-start.bat
-```
-
-### 停止服务
-
-```bash
-# Linux
-./stop.sh
-
-# Linux - 强制停止
-./stop.sh --force
-
-# Windows
-stop.bat
-
-# Windows - 强制停止
-stop.bat --force
-```
-
-### 查看状态
-
-```bash
-# 使用状态脚本
-./status.sh
-
-# 或使用 systemctl
-systemctl status hupo-bridge
-systemctl status hupo-voice
-```
-
-### 查看日志
-
-```bash
-# Systemd 日志
-journalctl -u hupo-bridge -f
-
-# 应用日志
-tail -f /root/hupo-game/logs/bridge_*.log
-```
-
-## 防火墙配置
+## 🌐 防火墙配置
 
 ```bash
 # Ubuntu/Debian
 sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
 sudo ufw allow 85/tcp
 
 # CentOS/RHEL
 sudo firewall-cmd --add-port=80/tcp --permanent
+sudo firewall-cmd --add-port=443/tcp --permanent
 sudo firewall-cmd --add-port=85/tcp --permanent
 sudo firewall-cmd --reload
 ```
 
-## 可选：本地 AI（Ollama）
+---
+
+## 🦙 可选：本地 AI（Ollama）
 
 ```bash
+# 安装 Ollama
 curl -fsSL https://ollama.com/install.sh | sh
+
+# 下载模型
 ollama pull gemma3:270m
 ```
 
@@ -305,103 +317,93 @@ ollama pull gemma3:270m
 }
 ```
 
-## 配置参数
+---
 
-### 请求限制
+## ❓ 常见问题
 
-修改 `nanobot_bridge.py` 中的配置：
-```python
-RATE_LIMIT_WINDOW = 60        # 频率限制时间窗口（秒）
-RATE_LIMIT_MAX_REQUESTS = 100 # 每IP每窗口最大请求数
-MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 请求体最大大小（字节）
-HTTP_TIMEOUT = 30             # HTTP 请求超时（秒）
-MAX_HISTORY_LENGTH = 20       # 对话历史最大长度
+<details>
+<summary><b>语音识别不工作？</b></summary>
+
+确保已安装 ffmpeg，并且语音代理服务已启动：
+```bash
+# 检查 ffmpeg
+ffmpeg -version
+
+# 检查语音服务
+./status.sh
 ```
+</details>
 
-### 语音服务配置
+<details>
+<summary><b>手机无法访问？</b></summary>
 
-修改 `voice-proxy.js` 中的配置：
-```javascript
-const MAX_BODY_SIZE = 10 * 1024 * 1024;  // 请求体最大大小
-const ALLOWED_FORMATS = ['webm', 'mp3', 'wav', 'ogg', 'm4a', 'aac'];  // 允许的音频格式
-```
+1. 检查防火墙是否开放端口
+2. 确保手机和服务器在同一网络
+3. 使用 HTTPS 时需要接受自签名证书
+</details>
 
-## 浏览器兼容性
+<details>
+<summary><b>AI 不回复？</b></summary>
 
-| 浏览器 | 支持程度 |
-|--------|----------|
-| Chrome | 完全支持 |
-| Edge | 完全支持 |
-| Firefox | 基本支持 |
-| Safari | 基本支持 |
-| 手机浏览器 | 需要HTTPS才能使用语音 |
+1. 检查 API Key 是否正确
+2. 查看控制台错误日志
+3. 运行 `./status.sh` 查看详细错误
+</details>
 
-## 常见问题
+<details>
+<summary><b>Token 认证失败？</b></summary>
 
-**Q: 语音识别不工作？**
-A: 确保已安装 ffmpeg，并且语音代理服务已启动
+确保：
+- `config.json` 中 `token_required` 设置为 `yes`
+- 请求携带正确的 `access_token`
+- URL、Cookie 或 Authorization 头中包含 token
+</details>
 
-**Q: 手机无法访问？**
-A: 检查防火墙是否开放端口，确保手机和服务器在同一网络
+<details>
+<summary><b>切换 API 提供商后模型不对？</b></summary>
 
-**Q: AI 不回复？**
-A: 检查 API Key 是否正确，查看控制台错误日志
+刷新浏览器页面，系统会自动加载新提供商的默认模型。
+</details>
 
-**Q: 请求频率超限？**
-A: 默认每IP每分钟100次请求，可在代码中调整限制
+---
 
-**Q: 如何查看系统状态？**
-A:
-- Linux: 运行 `./status.sh`
-- Windows: 运行 `status.bat`
-- 或访问 `http://localhost/health`（仅本地）
+## 📋 更新日志
 
-**Q: 如何查看日志？**
-A:
-- Linux: 运行 `./status.sh` 会显示最近错误和完整日志
-- Windows: 运行 `status.bat` 会显示最近错误和完整日志
-- 或直接查看日志文件：
-  - Bridge 日志: `logs/bridge_YYYYMMDD.log`
-  - Voice 日志: `logs/voice_YYYYMMDD.log`
+### v1.3.0 (最新)
+- ✨ 增强 API 错误日志详细程度（HTTP状态码、错误码、响应内容）
+- 🐛 修复切换 API 提供商后模型名称不更新的问题
+- 🐛 修复默认配置缺少 openrouter 和 baidu 的问题
+- 🐛 修复 voice-proxy.js 日志时间使用 UTC 的问题
+- 📝 README.md 美化更新
 
-**Q: Token 认证失败？**
-A: 确保 `config.json` 中 `token_required` 设置为 `yes`，且请求携带正确的 `access_token`
-
-**Q: 请求体过大错误？**
-A: 默认限制 10MB，如需调整请修改 `MAX_CONTENT_LENGTH`
-
-## 更新日志
-
-### v1.2.0 (最新)
-- start.sh 默认启用守护进程模式
-- 添加 stop.bat 和 stop.sh 停止脚本
-- status.bat 和 status.sh 添加日志查看功能
-- voice-proxy.js 添加文件日志功能
-- 修复配置验证逻辑（移除顶层 port 字段验证）
-- 修正 SSL 证书配置读取路径
-- 更新 logrotate.conf 支持 voice 日志轮转
-- 更新 config.example.json 配置结构
+### v1.2.0
+- 🚀 start.sh 默认启用守护进程模式
+- ➕ 添加 stop.bat 和 stop.sh 停止脚本
+- 📝 status 脚本添加日志查看功能
+- 📝 voice-proxy.js 添加文件日志功能
+- 🐛 修复配置验证逻辑
+- 🔐 修正 SSL 证书配置读取路径
 
 ### v1.1.0
-- 添加线程安全保护（Prometheus 指标、频率限制数据）
-- 添加 HTTP 请求超时设置（30秒）
-- 添加请求体大小限制（10MB）
-- 添加音频格式白名单验证
-- 添加 `/voice/config` 端点认证
-- 添加 `/model` 端点本地访问限制
-- 改进 JSON 解析错误处理
-- 改进环境变量解析异常处理
-- 修复命令注入漏洞（使用 spawn 替代 exec）
-- 修复内存泄漏（频率限制数据定期清理）
+- 🔒 添加线程安全保护
+- ⏱️ 添加 HTTP 请求超时设置
+- 📦 添加请求体大小限制
+- ✅ 添加音频格式白名单验证
+- 🐛 修复命令注入漏洞
 
 ### v1.0.0
-- 初始版本发布
-- 支持 MiniMax、OpenRouter、Ollama AI 提供商
-- 支持百度语音识别
-- 支持请求频率限制
-- 支持 Prometheus 监控
-- 支持 Systemd 服务管理
+- 🎉 初始版本发布
 
-## License
+---
+
+## 📄 License
 
 MIT License
+
+---
+
+<div align="center">
+
+**Made with ❤️ for cat lovers**
+
+</div>
