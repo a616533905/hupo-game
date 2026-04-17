@@ -10,8 +10,16 @@
         "ssl_key_file": "key.pem"
     },
     
+    "local": {
+        "type": "ollama",
+        "ollama": {
+            "host": "http://127.0.0.1:11434",
+            "model": "gemma3:270m"
+        }
+    },
+    
     "access_token": "your_token_here",
-    "token_required": "no",
+    "token_required": "yes/no",
     
     "minimax": {
         "api_key": "你的MiniMax API Key",
@@ -20,7 +28,8 @@
     },
     "openrouter": {
         "api_key": "你的OpenRouter API Key",
-        "model": "arcee-ai/trinity-large-preview:free"
+        "model": "arcee-ai/trinity-large-preview:free",
+        "api_base": null
     },
     "ollama": {
         "api_key": "EMPTY",
