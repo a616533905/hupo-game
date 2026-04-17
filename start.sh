@@ -32,22 +32,22 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         *)
-            echo "Unknown option: $1"
-            echo "Usage: $0 [--https|-s] [--http|-h] [--foreground|-f]"
-            echo "  --https, -s    Enable HTTPS"
-            echo "  --http,  -h    Enable HTTP only"
-            echo "  --foreground, -f   Run in foreground (override daemon mode)"
+            echo "未知选项: $1"
+            echo "用法: $0 [--https|-s] [--http|-h] [--foreground|-f]"
+            echo "  --https, -s    启用 HTTPS"
+            echo "  --http,  -h    仅使用 HTTP"
+            echo "  --foreground, -f   前台运行（覆盖守护进程模式）"
             exit 1
             ;;
     esac
 done
 
 echo "========================================"
-echo "  Hupo Game Server Startup Script"
+echo "  琥珀冒险 - 服务器启动脚本"
 echo "========================================"
 echo ""
 
-echo "[1/6] Loading configuration..."
+echo "[1/6] 加载配置..."
 if [ -f "config.json" ]; then
     HTTP_PORT=$(grep -o '"http_port"[[:space:]]*:[[:space:]]*[0-9]*' config.json | grep -o '[0-9]*$')
     HTTPS_PORT=$(grep -o '"https_port"[[:space:]]*:[[:space:]]*[0-9]*' config.json | grep -o '[0-9]*$')
@@ -66,66 +66,66 @@ else
     API_PORT=${API_PORT:-$HTTP_PORT}
 fi
 
-echo "  API Port: $API_PORT"
-echo "  Voice Port: $VOICE_PORT"
-echo "  HTTPS: $([ $USE_HTTPS -eq 1 ] && echo 'Enabled' || echo 'Disabled')"
+echo "  API端口: $API_PORT"
+echo "  语音端口: $VOICE_PORT"
+echo "  HTTPS: $([ $USE_HTTPS -eq 1 ] && echo '已启用' || echo '已禁用')"
 echo ""
 
 cleanup_port() {
     local port=$1
     local service=$2
-    echo "  Checking port $port ($service)..."
+    echo "  检查端口 $port ($service)..."
 
     pid=$(lsof -t -i:$port 2>/dev/null)
     if [ -n "$pid" ]; then
-        echo "    Found port $port in use, PID: $pid"
-        proc_name=$(ps -p $pid -o comm= 2>/dev/null || echo "Unknown")
-        echo "    Process: $proc_name"
-        echo "    Closing..."
+        echo "    发现端口 $port 被占用, PID: $pid"
+        proc_name=$(ps -p $pid -o comm= 2>/dev/null || echo "未知")
+        echo "    进程: $proc_name"
+        echo "    正在关闭..."
         kill -9 $pid 2>/dev/null
         sleep 1
         if lsof -t -i:$port 2>/dev/null > /dev/null; then
-            echo "    Warning: Port $port still in use"
+            echo "    警告: 端口 $port 仍被占用"
         else
-            echo "    Closed"
+            echo "    已关闭"
         fi
     else
-        echo "    Port $port is free"
+        echo "    端口 $port 空闲"
     fi
 }
 
 cleanup_process() {
     local proc_name=$1
     local display_name=$2
-    echo "  Checking $display_name process..."
+    echo "  检查 $display_name 进程..."
 
     pids=$(pgrep -f "$proc_name" 2>/dev/null)
     if [ -n "$pids" ]; then
         for pid in $pids; do
-            echo "    Found $display_name, PID: $pid"
-            echo "    Stopping..."
+            echo "    发现 $display_name, PID: $pid"
+            echo "    正在停止..."
             kill -9 $pid 2>/dev/null
-            echo "    Stopped PID: $pid"
+            echo "    已停止 PID: $pid"
         done
         sleep 1
         REMAINING=$(pgrep -f "$proc_name" 2>/dev/null)
         if [ -n "$REMAINING" ]; then
-            echo "    Warning: $display_name may still be running"
+            echo "    警告: $display_name 可能仍在运行"
         else
-            echo "    $display_name stopped"
+            echo "    $display_name 已停止"
         fi
     else
-        echo "    $display_name not running"
+        echo "    $display_name 未运行"
     fi
 }
 
-echo "[2/6] Stopping existing services..."
+echo "[2/6] 停止现有服务..."
 cleanup_process "nanobot_bridge.py" "AI Bridge"
 cleanup_process "voice-proxy.js" "Voice Proxy"
 
-echo "[3/6] Clearing ports..."
+echo "[3/6] 清理端口..."
 if [ $USE_HTTPS -eq 1 ]; then
-    cleanup_port 80 "HTTP Redirect"
+    cleanup_port 80 "HTTP重定向"
 fi
 cleanup_port $API_PORT "AI Bridge"
 cleanup_port $VOICE_PORT "Voice Proxy"
@@ -136,24 +136,24 @@ generate_ssl_certs() {
     local common_name="$3"
 
     if [ -f "$cert_file" ] && [ -f "$key_file" ]; then
-        echo "  Certificate exists: $cert_file"
+        echo "  证书已存在: $cert_file"
         return 0
     fi
 
-    echo "  Generating self-signed SSL certificate..."
+    echo "  生成自签名SSL证书..."
     if command -v openssl &> /dev/null; then
         openssl req -x509 -newkey rsa:2048 -keyout "$key_file" -out "$cert_file" \
             -days 365 -nodes -subj "/CN=$common_name" 2>/dev/null
         if [ $? -eq 0 ]; then
-            echo "  Certificate generated: $cert_file"
+            echo "  证书已生成: $cert_file"
             return 0
         fi
     fi
-    echo "  Warning: Cannot generate certificate, SSL will be disabled"
+    echo "  警告: 无法生成证书，SSL将被禁用"
     return 1
 }
 
-echo "[4/6] Checking SSL certificates..."
+echo "[4/6] 检查SSL证书..."
 if [ $USE_HTTPS -eq 1 ]; then
     if [ -n "$SSL_CERT" ] && [ -n "$SSL_KEY" ]; then
         IP=$(hostname -I 2>/dev/null | awk '{print $1}')
@@ -161,13 +161,13 @@ if [ $USE_HTTPS -eq 1 ]; then
             generate_ssl_certs "$SSL_CERT" "$SSL_KEY" "$IP" || true
         fi
     else
-        echo "  No SSL certificate configured in config.json"
+        echo "  config.json 中未配置SSL证书"
     fi
 else
-    echo "  HTTPS disabled, skipping SSL certificates"
+    echo "  HTTPS已禁用，跳过SSL证书"
 fi
 
-echo "[5/6] Starting AI Bridge (port $API_PORT)..."
+echo "[5/6] 启动 AI Bridge (端口 $API_PORT)..."
 if [ $RUN_DAEMON -eq 1 ]; then
     LOG_DIR="logs"
     mkdir -p "$LOG_DIR"
@@ -177,12 +177,12 @@ if [ $RUN_DAEMON -eq 1 ]; then
         nohup env USE_HTTPS=0 API_PORT=$API_PORT VOICE_PORT=$VOICE_PORT python3 nanobot_bridge.py > "$LOG_DIR/bridge.log" 2>&1 &
     fi
     API_PID=$!
-    echo "  AI Bridge PID: $API_PID (background)"
+    echo "  AI Bridge PID: $API_PID (后台运行)"
 
-    echo "[6/6] Starting voice proxy (port $VOICE_PORT)..."
+    echo "[6/6] 启动语音代理 (端口 $VOICE_PORT)..."
     nohup env VOICE_PORT=$VOICE_PORT node voice-proxy.js > "$LOG_DIR/voice.log" 2>&1 &
     VOICE_PID=$!
-    echo "  Voice Proxy PID: $VOICE_PID (background)"
+    echo "  Voice Proxy PID: $VOICE_PID (后台运行)"
 else
     if [ $USE_HTTPS -eq 1 ]; then
         USE_HTTPS=1 SSL_CERT_FILE="$SSL_CERT" SSL_KEY_FILE="$SSL_KEY" API_PORT=$API_PORT VOICE_PORT=$VOICE_PORT python3 nanobot_bridge.py &
@@ -192,7 +192,7 @@ else
     API_PID=$!
     echo "  AI Bridge PID: $API_PID"
 
-    echo "[6/6] Starting voice proxy (port $VOICE_PORT)..."
+    echo "[6/6] 启动语音代理 (端口 $VOICE_PORT)..."
     VOICE_PORT=$VOICE_PORT node voice-proxy.js &
     VOICE_PID=$!
     echo "  Voice Proxy PID: $VOICE_PID"
@@ -203,12 +203,12 @@ sleep 3
 if [ $RUN_DAEMON -eq 1 ]; then
     echo ""
     echo "========================================"
-    echo "  Server Running in Background"
+    echo "  服务器已在后台运行"
     echo "========================================"
     echo ""
-    echo "  Logs: logs/bridge.log, logs/voice.log"
+    echo "  日志: logs/bridge.log, logs/voice.log"
     echo ""
-    echo "  To stop:"
+    echo "  停止服务:"
     echo "    kill $API_PID $VOICE_PID"
     echo ""
     echo "========================================"
@@ -218,39 +218,39 @@ fi
 
 echo ""
 echo "========================================"
-echo "  Server Started Successfully"
+echo "  服务器启动成功"
 echo "========================================"
 echo ""
 
 IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 
 if [ $USE_HTTPS -eq 1 ]; then
-    echo "  Local:        https://localhost:$API_PORT"
+    echo "  本地访问:    https://localhost:$API_PORT"
     if [ -n "$IP" ]; then
-        echo "  Network:      https://$IP:$API_PORT"
-        echo "  (First visit: accept self-signed certificate)"
+        echo "  局域网访问:  https://$IP:$API_PORT"
+        echo "  (首次访问需接受自签名证书)"
     fi
     if [ -n "$SSL_CERT" ] && [ -f "$SSL_CERT" ]; then
         echo ""
-        echo "  Note: HTTP port 80 redirects to HTTPS"
+        echo "  注意: HTTP端口80会重定向到HTTPS"
     fi
 else
-    echo "  Local:        http://localhost:$API_PORT"
+    echo "  本地访问:    http://localhost:$API_PORT"
     if [ -n "$IP" ]; then
-        echo "  Network:      http://$IP:$API_PORT"
+        echo "  局域网访问:  http://$IP:$API_PORT"
     fi
 fi
 
 echo ""
-echo "  Voice Port: $VOICE_PORT"
-echo "  Token:      ?token=$ACCESS_TOKEN"
+echo "  语音端口: $VOICE_PORT"
+echo "  访问令牌: ?token=$ACCESS_TOKEN"
 echo ""
 echo "========================================"
 echo ""
-echo "Tip: Ensure firewall allows these ports"
-echo "     Use LAN IP for mobile access"
+echo "提示: 请确保防火墙允许这些端口"
+echo "      使用局域网IP可从手机访问"
 echo ""
-echo "Press Ctrl+C to stop all services"
+echo "按 Ctrl+C 停止所有服务"
 echo ""
 
 trap "kill $API_PID $VOICE_PID 2>/dev/null; exit 0" SIGINT SIGTERM
