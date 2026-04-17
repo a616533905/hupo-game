@@ -107,8 +107,10 @@ body.snow .snowfall{display:block}
 .chat-input-area{flex-shrink:0;padding:10px;border-top:1px solid rgba(255,255,255,0.1);display:flex;gap:6px}
 .chat-input-area input{flex:1;padding:8px 12px;border:2px solid rgba(255,255,255,0.1);border-radius:16px;background:rgba(255,255,255,0.05);color:var(--text);font-size:12px;outline:none}
 .chat-input-area input:focus{border-color:var(--primary)}
-.chat-input-area button{padding:8px 16px;border:none;border-radius:16px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;font-size:12px;cursor:pointer}
-.chat-input-area .voice-btn{padding:12px;border:none;border-radius:50%;background:linear-gradient(135deg,#4ecdc4,#44a08d);color:#fff;font-size:16px;cursor:pointer;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
+.chat-input-area button{padding:8px 16px;border:none;border-radius:16px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;font-size:12px;cursor:pointer;transition:all 0.2s}
+.chat-input-area button:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(255,107,157,0.4);filter:brightness(1.1)}
+.chat-input-area .voice-btn{padding:12px;border:none;border-radius:50%;background:linear-gradient(135deg,#4ecdc4,#44a08d);color:#fff;font-size:16px;cursor:pointer;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+.chat-input-area .voice-btn:hover{transform:scale(1.1);box-shadow:0 4px 15px rgba(78,205,196,0.4)}
 .chat-input-area .voice-btn.recording{background:linear-gradient(135deg,#ff6b6b,#ee5a5a);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
 .chat-history{height:80px;background:#0a0a0a;border-radius:8px;padding:8px;margin:8px;overflow-y:auto;font-size:10px;line-height:1.3;color:#aaa;font-family:monospace;border:1px solid #333}
@@ -152,13 +154,16 @@ body.snow .snowfall{display:block}
 .event-popup.show{transform:translate(-50%,-50%) scale(1)}
 .event-popup h3{color:var(--primary);margin-bottom:10px;font-size:16px;flex-shrink:0}
 .event-popup p{margin-bottom:10px;line-height:1.5;font-size:13px}
-.event-popup button{padding:14px 28px;border:none;border-radius:14px;background:var(--primary);color:#fff;cursor:pointer;margin:5px;font-size:14px;min-height:48px;min-width:100px}
+.event-popup button{padding:14px 28px;border:none;border-radius:14px;background:var(--primary);color:#fff;cursor:pointer;margin:5px;font-size:14px;min-height:48px;min-width:100px;transition:all 0.2s}
+.event-popup button:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(255,107,157,0.4);filter:brightness(1.1)}
 .event-popup button.secondary{background:rgba(255,255,255,0.1)}
+.event-popup button.secondary:hover{background:rgba(255,255,255,0.2);transform:translateY(-2px)}
 .event-popup-content{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;padding-bottom:5px}
 .event-popup-footer{margin-top:10px;flex-shrink:0;position:sticky;bottom:0;z-index:100;background:var(--bg-card);padding:15px 10px 10px;border-top:1px solid rgba(255,255,255,0.1)}
 .event-popup-footer button{min-width:140px;min-height:48px;padding:14px 32px}
 .shop-tabs{display:flex;gap:5px;margin-bottom:10px}
-.shop-tab{padding:5px 12px;border:none;border-radius:8px;background:rgba(255,255,255,0.1);color:var(--text);cursor:pointer;font-size:11px}
+.shop-tab{padding:5px 12px;border:none;border-radius:8px;background:rgba(255,255,255,0.1);color:var(--text);cursor:pointer;font-size:11px;transition:all 0.2s}
+.shop-tab:hover{background:rgba(255,255,255,0.2);transform:translateY(-1px)}
 .shop-tab.active{background:var(--primary);color:#fff}
 .shop-items{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:10px 0;max-height:250px;overflow-y:auto;overflow-x:hidden}
 .shop-item{padding:12px;background:rgba(255,255,255,0.05);border-radius:8px;cursor:pointer;transition:all 0.2s;min-height:50px}
@@ -251,7 +256,8 @@ body.snow .snowfall{display:block}
 .npc-dialog .npc-name{font-size:12px;color:var(--accent);margin-bottom:3px}
 .npc-dialog .npc-text{font-size:13px;line-height:1.4}
 .npc-dialog .npc-options{display:flex;gap:5px;margin-top:10px;flex-wrap:wrap}
-.npc-dialog .npc-options button{padding:8px 14px;border:none;border-radius:8px;background:var(--primary);color:#fff;cursor:pointer;font-size:12px;min-height:36px}
+.npc-dialog .npc-options button{padding:8px 14px;border:none;border-radius:8px;background:var(--primary);color:#fff;cursor:pointer;font-size:12px;min-height:36px;transition:all 0.2s}
+.npc-dialog .npc-options button:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(255,107,157,0.4);filter:brightness(1.1)}
 .festival-banner{position:fixed;top:0;left:0;right:0;background:linear-gradient(135deg,#ff6b9d,#ffd93d);padding:8px;text-align:center;z-index:50;animation:bannerPulse 2s ease-in-out infinite}
 @keyframes bannerPulse{0%,100%{opacity:1}50%{opacity:0.8}}
 .festival-banner h4{color:#000;font-size:12px;margin:0}
@@ -368,7 +374,8 @@ body.snow .snowfall{display:block}
 .battle-skill-btn .name{font-weight:bold}
 .battle-skill-btn .cost{font-size:9px;color:var(--text-dim)}
 .battle-actions{display:flex;gap:10px}
-.battle-actions button{flex:1;padding:14px;border:none;border-radius:12px;cursor:pointer;font-size:14px;font-weight:bold;min-height:50px}
+.battle-actions button{flex:1;padding:14px;border:none;border-radius:12px;cursor:pointer;font-size:14px;font-weight:bold;min-height:50px;transition:all 0.2s}
+.battle-actions button:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(0,0,0,0.3);filter:brightness(1.1)}
 .battle-result{padding:20px;text-align:center}
 .battle-result.victory h3{color:#2ecc71}
 .battle-result.defeat h3{color:#e74c3c}
@@ -481,7 +488,8 @@ body.snow .snowfall{display:block}
 .training-skill .mastery{font-size:10px;color:var(--accent)}
 .training-skill .bar{height:6px;background:rgba(255,255,255,0.1);border-radius:3px;margin-top:5px;overflow:hidden}
 .training-skill .bar-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));transition:width 0.3s}
-.training-skill button{padding:10px 18px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-size:12px;cursor:pointer;min-height:44px}
+.training-skill button{padding:10px 18px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-size:12px;cursor:pointer;min-height:44px;transition:all 0.2s}
+.training-skill button:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 4px 12px rgba(255,107,157,0.4);filter:brightness(1.1)}
 .training-skill button:disabled{opacity:0.5;cursor:not-allowed}
 .sleep-panel{text-align:center;padding:20px}
 .sleep-cat{font-size:80px;margin:20px 0;animation:sleepBounce 2s infinite}
@@ -523,7 +531,9 @@ body.snow .snowfall{display:block}
 .tutorial-box .btn-group{display:flex;gap:10px;justify-content:center}
 .tutorial-box button{padding:12px 28px;border:none;border-radius:10px;cursor:pointer;font-size:14px;transition:all 0.2s;min-height:44px}
 .tutorial-box .btn-primary{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
+.tutorial-box .btn-primary:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(102,126,234,0.4);filter:brightness(1.1)}
 .tutorial-box .btn-secondary{background:rgba(255,255,255,0.1);color:var(--text-dim)}
+.tutorial-box .btn-secondary:hover{background:rgba(255,255,255,0.2);transform:translateY(-2px)}
 .tutorial-dots{display:flex;gap:8px;justify-content:center;margin-top:15px}
 .tutorial-dots .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.2)}
 .tutorial-dots .dot.active{background:var(--accent)}
