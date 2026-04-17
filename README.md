@@ -12,6 +12,22 @@
 
 ---
 
+## 📸 游戏截图
+
+<div align="center">
+
+| 游戏主界面 | AI 对话 |
+|:---:|:---:|
+| ![游戏主界面](screenshots/game.png) | ![AI 对话](screenshots/chat.png) |
+
+| 战斗系统 | 设置面板 |
+|:---:|:---:|
+| ![战斗系统](screenshots/battle.png) | ![设置面板](screenshots/settings.png) |
+
+</div>
+
+---
+
 ## 🎮 功能特性
 
 | 功能 | 说明 |
@@ -120,6 +136,12 @@ hupo-game/
 └── 📂 logs/               # 日志目录（自动创建）
     ├── bridge_*.log       # AI 服务日志
     └── voice_*.log        # 语音服务日志
+
+├── 📸 screenshots/        # 游戏截图
+    ├── game.png           # 游戏主界面
+    ├── chat.png           # AI 对话
+    ├── battle.png         # 战斗系统
+    └── settings.png       # 设置面板
 ```
 
 ---
