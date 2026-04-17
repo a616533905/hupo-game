@@ -13,8 +13,10 @@ from collections import Counter
 if sys.stdout.encoding != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
-CONFIG_FILE = "config.json"
-LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
+CONFIG_FILE = os.path.join(PROJECT_DIR, "config.json")
+LOG_DIR = os.path.join(PROJECT_DIR, 'logs')
 
 ATTACK_PATTERNS = [
     r'eval-stdin',

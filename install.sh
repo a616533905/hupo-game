@@ -60,13 +60,14 @@ chmod +x $INSTALL_DIR/start.sh
 chmod +x $INSTALL_DIR/stop.sh
 chmod +x $INSTALL_DIR/install.sh
 chmod +x $INSTALL_DIR/status.sh
-chmod +x $INSTALL_DIR/health_check.sh
+chmod +x $INSTALL_DIR/cron/health_check.sh
 chmod 644 /etc/systemd/system/hupo-bridge.service
 chmod 644 /etc/systemd/system/hupo-voice.service
 
 echo "[7/7] 配置定时任务 (Cron)..."
-CRON_HEALTH="*/5 * * * * $INSTALL_DIR/health_check.sh >> $INSTALL_DIR/logs/health_check.log 2>&1"
-CRON_AUDIT="0 3 * * * $INSTALL_DIR/log_auditor.py 24 >> $INSTALL_DIR/logs/audit_cron.log 2>&1"
+CRON_DIR="$INSTALL_DIR/cron"
+CRON_HEALTH="*/5 * * * * $CRON_DIR/health_check.sh >> $INSTALL_DIR/logs/health_check.log 2>&1"
+CRON_AUDIT="0 3 * * * cd $INSTALL_DIR && /usr/bin/python3 $CRON_DIR/log_auditor.py 24 >> $INSTALL_DIR/logs/audit_cron.log 2>&1"
 
 if ! crontab -l 2>/dev/null | grep -q "health_check.sh"; then
     (crontab -l 2>/dev/null; echo "$CRON_HEALTH") | crontab -
