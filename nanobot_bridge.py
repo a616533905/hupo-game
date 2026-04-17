@@ -46,9 +46,12 @@ import threading
 
 RATE_LIMIT_WINDOW = 60
 RATE_LIMIT_MAX_REQUESTS = 100
+RATE_LIMIT_CHAT_MAX = 30
+RATE_LIMIT_CHAT_WINDOW = 60
 MAX_CONTENT_LENGTH = 10 * 1024 * 1024
 HTTP_TIMEOUT = 30
 rate_limit_data = {}
+chat_rate_limit_data = {}
 rate_limit_lock = threading.Lock()
 
 prometheus_metrics = {
@@ -80,6 +83,21 @@ def check_rate_limit(client_ip):
         rate_limit_data[client_ip].append(now)
         return True
 
+def check_chat_rate_limit(client_ip):
+    """检查 /chat 接口的请求频率限制（更严格）"""
+    now = time.time()
+    with rate_limit_lock:
+        if client_ip not in chat_rate_limit_data:
+            chat_rate_limit_data[client_ip] = []
+        
+        chat_rate_limit_data[client_ip] = [t for t in chat_rate_limit_data[client_ip] if now - t < RATE_LIMIT_CHAT_WINDOW]
+        
+        if len(chat_rate_limit_data[client_ip]) >= RATE_LIMIT_CHAT_MAX:
+            return False
+        
+        chat_rate_limit_data[client_ip].append(now)
+        return True
+
 def cleanup_rate_limit_data():
     """定期清理过期的频率限制数据"""
     while True:
@@ -93,8 +111,17 @@ def cleanup_rate_limit_data():
                     ips_to_remove.append(ip)
             for ip in ips_to_remove:
                 del rate_limit_data[ip]
-            if ips_to_remove:
-                logger.debug(f"清理了 {len(ips_to_remove)} 个过期的IP频率限制记录")
+            
+            chat_ips_to_remove = []
+            for ip in chat_rate_limit_data:
+                chat_rate_limit_data[ip] = [t for t in chat_rate_limit_data[ip] if now - t < RATE_LIMIT_CHAT_WINDOW]
+                if not chat_rate_limit_data[ip]:
+                    chat_ips_to_remove.append(ip)
+            for ip in chat_ips_to_remove:
+                del chat_rate_limit_data[ip]
+            
+            if ips_to_remove or chat_ips_to_remove:
+                logger.debug(f"清理了 {len(ips_to_remove)} 个通用频率限制记录, {len(chat_ips_to_remove)} 个聊天频率限制记录")
 
 cleanup_thread = threading.Thread(target=cleanup_rate_limit_data, daemon=True)
 cleanup_thread.start()
@@ -817,7 +844,29 @@ class NanobotHandler(BaseHTTPRequestHandler):
             path_only = self.path.split('?')[0]
             if path_only == "/":
                 increment_metric('chat_requests')
+                
+                if not check_chat_rate_limit(client_ip):
+                    logger.warning(f"[{client_ip}] POST /chat - 请求频率超限")
+                    increment_metric('requests_error')
+                    self.send_response(429)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Too Many Requests", "message": "聊天请求过于频繁，请稍后再试"}).encode('utf-8'))
+                    return
+                
                 content_length = int(self.headers.get("Content-Length", 0))
+                
+                if content_length == 0:
+                    logger.warning(f"[{client_ip}] POST /chat - 空请求体")
+                    increment_metric('requests_error')
+                    self.send_response(400)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Bad Request", "message": "请求体不能为空"}).encode('utf-8'))
+                    return
+                
                 if content_length > MAX_CONTENT_LENGTH:
                     logger.warning(f"[{client_ip}] POST / - 请求体过大: {content_length}")
                     self.send_response(413)
