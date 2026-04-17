@@ -6,21 +6,12 @@
         "http_port": 80,
         "https_port": 443,
         "voice_port": 85,
-        "remote_host": "http://你的服务器IP/",
         "ssl_cert_file": "cert.pem",
         "ssl_key_file": "key.pem"
     },
     
-    "local": {
-        "type": "ollama",
-        "ollama": {
-            "host": "http://127.0.0.1:11434",
-            "model": "gemma3:270m"
-        }
-    },
-    
     "access_token": "your_token_here",
-    "token_required": "yes/no",
+    "token_required": "no",
     
     "minimax": {
         "api_key": "你的MiniMax API Key",
@@ -29,8 +20,7 @@
     },
     "openrouter": {
         "api_key": "你的OpenRouter API Key",
-        "model": "google/gemma-4-26b-a4b-it:free",
-        "api_base": null
+        "model": "arcee-ai/trinity-large-preview:free"
     },
     "ollama": {
         "api_key": "EMPTY",
