@@ -2131,8 +2131,10 @@ function updateModelSource(){
 function updateApiProvider(){
     const provider=document.getElementById('apiProvider').value;
     const providerConfig=window.gameConfig?.[provider]||{};
-    document.getElementById('modelName').value=providerConfig.model||'';
+    const defaultModel=providerConfig.model||'';
+    document.getElementById('modelName').value=defaultModel;
     localStorage.setItem('hupo_api_provider',provider);
+    localStorage.setItem('hupo_remote_model',defaultModel);
     updateSettingsStatus();
     updateModelTag();
     showSaveToast();
