@@ -9,15 +9,18 @@ echo.
 
 if not exist "server.ini" (
     echo 错误: server.ini 配置文件不存在
-    echo 请创建 server.ini 文件
     pause
     exit /b 1
 )
 
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "host" server.ini') do set "SERVER_IP=%%b"
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "user" server.ini') do set "SERVER_USER=%%b"
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "port" server.ini') do set "SERVER_PORT=%%b"
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "dir" server.ini') do set "SERVER_DIR=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "^host" server.ini') do set "SERVER_IP=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "^user" server.ini') do set "SERVER_USER=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "^port" server.ini') do set "SERVER_PORT=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "^password" server.ini') do set "SERVER_PASS=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "^dir" server.ini') do set "SERVER_DIR=%%b"
+
+if not defined SERVER_PORT set SERVER_PORT=22
+if not defined SERVER_DIR set SERVER_DIR=/root/hupo-game
 
 echo [1/3] 检查 Git 状态...
 git status --porcelain >nul 2>&1
@@ -42,7 +45,7 @@ echo   推送成功
 
 echo.
 echo [3/3] 在服务器上执行更新...
-ssh -p %SERVER_PORT% %SERVER_USER%@%SERVER_IP% "cd %SERVER_DIR% && git pull origin main"
+echo %SERVER_PASS% | plink -P %SERVER_PORT% %SERVER_USER%@%SERVER_IP% -pw %SERVER_PASS% "cd %SERVER_DIR% && git pull origin main"
 
 if errorlevel 1 (
     echo.
