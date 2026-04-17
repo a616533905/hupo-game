@@ -1034,6 +1034,25 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"model": f"{active_provider}/{model}"}, ensure_ascii=False).encode('utf-8'))
                 return
 
+            if self.path == "/config.json":
+                file_path = os.path.join(WEB_ROOT, 'config.json')
+                if os.path.isfile(file_path):
+                    try:
+                        with open(file_path, 'rb') as f:
+                            content = f.read()
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.end_headers()
+                        self.wfile.write(content)
+                    except Exception as e:
+                        logger.error(f"读取 config.json 失败：{str(e)}")
+                        self.send_response(500)
+                        self.end_headers()
+                else:
+                    self.send_response(404)
+                    self.end_headers()
+                return
+
             if not self.check_token():
                 parsed = urlparse(self.path)
                 query = parse_qs(parsed.query)
