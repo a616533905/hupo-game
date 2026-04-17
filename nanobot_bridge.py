@@ -54,6 +54,46 @@ rate_limit_data = {}
 chat_rate_limit_data = {}
 rate_limit_lock = threading.Lock()
 
+MAX_CONCURRENT_AI_REQUESTS = 10
+ai_request_semaphore = threading.Semaphore(MAX_CONCURRENT_AI_REQUESTS)
+ai_request_queue = []
+ai_queue_lock = threading.Lock()
+
+HTTP_POOL_SIZE = 20
+http_pool_lock = threading.Lock()
+http_pool_minimax = []
+http_pool_minimax_tts = []
+http_pool_openrouter = []
+
+def get_http_connection(host, pool_list, timeout=HTTP_TIMEOUT):
+    with http_pool_lock:
+        for i, conn in enumerate(pool_list):
+            if conn and conn.host == host:
+                try:
+                    conn.request("GET", "/", timeout=1)
+                    conn.getresponse().read()
+                except:
+                    try:
+                        conn.close()
+                    except:
+                        pass
+                    pool_list[i] = None
+                    continue
+                pool_list[i] = None
+                return conn
+        return http.client.HTTPSConnection(host, timeout=timeout)
+
+def return_http_connection(conn, pool_list):
+    if conn:
+        with http_pool_lock:
+            if len(pool_list) < HTTP_POOL_SIZE:
+                pool_list.append(conn)
+            else:
+                try:
+                    conn.close()
+                except:
+                    pass
+
 prometheus_metrics = {
     'requests_total': 0,
     'requests_success': 0,
@@ -350,7 +390,7 @@ conversation_history = []
 MAX_HISTORY_LENGTH = 20
 
 def call_minimax_api(message, model_override=None):
-    """调用 MiniMax API"""
+    """调用 MiniMax API (带并发控制和连接池)"""
     global conversation_history
 
     provider_config = get_provider_config('minimax')
@@ -374,8 +414,6 @@ def call_minimax_api(message, model_override=None):
         "temperature": 0.7
     }
 
-    conn = http.client.HTTPSConnection("api.minimax.chat", timeout=HTTP_TIMEOUT)
-
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}"
@@ -383,7 +421,14 @@ def call_minimax_api(message, model_override=None):
 
     path = f"/v1/text/chatcompletion_v2?GroupId={group_id}"
 
+    acquired = ai_request_semaphore.acquire(blocking=True, timeout=30)
+    if not acquired:
+        logger.warning("AI 请求队列已满，请稍后重试")
+        return "系统繁忙，请稍后重试"
+
+    conn = None
     try:
+        conn = get_http_connection("api.minimax.chat", http_pool_minimax)
         conn.request("POST", path, json.dumps(data), headers)
         response = conn.getresponse()
         status_code = response.status
@@ -394,6 +439,7 @@ def call_minimax_api(message, model_override=None):
             assistant_message = result_json["choices"][0]["message"]["content"]
             conversation_history.append({"role": "assistant", "content": assistant_message})
             logger.info(f"MiniMax API调用成功, response_length={len(assistant_message)}")
+            return_http_connection(conn, http_pool_minimax)
             return assistant_message
         else:
             base_resp = result_json.get('base_resp', {})
@@ -409,7 +455,12 @@ def call_minimax_api(message, model_override=None):
         logger.error(f"MiniMax API请求失败: {str(e)}")
         return f"请求失败: {str(e)}"
     finally:
-        conn.close()
+        ai_request_semaphore.release()
+        if conn:
+            try:
+                conn.close()
+            except:
+                pass
 
 def call_minimax_tts(text, voice_id="female-tianmei"):
     """调用 MiniMax TTS API 进行语音合成"""
@@ -684,7 +735,7 @@ def call_ollama_api(message, model_override=None, host_override=None):
         return f"Ollama请求失败: {str(e)}"
 
 def call_openrouter_api(message, model_override=None):
-    """调用 OpenRouter API"""
+    """调用 OpenRouter API (带并发控制和连接池)"""
     global conversation_history
 
     provider_config = get_provider_config('openrouter')
@@ -710,8 +761,6 @@ def call_openrouter_api(message, model_override=None):
         "temperature": 0.7
     }
 
-    conn = http.client.HTTPSConnection("openrouter.ai", timeout=HTTP_TIMEOUT)
-
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
@@ -719,7 +768,14 @@ def call_openrouter_api(message, model_override=None):
         "X-Title": "HupoGame"
     }
 
+    acquired = ai_request_semaphore.acquire(blocking=True, timeout=30)
+    if not acquired:
+        logger.warning("AI 请求队列已满，请稍后重试")
+        return "系统繁忙，请稍后重试"
+
+    conn = None
     try:
+        conn = get_http_connection("openrouter.ai", http_pool_openrouter)
         conn.request("POST", "/api/v1/chat/completions", json.dumps(data), headers)
         response = conn.getresponse()
         status_code = response.status
@@ -730,6 +786,7 @@ def call_openrouter_api(message, model_override=None):
             assistant_message = result_json["choices"][0]["message"]["content"]
             conversation_history.append({"role": "assistant", "content": assistant_message})
             logger.info(f"OpenRouter API调用成功, response_length={len(assistant_message)}")
+            return_http_connection(conn, http_pool_openrouter)
             return assistant_message
         else:
             error_info = result_json.get('error', {})
@@ -745,7 +802,12 @@ def call_openrouter_api(message, model_override=None):
         logger.error(f"OpenRouter请求失败: {str(e)}")
         return f"OpenRouter请求失败: {str(e)}"
     finally:
-        conn.close()
+        ai_request_semaphore.release()
+        if conn:
+            try:
+                conn.close()
+            except:
+                pass
 
 def call_api(message, provider=None, model=None, ollama_host=None):
     """根据配置调用对应的API"""
