@@ -19,7 +19,7 @@
     },
     
     "access_token": "your_token_here",
-    "token_required": "yes/no",
+    "token_required": "yes",
     
     "minimax": {
         "api_key": "你的MiniMax API Key",
@@ -43,5 +43,10 @@
     "voice": {
         "provider": "baidu"
     },
-    "active_provider": "minimax"
+    "active_provider": "minimax",
+    
+    "audit": {
+        "webhook_url": "",
+        "enabled": true
+    }
 }

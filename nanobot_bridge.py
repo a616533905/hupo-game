@@ -67,27 +67,28 @@ http_pool_openrouter = []
 
 def get_http_connection(host, pool_list, timeout=HTTP_TIMEOUT):
     with http_pool_lock:
+        valid_connections = [c for c in pool_list if c is not None]
+        pool_list.clear()
+        pool_list.extend(valid_connections)
+        
         for i, conn in enumerate(pool_list):
             if conn and conn.host == host:
-                try:
-                    conn.request("GET", "/", timeout=1)
-                    conn.getresponse().read()
-                except:
-                    try:
-                        conn.close()
-                    except:
-                        pass
-                    pool_list[i] = None
-                    continue
                 pool_list[i] = None
                 return conn
+        
         return http.client.HTTPSConnection(host, timeout=timeout)
 
 def return_http_connection(conn, pool_list):
     if conn:
         with http_pool_lock:
             if len(pool_list) < HTTP_POOL_SIZE:
-                pool_list.append(conn)
+                try:
+                    pool_list.append(conn)
+                except:
+                    try:
+                        conn.close()
+                    except:
+                        pass
             else:
                 try:
                     conn.close()

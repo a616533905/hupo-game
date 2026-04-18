@@ -970,6 +970,28 @@ body.portrait-mode .battle-btns button{padding:10px;font-size:12px;min-height:44
 <div class="npc-options" id="npcOptions"></div>
 </div>
 <script>
+const GameLogger={
+    enabled:true,
+    levels:{DEBUG:0,INFO:1,WARN:2,ERROR:3},
+    level:1,
+    log(level,category,message,data){
+        if(!this.enabled)return;
+        if(this.levels[level]<this.level)return;
+        const timestamp=new Date().toISOString();
+        const prefix=`[${timestamp}][${category}]`;
+        if(level==='ERROR')console.error(prefix,message,data||'');
+        else if(level==='WARN')console.warn(prefix,message,data||'');
+        else console.log(prefix,message,data||'');
+    },
+    debug(cat,msg,data){this.log('DEBUG',cat,msg,data)},
+    info(cat,msg,data){this.log('INFO',cat,msg,data)},
+    warn(cat,msg,data){this.log('WARN',cat,msg,data)},
+    error(cat,msg,data){this.log('ERROR',cat,msg,data)},
+    network(action,url,status,data){
+        if(status>=400||!status)this.error('NET',`${action} ${url} failed`,{status,data});
+        else this.debug('NET',`${action} ${url}`,status);
+    }
+};
 function escapeHtml(text){
     if(typeof text!=='string')return text;
     const div=document.createElement('div');
@@ -1044,7 +1066,9 @@ const RUNTIME_CONFIG={
             try{
                 const cfg=JSON.parse(saved);
                 Object.assign(this,cfg);
-            }catch(e){}
+            }catch(e){
+                GameLogger.warn('CONFIG','Failed to parse runtime config',e);
+            }
         }
         if(typeof AndroidApp!=='undefined'){
             const savedMode=localStorage.getItem('hupo_runtime_mode');
@@ -1121,13 +1145,14 @@ function initAudio(){
         if(audioCtx.state==='suspended'){
             audioCtx.resume().then(()=>{
                 audioInitialized=true;
-            }).catch(()=>{});
+            }).catch((e)=>{GameLogger.warn('AUDIO','AudioContext resume failed',e)});
             audioInitialized=true;
             return true;
         }
         audioInitialized=true;
         return true;
     }catch(e){
+        GameLogger.error('AUDIO','initAudio failed',e);
         return false;
     }
 }
@@ -1177,7 +1202,7 @@ function playSound(type){
             wake:()=>{osc.type='sine';osc.frequency.setValueAtTime(200,now);osc.frequency.exponentialRampToValueAtTime(500,now+0.3);gain.gain.setValueAtTime(0.2,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.35);osc.start(now);osc.stop(now+0.35)}
         };
         if(sounds[type])sounds[type]();
-    }catch(e){}
+    }catch(e){GameLogger.warn('AUDIO','playSound failed',{type,error:e.message})}
 }
 let cat={
     level:1,exp:0,expMax:100,
@@ -1808,6 +1833,18 @@ function getCurrentFestival(){
     }
     return null;
 }
+async function fetchWithTimeout(url,timeout=5000){
+    const controller=new AbortController();
+    const timeoutId=setTimeout(()=>controller.abort(),timeout);
+    try{
+        const response=await fetch(url,{signal:controller.signal});
+        clearTimeout(timeoutId);
+        return response;
+    }catch(e){
+        clearTimeout(timeoutId);
+        return null;
+    }
+}
 async function fetchRealWeather(){
     try{
         let lat,lon,city='未知';
@@ -1822,23 +1859,23 @@ async function fetchRealWeather(){
             lat=position.coords.latitude;
             lon=position.coords.longitude;
             try{
-                const geoRes=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=zh`);
-                if(geoRes.ok){
+                const geoRes=await fetchWithTimeout(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=zh`);
+                if(geoRes&&geoRes.ok){
                     const geoData=await geoRes.json();
                     city=geoData.address?.city||geoData.address?.town||geoData.address?.county||'未知';
                 }
-            }catch(e){}
+            }catch(e){GameLogger.debug('WEATHER','Geocoding API failed (non-critical)',e.message)}
         }else{
-            const ipRes=await fetch('https://ipapi.co/json/');
-            if(!ipRes.ok)return null;
+            const ipRes=await fetchWithTimeout('https://ipapi.co/json/');
+            if(!ipRes||!ipRes.ok)return null;
             const ipData=await ipRes.json();
             lat=ipData.latitude;
             lon=ipData.longitude;
             city=ipData.city||'未知';
         }
         if(!lat||!lon)return null;
-        const weatherRes=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=weather_code`);
-        if(!weatherRes.ok)return null;
+        const weatherRes=await fetchWithTimeout(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=weather_code`);
+        if(!weatherRes||!weatherRes.ok)return null;
         const weatherData=await weatherRes.json();
         const weatherCode=weatherData.current?.weather_code;
         let gameWeather='sunny';
@@ -1865,7 +1902,7 @@ async function fetchRealWeather(){
         addMessage(`🌍 检测到 ${city} 天气：${weatherName}，已切换场景~`,'bot');
         return gameWeather;
     }catch(e){
-        console.log('获取天气失败:',e);
+        GameLogger.warn('WEATHER','fetchRealWeather failed',e);
         return null;
     }
 }
@@ -1922,52 +1959,66 @@ function loadGame(){
         try{
             const d=JSON.parse(s);
             if(d&&typeof d==='object'){
-                if(typeof d.level==='number'&&d.level>0){
-                    Object.assign(cat,d);
-                    cat.investments=cat.investments||[];
-                    cat.unlockedSkins=cat.unlockedSkins||['default'];
-                    cat.unlockedOutfits=cat.unlockedOutfits||[];
-                    cat.unlockedTitles=cat.unlockedTitles||[];
-                    cat.titles=cat.titles||[];
-                    if(d.weather)setWeather(d.weather,0);
-                    if(d.outfits)outfits=d.outfits;
-                    if(d.achievements)achievements=d.achievements;
-                    if(d.questProgress)questProgress=d.questProgress;
-                    if(d.currentMap)currentMap=d.currentMap;
-                    if(d.signInState)signInState=d.signInState;
-                    if(d.wheelState)wheelState=d.wheelState;
-                    if(d.equipment)equipment=d.equipment;
-                    if(d.intimacyLevel)intimacyLevel=d.intimacyLevel;
-                    if(d.intimacyPoints)intimacyPoints=d.intimacyPoints;
-                    if(d.fatigue!==undefined)fatigue=d.fatigue;
-                    if(d.arenaRank)arenaRank=d.arenaRank;
-                    if(d.arenaPoints)arenaPoints=d.arenaPoints;
-                    if(d.arenaStreak)arenaStreak=d.arenaStreak;
-                    if(d.arenaDailyWins)arenaDailyWins=d.arenaDailyWins;
-                    if(d.arenaLastReset)arenaLastReset=d.arenaLastReset;
-                    if(d.diaryEntries)diaryEntries=d.diaryEntries;
-                    if(d.currentSkin){
-                        currentSkin=d.currentSkin;
-                        setTimeout(()=>applySkin(currentSkin),100);
+                if(typeof d.level==='number'&&d.level>0&&d.level<=GAME_CONSTANTS.MAX_LEVEL){
+                    if(typeof d.hp==='number'&&typeof d.hpMax==='number'&&d.hpMax>0){
+                        Object.assign(cat,d);
+                        cat.level=Math.min(cat.level,GAME_CONSTANTS.MAX_LEVEL);
+                        cat.hp=Math.max(0,Math.min(cat.hp,cat.hpMax||100));
+                        cat.mp=Math.max(0,Math.min(cat.mp,cat.mpMax||50));
+                        cat.hunger=Math.max(0,Math.min(cat.hunger,100));
+                        cat.happiness=Math.max(0,Math.min(cat.happiness,100));
+                        cat.coins=Math.max(0,cat.coins);
+                        cat.gems=Math.max(0,cat.gems);
+                        cat.attack=Math.max(0,cat.attack);
+                        cat.defense=Math.max(0,cat.defense);
+                        cat.investments=cat.investments||[];
+                        cat.unlockedSkins=cat.unlockedSkins||['default'];
+                        cat.unlockedOutfits=cat.unlockedOutfits||[];
+                        cat.unlockedTitles=cat.unlockedTitles||[];
+                        cat.titles=cat.titles||[];
+                        if(d.weather)setWeather(d.weather,0);
+                        if(d.outfits)outfits=d.outfits;
+                        if(d.achievements)achievements=d.achievements;
+                        if(d.questProgress)questProgress=d.questProgress;
+                        if(d.currentMap)currentMap=d.currentMap;
+                        if(d.signInState)signInState=d.signInState;
+                        if(d.wheelState)wheelState=d.wheelState;
+                        if(d.equipment)equipment=d.equipment;
+                        if(d.intimacyLevel)intimacyLevel=d.intimacyLevel;
+                        if(d.intimacyPoints)intimacyPoints=d.intimacyPoints;
+                        if(d.fatigue!==undefined)fatigue=Math.max(0,Math.min(d.fatigue,100));
+                        if(d.arenaRank)arenaRank=d.arenaRank;
+                        if(d.arenaPoints)arenaPoints=d.arenaPoints;
+                        if(d.arenaStreak)arenaStreak=d.arenaStreak;
+                        if(d.arenaDailyWins)arenaDailyWins=d.arenaDailyWins;
+                        if(d.arenaLastReset)arenaLastReset=d.arenaLastReset;
+                        if(d.diaryEntries)diaryEntries=d.diaryEntries;
+                        if(d.currentSkin){
+                            currentSkin=d.currentSkin;
+                            setTimeout(()=>applySkin(currentSkin),100);
+                        }
+                        if(d.skillMastery)skillMastery=d.skillMastery;
+                        if(d.sleepState)sleepState=d.sleepState;
+                        if(d.hospitalState)hospitalState=d.hospitalState;
+                        if(d.storyProgress){
+                            storyProgress=d.storyProgress;
+                            storyChapters.forEach(ch=>{
+                                if(storyProgress[ch.id])ch.completed=true;
+                            });
+                        }
+                        if(d.storyChoices)storyChoices=d.storyChoices;
+                        if(d.storyEnding)storyEnding=d.storyEnding;
+                        if(d.savedAt){
+                            calculateOfflineRewards(d.savedAt);
+                        }
+                        return true;
                     }
-                    if(d.skillMastery)skillMastery=d.skillMastery;
-                    if(d.sleepState)sleepState=d.sleepState;
-                    if(d.hospitalState)hospitalState=d.hospitalState;
-                    if(d.storyProgress){
-                        storyProgress=d.storyProgress;
-                        storyChapters.forEach(ch=>{
-                            if(storyProgress[ch.id])ch.completed=true;
-                        });
-                    }
-                    if(d.storyChoices)storyChoices=d.storyChoices;
-                    if(d.storyEnding)storyEnding=d.storyEnding;
-                    if(d.savedAt){
-                        calculateOfflineRewards(d.savedAt);
-                    }
-                    return true;
                 }
             }
-        }catch(e){console.log('Load error:',e)}
+        }catch(e){
+            GameLogger.error('SAVE','Load game failed',e);
+            console.error('Load error:',e);
+        }
     }
     return false;
 }
@@ -2049,7 +2100,8 @@ function saveGame(immediate=false){
         localStorage.setItem(SAVE_KEY,JSON.stringify(saveData));
         showSaveNotification();
     }catch(e){
-        console.log('Save error:',e);
+        GameLogger.error('SAVE','Save game failed',e);
+        console.error('Save error:',e);
         if(e.name==='QuotaExceededError'){
             addMessage('⚠️ 存储空间不足！请清理浏览器数据或导出存档备份。','bot');
         }
@@ -2061,40 +2113,30 @@ function checkHappiness(){
         cat.happiness=Math.max(0,cat.happiness-hungerDrop);
     }
     const today=new Date().toDateString();
-    if(questProgress.happinessDropDate!==today){
+    if(!questProgress.happinessDropDate||questProgress.happinessDropDate!==today){
         const drop=Math.floor(Math.random()*11)+5;
         cat.happiness=Math.max(0,cat.happiness-drop);
         questProgress.happinessDropDate=today;
     }
 }
+let lastUIState={};
 function updateUI(){
     if(!uiElements)return;
     const safeSet=(el,val)=>{if(el)el.textContent=val};
     const safeStyle=(el,prop,val)=>{if(el)el.style[prop]=val};
-    safeSet(uiElements.level,cat.level);
-    safeSet(uiElements.exp,cat.exp);
-    safeSet(uiElements.expMax,cat.expMax);
-    safeSet(uiElements.hp,cat.hp);
-    safeSet(uiElements.hpMax,cat.hpMax);
-    safeSet(uiElements.mp,cat.mp);
-    safeSet(uiElements.mpMax,cat.mpMax);
-    safeSet(uiElements.hunger,cat.hunger);
-    safeSet(uiElements.happiness,cat.happiness);
-    safeSet(uiElements.coins,cat.coins);
-    safeSet(uiElements.gems,cat.gems);
-    safeStyle(uiElements.hpBar,'width',(cat.hp/cat.hpMax*100)+'%');
-    safeStyle(uiElements.mpBar,'width',(cat.mp/cat.mpMax*100)+'%');
-    safeStyle(uiElements.hungerBar,'width',cat.hunger+'%');
-    safeStyle(uiElements.happinessBar,'width',cat.happiness+'%');
-    safeSet(uiElements.fatigue,fatigue);
-    safeStyle(uiElements.fatigueBar,'width',fatigue+'%');
+    if(lastUIState.level!==cat.level){safeSet(uiElements.level,cat.level);lastUIState.level=cat.level}
+    if(lastUIState.exp!==cat.exp||lastUIState.expMax!==cat.expMax){safeSet(uiElements.exp,cat.exp);safeSet(uiElements.expMax,cat.expMax);lastUIState.exp=cat.exp;lastUIState.expMax=cat.expMax}
+    if(lastUIState.hp!==cat.hp||lastUIState.hpMax!==cat.hpMax){safeSet(uiElements.hp,cat.hp);safeSet(uiElements.hpMax,cat.hpMax);safeStyle(uiElements.hpBar,'width',(cat.hp/cat.hpMax*100)+'%');lastUIState.hp=cat.hp;lastUIState.hpMax=cat.hpMax}
+    if(lastUIState.mp!==cat.mp||lastUIState.mpMax!==cat.mpMax){safeSet(uiElements.mp,cat.mp);safeSet(uiElements.mpMax,cat.mpMax);safeStyle(uiElements.mpBar,'width',(cat.mp/cat.mpMax*100)+'%');lastUIState.mp=cat.mp;lastUIState.mpMax=cat.mpMax}
+    if(lastUIState.hunger!==cat.hunger){safeSet(uiElements.hunger,cat.hunger);safeStyle(uiElements.hungerBar,'width',cat.hunger+'%');lastUIState.hunger=cat.hunger}
+    if(lastUIState.happiness!==cat.happiness){safeSet(uiElements.happiness,cat.happiness);safeStyle(uiElements.happinessBar,'width',cat.happiness+'%');lastUIState.happiness=cat.happiness}
+    if(lastUIState.coins!==cat.coins){safeSet(uiElements.coins,cat.coins);lastUIState.coins=cat.coins}
+    if(lastUIState.gems!==cat.gems){safeSet(uiElements.gems,cat.gems);lastUIState.gems=cat.gems}
+    if(lastUIState.fatigue!==fatigue){safeSet(uiElements.fatigue,fatigue);safeStyle(uiElements.fatigueBar,'width',fatigue+'%');lastUIState.fatigue=fatigue}
     const intimacyMax=intimacyLevel*100;
-    safeSet(uiElements.intimacyLevel,intimacyLevel);
-    safeSet(uiElements.intimacyPoints,intimacyPoints);
-    safeSet(uiElements.intimacyMax,intimacyMax);
-    safeStyle(uiElements.intimacyBar,'width',(intimacyPoints/intimacyMax*100)+'%');
-    safeSet(uiElements.skillPoints,'点数: '+cat.skillPoints);
-    safeSet(uiElements.partnerCount,cat.partners.length+'/3');
+    if(lastUIState.intimacyLevel!==intimacyLevel||lastUIState.intimacyPoints!==intimacyPoints){safeSet(uiElements.intimacyLevel,intimacyLevel);safeSet(uiElements.intimacyPoints,intimacyPoints);safeSet(uiElements.intimacyMax,intimacyMax);safeStyle(uiElements.intimacyBar,'width',(intimacyPoints/intimacyMax*100)+'%');lastUIState.intimacyLevel=intimacyLevel;lastUIState.intimacyPoints=intimacyPoints}
+    if(lastUIState.skillPoints!==cat.skillPoints){safeSet(uiElements.skillPoints,'点数: '+cat.skillPoints);lastUIState.skillPoints=cat.skillPoints}
+    if(lastUIState.partnersLen!==cat.partners.length){safeSet(uiElements.partnerCount,cat.partners.length+'/3');lastUIState.partnersLen=cat.partners.length}
     updateSkillSlots();
     updatePartnerList();
     updateMapList();
@@ -2247,7 +2289,7 @@ function loadSettingsToUI(){
     const savedConfig=localStorage.getItem('hupo_runtime_config');
     let saved={};
     if(savedConfig){
-        try{saved=JSON.parse(savedConfig);}catch(e){}
+        try{saved=JSON.parse(savedConfig);}catch(e){GameLogger.warn('CONFIG','Failed to parse runtime config',e)}
     }
     document.getElementById('voiceProvider').value=getVoiceProvider();
     loadModelSettingsToUI();
@@ -2434,7 +2476,7 @@ function updateMood(){
     else if(fatigue>70)newMood='sleeping';
     else if(cat.happiness>80&&cat.hunger>60)newMood='energetic';
     else if(cat.happiness>70)newMood='excited';
-    else if(cat.happiness<50&&Math.random()<0.3)newMood='angry';
+    else if(cat.happiness<40&&cat.hunger<40)newMood='angry';
     if(cat.mood!==newMood){
         setMood(newMood);
         const moodInfo=moods[newMood];
@@ -3295,7 +3337,7 @@ function checkLevel(){
     while(cat.exp>=cat.expMax&&cat.level<GAME_CONSTANTS.MAX_LEVEL){
         cat.exp-=cat.expMax;
         cat.level++;
-        cat.expMax=Math.floor(50+cat.level*cat.level*3);
+        cat.expMax=Math.floor(80+cat.level*15+cat.level*cat.level);
         cat.hpMax+=12;
         cat.mpMax+=8;
         cat.attack+=2;
@@ -3524,12 +3566,21 @@ function buyItem(ty,id){
         }else{alert('金币不足！需要 '+it.p+'💰')}
     }
 }
+let outfitCache={};
 function renderOutfit(){
     const g=document.getElementById('outfitGroup');
     g.innerHTML='';
-    if(outfits.hat)g.innerHTML+=`<text x="100" y="25" text-anchor="middle" font-size="28">${outfitItems.hat.find(x=>x.i===outfits.hat)?.n.split(' ')[0]}</text>`;
-    if(outfits.glasses)g.innerHTML+=`<text x="100" y="65" text-anchor="middle" font-size="18">${outfitItems.glasses.find(x=>x.i===outfits.glasses)?.n.split(' ')[0]}</text>`;
-    if(outfits.collar)g.innerHTML+=`<text x="100" y="115" text-anchor="middle" font-size="16">${outfitItems.collar.find(x=>x.i===outfits.collar)?.n.split(' ')[0]}</text>`;
+    const getOutfitName=(type,id)=>{
+        const cacheKey=`${type}_${id}`;
+        if(outfitCache[cacheKey])return outfitCache[cacheKey];
+        const item=outfitItems[type]?.find(x=>x.i===id);
+        const name=item?.n.split(' ')[0]||'';
+        outfitCache[cacheKey]=name;
+        return name;
+    };
+    if(outfits.hat)g.innerHTML+=`<text x="100" y="25" text-anchor="middle" font-size="28">${getOutfitName('hat',outfits.hat)}</text>`;
+    if(outfits.glasses)g.innerHTML+=`<text x="100" y="65" text-anchor="middle" font-size="18">${getOutfitName('glasses',outfits.glasses)}</text>`;
+    if(outfits.collar)g.innerHTML+=`<text x="100" y="115" text-anchor="middle" font-size="16">${getOutfitName('collar',outfits.collar)}</text>`;
 }
 function openQuests(){
     genQuests();
@@ -3544,8 +3595,13 @@ function openQuests(){
 function genQuests(){
     const t=new Date().toDateString();
     if(quests.length===0||questProgress.date!==t){
-        questProgress={date:t,...questProgress};
-        quests=qTemplates.map(q=>({...q,c:questProgress[q.i]>=q.t}));
+        const oldProgress={...questProgress};
+        questProgress={date:t};
+        qTemplates.forEach(q=>{
+            questProgress[q.i]=0;
+        });
+        quests=qTemplates.map(q=>({...q,c:false}));
+        saveGame();
     }
 }
 function updQuest(ty){
@@ -3587,8 +3643,31 @@ function openSkillTree(){
     skillTree.defense.forEach(s=>h+=renderSkillNode(s));
     h+='<h4 style="color:var(--accent);margin:10px 0">辅助系</h4>';
     skillTree.support.forEach(s=>h+=renderSkillNode(s));
+    h+='<h4 style="color:var(--accent);margin:10px 0">属性强化</h4>';
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">';
+    h+=`<div class="skill-node" onclick="buyStatWithSkillPoints('attack')" style="cursor:pointer"><span class="icon">⚔️</span><div class="info"><div class="name">攻击+2</div><div class="desc">消耗3技能点</div></div></div>`;
+    h+=`<div class="skill-node" onclick="buyStatWithSkillPoints('defense')" style="cursor:pointer"><span class="icon">🛡️</span><div class="info"><div class="name">防御+2</div><div class="desc">消耗3技能点</div></div></div>`;
+    h+=`<div class="skill-node" onclick="buyStatWithSkillPoints('hpMax')" style="cursor:pointer"><span class="icon">❤️</span><div class="info"><div class="name">HP上限+15</div><div class="desc">消耗2技能点</div></div></div>`;
+    h+=`<div class="skill-node" onclick="buyStatWithSkillPoints('mpMax')" style="cursor:pointer"><span class="icon">💧</span><div class="info"><div class="name">MP上限+10</div><div class="desc">消耗2技能点</div></div></div>`;
+    h+='</div>';
     h+='</div>';
     showEvent('⚡ 技能树',`技能点: ${cat.skillPoints}`,h);
+}
+function buyStatWithSkillPoints(stat){
+    const costs={attack:3,defense:3,hpMax:2,mpMax:2};
+    const gains={attack:2,defense:2,hpMax:15,mpMax:10};
+    const cost=costs[stat];
+    const gain=gains[stat];
+    if(cat.skillPoints<cost){alert('技能点不足！');return}
+    cat.skillPoints-=cost;
+    cat[stat]+=gain;
+    if(stat==='hpMax')cat.hp=Math.min(cat.hp+gain,cat.hpMax);
+    if(stat==='mpMax')cat.mp=Math.min(cat.mp+gain,cat.mpMax);
+    playSound('levelup');
+    addMessage(`✨ 消耗${cost}技能点，${stat==='attack'?'攻击':stat==='defense'?'防御':stat==='hpMax'?'HP上限':'MP上限'}+${gain}！`,'bot');
+    updateUI();
+    saveGame();
+    openSkillTree();
 }
 function renderSkillNode(s){
     const unlocked=cat.unlockedSkills.includes(s.id);
@@ -3637,7 +3716,6 @@ function equipSkill(id){
             cat.equippedSkills[0]=id;
         }
     }
-    cat.equippedSkills=cat.equippedSkills.filter(s=>s);
     while(cat.equippedSkills.length<4)cat.equippedSkills.push(null);
     updateUI();
     saveGame();
@@ -3706,7 +3784,7 @@ function trainSkill(skillId){
     if(skillMastery[skillId].exp>=skillMastery[skillId].expMax&&skillMastery[skillId].level<GAME_CONSTANTS.SKILL_MASTERY_MAX){
         skillMastery[skillId].level++;
         skillMastery[skillId].exp=0;
-        skillMastery[skillId].expMax=Math.floor(skillMastery[skillId].expMax*GAME_CONSTANTS.SKILL_MASTERY_EXP_MULTIPLIER);
+        skillMastery[skillId].expMax=Math.min(10000,Math.floor(skillMastery[skillId].expMax*GAME_CONSTANTS.SKILL_MASTERY_EXP_MULTIPLIER));
         msg+=`\n🎉 熟练度提升到 Lv.${skillMastery[skillId].level}！`;
         playSound('levelup');
         if(skillMastery[skillId].level>=5)checkAch('skill_master');
@@ -3829,10 +3907,10 @@ function doWork(type){
         return;
     }
     const jobs={
-        delivery:{fatigue:15,min:80,max:120},
-        restaurant:{fatigue:20,min:120,max:180},
-        guard:{fatigue:25,min:200,max:300,level:5},
-        adventure_guide:{fatigue:30,min:350,max:500,level:10}
+        delivery:{fatigue:15,min:50,max:80},
+        restaurant:{fatigue:20,min:80,max:120},
+        guard:{fatigue:25,min:150,max:220,level:5},
+        adventure_guide:{fatigue:30,min:250,max:350,level:10}
     };
     const job=jobs[type];
     if(job.level&&cat.level<job.level){
@@ -3843,7 +3921,7 @@ function doWork(type){
     cat.happiness=Math.max(0,cat.happiness-10);
     cat.hunger=Math.max(0,cat.hunger-15);
     const baseEarn=job.min+Math.floor(Math.random()*(job.max-job.min));
-    const bonus=Math.floor(cat.level/5)*10;
+    const bonus=Math.max(5,Math.floor(cat.level/3)*5);
     const total=baseEarn+bonus;
     cat.coins+=total;
     cat.workCount=(cat.workCount||0)+1;
@@ -3883,9 +3961,10 @@ function openSellMaterials(){
     showEvent('💰 出售材料','',h);
 }
 function sellMaterial(id,count){
+    if(!cat.materials[id]||cat.materials[id]<=0){alert('没有该材料！');return}
     const mat=materials[id];
     const price=MATERIAL_PRICES[id]||5;
-    const actualCount=Math.min(count,cat.materials[id]||0);
+    const actualCount=Math.min(count,cat.materials[id]);
     if(actualCount<=0)return;
     const total=price*actualCount;
     cat.materials[id]-=actualCount;
@@ -4542,6 +4621,7 @@ async function generateAIResponse(context,fallbackTexts){
             })
         });
         if(!r.ok){
+            GameLogger.network('POST','/',r.status);
             return fallback;
         }
         const d=await r.json();
@@ -4550,6 +4630,7 @@ async function generateAIResponse(context,fallbackTexts){
         }
         return fallback;
     }catch(e){
+        GameLogger.error('AI','generateAIResponse failed',e);
         return fallback;
     }
 }
@@ -4604,7 +4685,10 @@ async function sendMessage(){
         });
         const d=await r.json();
         hideTyping();
-        if(d.error){addMessage('❌ '+d.error,'bot')}
+        if(d.error){
+            GameLogger.error('AI','sendMessage API error',d.error);
+            addMessage('❌ '+d.error,'bot');
+        }
         else{
             const rep=d.response||'...';
             addMessage(rep,'bot');
@@ -4616,6 +4700,7 @@ async function sendMessage(){
             updQuest('chat');
         }
     }catch(e){
+        GameLogger.error('AI','sendMessage failed',e);
         hideTyping();
         addMessage('🔌 离线模式：我也能帮你操作游戏哦！\n试试说：喂食、去冒险、打竞技场、签到、转盘、帮助','bot');
     }
@@ -4721,10 +4806,20 @@ function loadChatHistory(){
             chatHistoryList=JSON.parse(s);
             updateChatHistory();
         }
-    }catch(e){}
+    }catch(e){
+        GameLogger.warn('CHAT','Failed to load chat history',e);
+    }
 }
+let chatSavePending=false;
 function saveChatHistory(){
-    try{localStorage.setItem(CHAT_HISTORY_KEY,JSON.stringify(chatHistoryList))}catch(e){}
+    if(chatSavePending)return;
+    chatSavePending=true;
+    setTimeout(()=>{
+        chatSavePending=false;
+        try{localStorage.setItem(CHAT_HISTORY_KEY,JSON.stringify(chatHistoryList))}catch(e){
+            GameLogger.error('CHAT','Failed to save chat history',e);
+        }
+    },2000);
 }
 function updateChatHistory(){
     let h='<div class="chat-history-title">📜 对话历史 (最近20条)</div>';
@@ -4757,11 +4852,11 @@ async function getBaiduToken(){
             baiduToken=data.access_token;
             return baiduToken;
         }else{
-            console.error('获取百度Token失败:',data);
+            GameLogger.error('VOICE','getBaiduToken failed',data);
             return null;
         }
     }catch(e){
-        console.error('获取百度Token失败:',e);
+        GameLogger.error('VOICE','getBaiduToken failed',e);
         return null;
     }
 }
@@ -5021,6 +5116,7 @@ async function sendToBaidu(audioBlob){
         };
         reader.readAsDataURL(audioBlob);
     }catch(e){
+        GameLogger.error('VOICE','sendToBaidu failed',e);
         addMessage('❌ 语音识别出错：'+e.message,'bot');
     }
 }
@@ -5129,7 +5225,7 @@ function playMeowSound(type='happy'){
             }
         };
         if(meowSounds[type])meowSounds[type]();
-    }catch(e){console.log('meow error:',e)}
+    }catch(e){GameLogger.warn('AUDIO','playMeowSound failed',{type,error:e.message})}
 }
 function detectTextMood(text){
     if(text.includes('！')||text.includes('太')||text.includes('好')||text.includes('棒'))return'excited';
@@ -5207,6 +5303,7 @@ async function playEdgeTTS(text){
     }
     if(edgeAudio){
         edgeAudio.pause();
+        if(edgeAudio._blobUrl)URL.revokeObjectURL(edgeAudio._blobUrl);
         edgeAudio=null;
     }
     try{
@@ -5226,13 +5323,15 @@ async function playEdgeTTS(text){
         const blob=await response.blob();
         const audioUrl=URL.createObjectURL(blob);
         const audio=new Audio(audioUrl);
+        audio._blobUrl=audioUrl;
         audio.volume=1.0;
-        audio.onended=()=>{if(edgeAudio===audio)edgeAudio=null};
-        audio.onerror=()=>{if(edgeAudio===audio)edgeAudio=null};
+        audio.onended=()=>{if(edgeAudio===audio){if(edgeAudio._blobUrl)URL.revokeObjectURL(edgeAudio._blobUrl);edgeAudio=null}};
+        audio.onerror=()=>{if(edgeAudio===audio){if(edgeAudio._blobUrl)URL.revokeObjectURL(edgeAudio._blobUrl);edgeAudio=null}};
         edgeAudio=audio;
         await audio.play();
     }catch(e){
-        console.log('Edge TTS错误:',e);
+        GameLogger.error('TTS','Edge TTS failed',e);
+        console.error('Edge TTS错误:',e);
     }
 }
 let currentDrops=[];
@@ -5403,6 +5502,7 @@ function spinWheel(){
             addMessage(`🎉 恭喜获得：${['💰50','💎5','🍖20饱腹','⚡30MP','🎁神秘奖励','💰100','💎10','🌟50经验'][result]}`,'bot');
             updateUI();
             saveGame();
+            closeEvent();
         },4000);
     }
     playSound('click');
@@ -6044,7 +6144,7 @@ function openSaves(){
                     coins:d.coins||0,
                     date:d.savedAt?new Date(d.savedAt).toLocaleString():'未知'
                 };
-            }catch(e){}
+            }catch(e){GameLogger.warn('SAVE','Failed to parse slot save info',{slot:i,error:e.message})}
         }
         h+=`<div class="save-slot" onclick="selectSaveSlot(${i})">`;
         h+=`<h4>存档 ${i}</h4>`;
@@ -6109,7 +6209,10 @@ function loadFromSlot(){
         closeEvent();
         updateUI();
         saveGame();
-    }catch(e){alert('读取失败！')}
+    }catch(e){
+        GameLogger.error('SAVE','loadFromSlot failed',e);
+        alert('读取失败！');
+    }
 }
 function openArena(){
     const today=new Date().toDateString();
@@ -6860,7 +6963,8 @@ async function loadGameConfig(){
             updateModelTag();
         }
     }catch(e){
-        console.log('配置加载失败，使用默认配置');
+        GameLogger.warn('CONFIG','Config load failed, using defaults',e);
+        console.warn('配置加载失败，使用默认配置');
         window.gameConfig={
             active_provider:'minimax',
             minimax:{api_key:'',model:'MiniMax-M2.7'},
@@ -6915,7 +7019,9 @@ function updateModelTag(){
 window.addEventListener('beforeunload',()=>{
     gameIntervals.forEach(id=>clearInterval(id));
     gameIntervals.length=0;
+    if(musicSystem.updateInterval)clearInterval(musicSystem.updateInterval);
     if(musicSystem.isPlaying)musicSystem.stop();
+    if(musicSystem.melodyTimeout)clearTimeout(musicSystem.melodyTimeout);
     if(audioCtx&&audioCtx.state!=='closed')audioCtx.close();
     if(mediaRecorder&&mediaRecorder.state==='recording'){
         mediaRecorder.stop();
