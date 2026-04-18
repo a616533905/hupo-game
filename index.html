@@ -245,6 +245,56 @@ body.snow .snowfall{display:block}
 .skill-node .name{font-size:12px;font-weight:bold}
 .skill-node .desc{font-size:10px;color:var(--text-dim)}
 .skill-node .level{font-size:10px;color:var(--accent)}
+.daily-tasks{display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto}
+.daily-task{display:flex;align-items:center;gap:10px;padding:12px;background:rgba(255,255,255,0.05);border-radius:10px;transition:all 0.2s}
+.daily-task:hover{background:rgba(255,255,255,0.1)}
+.daily-task.completed{opacity:0.6;background:rgba(39,174,96,0.2)}
+.daily-task .task-icon{font-size:24px;width:40px;text-align:center}
+.daily-task .task-info{flex:1}
+.daily-task .task-name{font-size:12px;font-weight:bold}
+.daily-task .task-desc{font-size:10px;color:var(--text-dim)}
+.daily-task .task-progress{font-size:11px;color:var(--accent)}
+.daily-task .task-reward{font-size:10px;color:var(--text-dim)}
+.daily-task .claim-btn{padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;cursor:pointer;font-size:11px}
+.daily-task .claim-btn:disabled{background:#636e72;cursor:not-allowed}
+.login-rewards{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin:10px 0}
+.login-day{padding:10px;background:rgba(255,255,255,0.05);border-radius:10px;text-align:center;cursor:pointer;transition:all 0.2s}
+.login-day:hover{background:rgba(255,255,255,0.1)}
+.login-day.claimed{background:rgba(39,174,96,0.3);border:2px solid #27ae60}
+.login-day.current{border:2px solid var(--accent);animation:pulse 1s infinite}
+.login-day .day-num{font-size:10px;color:var(--text-dim)}
+.login-day .day-icon{font-size:20px;margin:5px 0}
+.login-day .day-reward{font-size:9px;color:var(--accent)}
+.enhance-panel{padding:15px}
+.enhance-item{display:flex;align-items:center;gap:15px;padding:15px;background:rgba(255,255,255,0.05);border-radius:12px;margin-bottom:10px}
+.enhance-item .equip-icon{font-size:32px}
+.enhance-item .equip-info{flex:1}
+.enhance-item .equip-name{font-size:14px;font-weight:bold}
+.enhance-item .equip-level{font-size:12px;color:var(--accent)}
+.enhance-item .equip-stats{font-size:10px;color:var(--text-dim)}
+.enhance-btn{padding:10px 20px;border:none;border-radius:10px;background:linear-gradient(135deg,#f39c12,#e74c3c);color:#fff;cursor:pointer;font-size:12px;transition:all 0.2s}
+.enhance-btn:hover{transform:scale(1.05)}
+.enhance-btn:disabled{background:#636e72;cursor:not-allowed}
+.enhance-rate{font-size:11px;color:var(--text-dim);margin-top:5px}
+.partner-detail{padding:15px}
+.partner-exp-bar{width:100%;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;margin:5px 0}
+.partner-exp-fill{height:100%;background:linear-gradient(90deg,#667eea,#764ba2);border-radius:4px;transition:width 0.3s}
+.partner-intimacy{display:flex;align-items:center;gap:10px;margin:10px 0}
+.partner-intimacy .hearts{font-size:16px}
+.partner-skills{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.partner-skill-tag{padding:4px 8px;background:rgba(255,255,255,0.1);border-radius:6px;font-size:10px}
+.tower-panel{padding:15px;text-align:center}
+.tower-floor{font-size:48px;margin:20px 0}
+.tower-floor span{font-size:24px;color:var(--text-dim)}
+.tower-info{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0}
+.tower-stat{padding:10px;background:rgba(255,255,255,0.05);border-radius:10px}
+.tower-stat .value{font-size:20px;color:var(--accent)}
+.tower-stat .label{font-size:10px;color:var(--text-dim)}
+.tower-btn{padding:15px 40px;border:none;border-radius:15px;background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;cursor:pointer;font-size:16px;margin:10px}
+.tower-btn:disabled{background:#636e72;cursor:not-allowed}
+.tower-rewards{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:15px}
+.tower-reward-item{padding:8px 12px;background:rgba(255,255,255,0.1);border-radius:8px;font-size:11px}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(102,126,234,0.4)}50%{box-shadow:0 0 0 10px rgba(102,126,234,0)}}
 .collection-tabs{display:flex;gap:5px;margin-bottom:10px}
 .collection-tab{padding:5px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:var(--text);cursor:pointer;font-size:11px}
 .collection-tab.active{background:var(--primary)}
@@ -749,6 +799,9 @@ body.snow .snowfall{display:block}
 <button class="action-btn btn-game" onclick="openHospital()" style="background:linear-gradient(135deg,#e17055,#d63031)" aria-label="医院">🏥 医院</button>
 <button class="action-btn btn-skill" onclick="openSleepSystem()" style="background:linear-gradient(135deg,#636e72,#2d3436)" aria-label="睡眠">😴 睡眠</button>
 <button class="action-btn btn-feed" onclick="openSignIn()" style="background:linear-gradient(135deg,#667eea,#764ba2)" aria-label="签到">🎁 签到</button>
+<button class="action-btn btn-play" onclick="openDailyTasks()" style="background:linear-gradient(135deg,#74b9ff,#0984e3)" aria-label="每日任务">📋 每日</button>
+<button class="action-btn btn-quest" onclick="openLoginRewards()" style="background:linear-gradient(135deg,#fdcb6e,#f39c12)" aria-label="登录奖励">🎁 登录</button>
+<button class="action-btn btn-game" onclick="openTower()" style="background:linear-gradient(135deg,#e74c3c,#c0392b)" aria-label="无尽之塔">🏰 塔楼</button>
 <button class="action-btn btn-play" onclick="openWheel()" style="background:linear-gradient(135deg,#f39c12,#e74c3c)" aria-label="转盘">🎰 转盘</button>
 <button class="action-btn btn-quest" onclick="openDiary()" style="background:linear-gradient(135deg,#a29bfe,#6c5ce7)" aria-label="日记">📝 日记</button>
 <button class="action-btn btn-skill" onclick="openSkins()" style="background:linear-gradient(135deg,#fd79a8,#e84393)" aria-label="皮肤">🎭 皮肤</button>
@@ -822,6 +875,7 @@ body.snow .snowfall{display:block}
 <button onclick="openArena()" style="background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff">⚔️ 竞技场</button>
 <button onclick="openTrainingGround()" style="background:linear-gradient(135deg,#fdcb6e,#f39c12);color:#333">💪 训练场</button>
 <button onclick="openEquipment()" style="background:linear-gradient(135deg,#3498db,#2980b9);color:#fff">🛡️ 装备</button>
+<button onclick="openEnhancePanel()" style="background:linear-gradient(135deg,#f39c12,#e74c3c);color:#fff">⚒️ 强化</button>
 <button onclick="openMapSelect()" style="background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff">⛰️ 冒险</button>
 <button onclick="openCraft()" style="background:linear-gradient(135deg,#9b59b6,#8e44ad);color:#fff">⚗️ 合成</button>
 <button onclick="openInventory()" style="background:linear-gradient(135deg,#3498db,#2980b9);color:#fff">🎒 背包</button>
@@ -1750,6 +1804,53 @@ let hospitalState={isSick:false,sicknessType:null,sickTime:null,treatmentProgres
 let storyProgress={};
 let storyChoices={};
 let storyEnding=null;
+let dailyTasks={lastRefresh:null,tasks:[],completed:[]};
+let loginRewards={lastLogin:null,consecutiveDays:0,totalDays:0,todayClaimed:false};
+let equipmentEnhance={};
+let partnerData={};
+let towerState={currentFloor:1,highestFloor:1,attempts:3,lastReset:null};
+const DAILY_TASKS=[
+    {id:'battle5',name:'战斗达人',desc:'完成5场战斗',target:5,reward:{coins:50,exp:30},type:'battle'},
+    {id:'skill10',name:'技能大师',desc:'使用技能10次',target:10,reward:{coins:30,exp:20},type:'skill'},
+    {id:'explore3',name:'探索先锋',desc:'探索3个区域',target:3,reward:{coins:40,exp:25},type:'explore'},
+    {id:'feed3',name:'爱心喂养',desc:'喂食3次',target:3,reward:{coins:20,happiness:10},type:'feed'},
+    {id:'play3',name:'快乐玩耍',desc:'玩耍3次',target:3,reward:{coins:20,happiness:15},type:'play'},
+    {id:'craft2',name:'合成学徒',desc:'合成2次',target:2,reward:{coins:35,exp:20},type:'craft'},
+    {id:'arena2',name:'竞技挑战',desc:'竞技场战斗2次',target:2,reward:{coins:60,gems:2},type:'arena'},
+    {id:'login',name:'每日签到',desc:'登录游戏',target:1,reward:{coins:30,exp:15},type:'login'}
+];
+const LOGIN_REWARDS=[
+    {day:1,reward:{coins:100,exp:50},icon:'💰'},
+    {day:2,reward:{coins:150,exp:80},icon:'💰'},
+    {day:3,reward:{coins:200,exp:100,gems:5},icon:'💎'},
+    {day:4,reward:{coins:250,exp:120},icon:'💰'},
+    {day:5,reward:{coins:300,exp:150,gems:10},icon:'💎'},
+    {day:6,reward:{coins:400,exp:200},icon:'💰'},
+    {day:7,reward:{coins:500,exp:300,gems:20,item:'healthPotion'},icon:'🎁'},
+    {day:14,reward:{coins:800,exp:500,gems:30,item:'superHealthPotion'},icon:'🎁'},
+    {day:21,reward:{coins:1200,exp:800,gems:50,equipment:'luckyRing'},icon:'🏆'},
+    {day:30,reward:{coins:2000,exp:1500,gems:100,equipment:'powerAmulet'},icon:'👑'}
+];
+const ENHANCE_COSTS=[50,80,120,180,260,380,550,800,1200,2000];
+const ENHANCE_RATES=[100,95,90,85,75,65,55,45,35,25];
+const ENHANCE_BONUSES=[2,4,6,8,10,12,15,18,22,28];
+const TOWER_MONSTERS=[
+    {floor:1,name:'史莱姆王',icon:'👑',hp:100,attack:15,defense:5,exp:50,coins:100},
+    {floor:5,name:'暗影狼',icon:'🐺',hp:200,attack:30,defense:15,exp:120,coins:250},
+    {floor:10,name:'冰霜巨人',icon:'🧊',hp:400,attack:50,defense:30,exp:300,coins:600},
+    {floor:15,name:'火焰领主',icon:'🔥',hp:700,attack:80,defense:50,exp:600,coins:1200},
+    {floor:20,name:'深渊骑士',icon:'🗡️',hp:1000,attack:120,defense:80,exp:1000,coins:2500},
+    {floor:25,name:'龙族守护者',icon:'🐉',hp:1500,attack:180,defense:120,exp:2000,coins:5000},
+    {floor:30,name:'无尽之王',icon:'👑',hp:2500,attack:250,defense:180,exp:5000,coins:10000}
+];
+const TOWER_REWARDS=[
+    {floor:5,reward:{coins:500,gems:10}},
+    {floor:10,reward:{coins:1500,gems:30,item:'superHealthPotion'}},
+    {floor:15,reward:{coins:3000,gems:60,equipment:'flameBlade'}},
+    {floor:20,reward:{coins:6000,gems:100,equipment:'knightArmor'}},
+    {floor:25,reward:{coins:12000,gems:200,equipment:'shadowBlade'}},
+    {floor:30,reward:{coins:25000,gems:500,equipment:'dragonSword'}}
+];
 const gameIntervals=[];
 function getCurrentFestival(){
     const m=new Date().getMonth();
@@ -1935,6 +2036,11 @@ function loadGame(){
                         }
                         if(d.storyChoices)storyChoices=d.storyChoices;
                         if(d.storyEnding)storyEnding=d.storyEnding;
+                        if(d.dailyTasks)dailyTasks=d.dailyTasks;
+                        if(d.loginRewards)loginRewards=d.loginRewards;
+                        if(d.equipmentEnhance)equipmentEnhance=d.equipmentEnhance;
+                        if(d.partnerData)partnerData=d.partnerData;
+                        if(d.towerState)towerState=d.towerState;
                         if(d.savedAt){
                             calculateOfflineRewards(d.savedAt);
                         }
@@ -2023,7 +2129,7 @@ function saveGame(immediate=false){
     }
     lastSaveTime=now;
     try{
-        const saveData={...cat,weather,outfits,achievements,questProgress,currentMap,signInState,wheelState,equipment,intimacyLevel,intimacyPoints,fatigue,arenaRank,arenaPoints,arenaStreak,arenaDailyWins,arenaLastReset,diaryEntries,currentSkin,skillMastery,sleepState,hospitalState,storyProgress,storyChoices,storyEnding,savedAt:Date.now()};
+        const saveData={...cat,weather,outfits,achievements,questProgress,currentMap,signInState,wheelState,equipment,intimacyLevel,intimacyPoints,fatigue,arenaRank,arenaPoints,arenaStreak,arenaDailyWins,arenaLastReset,diaryEntries,currentSkin,skillMastery,sleepState,hospitalState,storyProgress,storyChoices,storyEnding,dailyTasks,loginRewards,equipmentEnhance,partnerData,towerState,savedAt:Date.now()};
         localStorage.setItem(SAVE_KEY,JSON.stringify(saveData));
     }catch(e){
         GameLogger.error('SAVE','Save game failed',e);
@@ -2465,6 +2571,7 @@ function feed(){
     saveGame();
     checkAch('first_feed');
     updQuest('feed');
+    updateDailyTaskProgress('feed',1);
     generateAIResponse('主人给我喂食了，我吃得很开心',['谢谢投喂！喵~ 🐟','好好吃！最喜欢主人了~','吃饱饱了！喵喵~','美味！谢谢主人！']).then(msg=>addMessage(msg,'bot'));
 }
 function play(){
@@ -2490,6 +2597,7 @@ function play(){
     saveGame();
     checkAch('first_play');
     updQuest('play');
+    updateDailyTaskProgress('play',1);
     generateAIResponse('主人和我在玩耍，我好开心',['太好玩了！再来一次~ 🎾','喵喵喵！好开心！','玩累了...但是还想玩！','最喜欢和主人玩了！']).then(msg=>addMessage(msg,'bot'));
 }
 function pet(){
@@ -2539,6 +2647,7 @@ function startAdventure(mapId){
     const m=maps[mapId];
     playSound('adventure');
     fatigue=Math.min(GAME_CONSTANTS.FATIGUE_MAX,fatigue+5);
+    updateDailyTaskProgress('explore',1);
     const isBoss=Math.random()<0.1;
     if(isBoss&&cat.level>=m.minLevel+5){
         startBattle(m.boss);
@@ -2679,6 +2788,7 @@ function useSkill(skillId){
     const skill=skills[skillId];
     if(!skill||cat.mp<skill.mp)return;
     cat.mp-=skill.mp;
+    updateDailyTaskProgress('skill',1);
     if(!skillMastery[skillId])skillMastery[skillId]={level:1,exp:0,expMax:100,uses:0};
     skillMastery[skillId].uses++;
     skillMastery[skillId].exp+=10;
@@ -3072,6 +3182,16 @@ function endBattle(victory){
         endStoryBattleFromUI(victory);
         return;
     }
+    if(battleState.isTower){
+        if(victory){
+            onTowerVictory();
+        }else{
+            towerState.currentFloor=Math.max(1,towerState.currentFloor-1);
+        }
+        battleState=null;
+        saveGame();
+        return;
+    }
     
     if(victory){
         playSound('victory');
@@ -3122,6 +3242,7 @@ function endBattle(victory){
         checkLevel();
         updQuest('battle');
         updQuest('collect');
+        updateDailyTaskProgress('battle',1);
         if(enemy.isBoss){
             checkAch('boss_slayer');
             cat.bossKills=(cat.bossKills||0)+1;
@@ -4339,23 +4460,7 @@ function openPartnerShop(){
     if(popup)popup.style.maxWidth='500px';
 }
 function showPartnerDetail(id){
-    const p=partners.find(x=>x.id===id);
-    if(!p)return;
-    const bonusText=Object.entries(p.bonus).map(([k,v])=>{
-        const names={speed:'速度',attack:'攻击',defense:'防御',happiness:'快乐',mpMax:'魔力上限',hpMax:'生命上限'};
-        return `${names[k]||k}+${v}`;
-    }).join(' ');
-    let h='<div style="text-align:center;padding:10px">';
-    h+=`<div style="font-size:48px">${p.icon}</div>`;
-    h+=`<h4>${p.name}</h4>`;
-    h+=`<p style="color:var(--text-dim)">${p.desc}</p>`;
-    h+=`<p>属性加成: ${bonusText}</p>`;
-    h+=`<p>技能: ${p.skill}</p>`;
-    h+='<div style="margin-top:15px">';
-    h+='<button onclick="openPartnerShop()" class="secondary">🔄 切换伙伴</button> ';
-    h+=`<button onclick="removePartner('${id}')" style="background:#e74c3c">解散</button>`;
-    h+='</div></div>';
-    showEvent(`👥 ${p.name}`,p.desc,h);
+    openPartnerDetail(id);
 }
 function removePartner(id){
     const p=partners.find(x=>x.id===id);
@@ -5658,6 +5763,7 @@ function craftItem(id){
     }
     cat.craftCount=(cat.craftCount||0)+1;
     updQuest('craft');
+    updateDailyTaskProgress('craft',1);
     if(cat.craftCount>=10)checkAch('craft_10');
     if(cat.craftCount>=50)checkAch('craft_50');
     playSound('happy');
@@ -6091,7 +6197,7 @@ let selectedSlot=1;
 function selectSaveSlot(slot){selectedSlot=slot;openSaves()}
 function saveToSlot(){
     const saveKey=`${SAVE_KEY}_slot${selectedSlot}`;
-    const saveData={...cat,weather,outfits,achievements,questProgress,currentMap,signInState,wheelState,equipment,intimacyLevel,intimacyPoints,fatigue,arenaRank,arenaPoints,arenaStreak,arenaDailyWins,arenaLastReset,diaryEntries,currentSkin,skillMastery,sleepState,hospitalState,storyProgress,storyChoices,storyEnding,savedAt:Date.now()};
+    const saveData={...cat,weather,outfits,achievements,questProgress,currentMap,signInState,wheelState,equipment,intimacyLevel,intimacyPoints,fatigue,arenaRank,arenaPoints,arenaStreak,arenaDailyWins,arenaLastReset,diaryEntries,currentSkin,skillMastery,sleepState,hospitalState,storyProgress,storyChoices,storyEnding,dailyTasks,loginRewards,equipmentEnhance,partnerData,towerState,savedAt:Date.now()};
     localStorage.setItem(saveKey,JSON.stringify(saveData));
     playSound('happy');
     addMessage(`💾 已保存到存档${selectedSlot}！`,'bot');
@@ -6206,6 +6312,7 @@ function startArenaBattleNew(opponentIdx){
     const entryFee=20+opponentIdx*15+Math.floor(op.level/3)*5;
     if(cat.coins<entryFee){alert(`金币不足！需要${entryFee}💰入场费`);return}
     cat.coins-=entryFee;
+    updateDailyTaskProgress('arena',1);
     battleState={
         enemy:{...op,id:'arena_enemy',name:op.name,icon:op.avatar,hp:op.hp,currentHp:op.hp,attack:op.attack,defense:op.defense},
         opponent:op,
@@ -6367,13 +6474,449 @@ function openAchievements(){
 }
 function checkWeatherEffect(skillType){
     const effects={
-        sunny:{fire:1.3,ice:0.8},
-        rainy:{lightning:1.5,fire:0.7,ice:1.2},
-        snow:{ice:1.5,fire:0.6},
-        night:{dark:1.3,heal:1.2}
+        sunny:{fire:1.3,ice:0.8,water:0.9},
+        rainy:{lightning:1.5,fire:0.7,ice:1.2,water:1.3},
+        snow:{ice:1.5,fire:0.6,water:1.1},
+        night:{dark:1.3,heal:1.2},
+        cloudy:{lightning:1.2,fire:0.9}
     };
     const effect=effects[weather];
     return effect&&effect[skillType]?effect[skillType]:1;
+}
+function getWeatherEffectDesc(){
+    const descs={
+        sunny:'☀️ 晴天: 火系+30%, 冰系-20%',
+        rainy:'🌧️ 雨天: 雷系+50%, 水系+30%, 火系-30%',
+        snow:'❄️ 雪天: 冰系+50%, 火系-40%',
+        night:'🌙 夜晚: 暗系+30%, 治疗+20%',
+        cloudy:'☁️ 阴天: 雷系+20%'
+    };
+    return descs[weather]||'';
+}
+function refreshDailyTasks(){
+    const today=new Date().toDateString();
+    if(dailyTasks.lastRefresh!==today){
+        const shuffled=[...DAILY_TASKS].sort(()=>Math.random()-0.5);
+        dailyTasks={
+            lastRefresh:today,
+            tasks:shuffled.slice(0,5).map(t=>({...t,progress:0})),
+            completed:[]
+        };
+        dailyTasks.tasks.push({...DAILY_TASKS.find(t=>t.type==='login'),progress:0});
+        saveGame();
+    }
+}
+function updateDailyTaskProgress(type,amount=1){
+    refreshDailyTasks();
+    dailyTasks.tasks.forEach(task=>{
+        if(task.type===type&&!dailyTasks.completed.includes(task.id)){
+            task.progress=Math.min(task.progress+amount,task.target);
+        }
+    });
+    saveGame();
+}
+function claimDailyTask(taskId){
+    const task=dailyTasks.tasks.find(t=>t.id===taskId);
+    if(!task||task.progress<task.target||dailyTasks.completed.includes(taskId))return;
+    dailyTasks.completed.push(taskId);
+    if(task.reward.coins)cat.coins+=task.reward.coins;
+    if(task.reward.exp)cat.exp+=task.reward.exp;
+    if(task.reward.gems)cat.gems+=task.reward.gems;
+    if(task.reward.happiness)cat.happiness=Math.min(100,cat.happiness+task.reward.happiness);
+    if(cat.exp>=cat.expMax)levelUp();
+    playSound('happy');
+    saveGame();
+    openDailyTasks();
+}
+function openDailyTasks(){
+    refreshDailyTasks();
+    let h='<div class="daily-tasks">';
+    dailyTasks.tasks.forEach(task=>{
+        const completed=dailyTasks.completed.includes(task.id);
+        const canClaim=task.progress>=task.target&&!completed;
+        const icons={battle:'⚔️',skill:'⚡',explore:'🗺️',feed:'🍖',play:'🎾',craft:'⚗️',arena:'🏆',login:'🎁'};
+        h+=`<div class="daily-task ${completed?'completed':''}">`;
+        h+=`<div class="task-icon">${icons[task.type]||'📋'}</div>`;
+        h+=`<div class="task-info">`;
+        h+=`<div class="task-name">${task.name}</div>`;
+        h+=`<div class="task-desc">${task.desc}</div>`;
+        h+=`<div class="task-progress">${task.progress}/${task.target}</div>`;
+        h+=`<div class="task-reward">💰${task.reward.coins||0} ⭐${task.reward.exp||0}${task.reward.gems?` 💎${task.reward.gems}`:''}</div>`;
+        h+=`</div>`;
+        h+=`<button class="claim-btn" ${!canClaim?'disabled':''} onclick="claimDailyTask('${task.id}')">${completed?'✅已领':'领取'}</button>`;
+        h+=`</div>`;
+    });
+    h+='</div>';
+    showEvent('📋 每日任务',`今日完成: ${dailyTasks.completed.length}/${dailyTasks.tasks.length}`,h);
+}
+function checkLoginReward(){
+    const today=new Date().toDateString();
+    if(loginRewards.lastLogin===today)return;
+    loginRewards.lastLogin=today;
+    loginRewards.totalDays++;
+    const yesterday=new Date();
+    yesterday.setDate(yesterday.getDate()-1);
+    if(loginRewards.lastLogin===yesterday.toDateString()){
+        loginRewards.consecutiveDays++;
+    }else{
+        loginRewards.consecutiveDays=1;
+    }
+    loginRewards.todayClaimed=false;
+    updateDailyTaskProgress('login',1);
+    saveGame();
+}
+function claimLoginReward(day){
+    if(loginRewards.todayClaimed||day>loginRewards.consecutiveDays)return;
+    const reward=LOGIN_REWARDS.find(r=>r.day===day)||LOGIN_REWARDS[0];
+    if(reward.reward.coins)cat.coins+=reward.reward.coins;
+    if(reward.reward.exp)cat.exp+=reward.reward.exp;
+    if(reward.reward.gems)cat.gems+=reward.reward.gems;
+    if(reward.reward.item){
+        if(!cat.items)cat.items={};
+        cat.items[reward.reward.item]=(cat.items[reward.reward.item]||0)+1;
+    }
+    if(reward.reward.equipment){
+        if(!cat.ownedEquipment)cat.ownedEquipment=[];
+        if(!cat.ownedEquipment.includes(reward.reward.equipment)){
+            cat.ownedEquipment.push(reward.reward.equipment);
+        }
+    }
+    loginRewards.todayClaimed=true;
+    playSound('happy');
+    saveGame();
+    openLoginRewards();
+}
+function openLoginRewards(){
+    checkLoginReward();
+    let h='<div style="text-align:center;margin-bottom:15px">';
+    h+=`<p style="color:var(--text-dim)">连续登录: <span style="color:var(--accent)">${loginRewards.consecutiveDays}</span> 天</p>`;
+    h+=`<p style="color:var(--text-dim)">累计登录: <span style="color:var(--accent)">${loginRewards.totalDays}</span> 天</p>`;
+    h+='</div>';
+    h+='<div class="login-rewards">';
+    for(let i=1;i<=7;i++){
+        const reward=LOGIN_REWARDS.find(r=>r.day===i)||LOGIN_REWARDS[i-1];
+        const claimed=i<loginRewards.consecutiveDays||(i===loginRewards.consecutiveDays&&loginRewards.todayClaimed);
+        const current=i===loginRewards.consecutiveDays&&!loginRewards.todayClaimed;
+        h+=`<div class="login-day ${claimed?'claimed':''} ${current?'current':''}" onclick="${current?`claimLoginReward(${i})`:''}">`;
+        h+=`<div class="day-num">第${i}天</div>`;
+        h+=`<div class="day-icon">${reward.icon}</div>`;
+        h+=`<div class="day-reward">💰${reward.reward.coins}</div>`;
+        h+=`</div>`;
+    }
+    h+='</div>';
+    h+='<div style="text-align:center;margin-top:15px">';
+    h+='<p style="font-size:11px;color:var(--text-dim)">连续登录7天可获得额外奖励！</p>';
+    const specialRewards=LOGIN_REWARDS.filter(r=>r.day>7);
+    if(specialRewards.length>0){
+        h+='<div style="margin-top:10px">';
+        specialRewards.forEach(r=>{
+            const canClaim=loginRewards.consecutiveDays>=r.day;
+            const claimed=false;
+            h+=`<button class="claim-btn" style="margin:5px" ${!canClaim||claimed?'disabled':''} onclick="claimLoginReward(${r.day})">`;
+            h+=`${r.icon} ${r.day}天奖励</button>`;
+        });
+        h+='</div>';
+    }
+    h+='</div>';
+    showEvent('🎁 登录奖励','每日登录领取奖励',h);
+}
+function enhanceEquipment(slot){
+    const equipId=equipment[slot];
+    if(!equipId)return;
+    const equip=equipmentList[equipId];
+    if(!equip)return;
+    const currentLevel=equipmentEnhance[equipId]||0;
+    if(currentLevel>=10)return;
+    const cost=ENHANCE_COSTS[currentLevel];
+    if(cat.coins<cost){
+        addMessage('💰 金币不足！','bot');
+        return;
+    }
+    const rate=ENHANCE_RATES[currentLevel];
+    cat.coins-=cost;
+    if(Math.random()*100<rate){
+        equipmentEnhance[equipId]=currentLevel+1;
+        playSound('happy');
+        addMessage(`✨ 强化成功！${equip.name} +${currentLevel+1}`,'bot');
+    }else{
+        playSound('sad');
+        addMessage(`💔 强化失败...${equip.name} 保持 +${currentLevel}`,'bot');
+    }
+    saveGame();
+    openEnhancePanel();
+}
+function getEnhanceBonus(equipId){
+    const level=equipmentEnhance[equipId]||0;
+    return ENHANCE_BONUSES[level]||0;
+}
+function getEnhancedStats(equipId){
+    const equip=equipmentList[equipId];
+    if(!equip)return{};
+    const bonus=getEnhanceBonus(equipId);
+    const stats={...equip.stats};
+    Object.keys(stats).forEach(key=>{
+        if(['attack','defense','hpMax','mpMax','speed','critRate'].includes(key)){
+            stats[key]=stats[key]+bonus;
+        }
+    });
+    return stats;
+}
+function openEnhancePanel(){
+    let h='<div class="enhance-panel">';
+    ['weapon','armor','accessory'].forEach(slot=>{
+        const equipId=equipment[slot];
+        if(equipId){
+            const equip=equipmentList[equipId];
+            const level=equipmentEnhance[equipId]||0;
+            const stats=getEnhancedStats(equipId);
+            const cost=ENHANCE_COSTS[level]||0;
+            const rate=ENHANCE_RATES[level]||0;
+            h+=`<div class="enhance-item">`;
+            h+=`<div class="equip-icon">${equip.icon}</div>`;
+            h+=`<div class="equip-info">`;
+            h+=`<div class="equip-name">${equip.name} ${level>0?`+${level}`:''}</div>`;
+            h+=`<div class="equip-stats">`;
+            Object.entries(stats).forEach(([key,val])=>{
+                const names={attack:'攻击',defense:'防御',hpMax:'生命',mpMax:'魔力',speed:'速度',critRate:'暴击'};
+                if(names[key])h+=`${names[key]}+${val} `;
+            });
+            h+=`</div>`;
+            if(level<10){
+                h+=`<div class="enhance-rate">成功率: ${rate}% | 费用: 💰${cost}</div>`;
+            }
+            h+=`</div>`;
+            if(level<10){
+                h+=`<button class="enhance-btn" onclick="enhanceEquipment('${slot}')">强化</button>`;
+            }else{
+                h+=`<span style="color:var(--accent)">MAX</span>`;
+            }
+            h+=`</div>`;
+        }
+    });
+    if(!equipment.weapon&&!equipment.armor&&!equipment.accessory){
+        h+='<p style="text-align:center;color:var(--text-dim)">暂无装备，请先装备物品</p>';
+    }
+    h+='</div>';
+    h+='<div style="text-align:center;margin-top:15px">';
+    h+='<p style="font-size:11px;color:var(--text-dim)">💡 强化可提升装备属性，失败不会降级</p>';
+    h+='</div>';
+    showEvent('⚒️ 装备强化','强化装备提升属性',h);
+}
+function initPartnerData(partnerId){
+    if(!partnerData[partnerId]){
+        partnerData[partnerId]={
+            level:1,
+            exp:0,
+            expMax:100,
+            intimacy:0,
+            intimacyMax:100,
+            skills:[],
+            fed:0,
+            played:0
+        };
+    }
+    return partnerData[partnerId];
+}
+function feedPartner(partnerId){
+    const pData=initPartnerData(partnerId);
+    if(cat.coins<20){
+        addMessage('💰 金币不足！','bot');
+        return;
+    }
+    cat.coins-=20;
+    pData.intimacy=Math.min(pData.intimacyMax,pData.intimacy+10);
+    pData.exp+=15;
+    pData.fed++;
+    checkPartnerLevelUp(partnerId);
+    playSound('happy');
+    saveGame();
+    openPartnerDetail(partnerId);
+}
+function playWithPartner(partnerId){
+    const pData=initPartnerData(partnerId);
+    if(cat.happiness<10){
+        addMessage('😢 快乐值不足！','bot');
+        return;
+    }
+    cat.happiness-=10;
+    pData.intimacy=Math.min(pData.intimacyMax,pData.intimacy+15);
+    pData.exp+=20;
+    pData.played++;
+    checkPartnerLevelUp(partnerId);
+    playSound('happy');
+    saveGame();
+    openPartnerDetail(partnerId);
+}
+function checkPartnerLevelUp(partnerId){
+    const pData=partnerData[partnerId];
+    if(!pData)return;
+    while(pData.exp>=pData.expMax&&pData.level<30){
+        pData.exp-=pData.expMax;
+        pData.level++;
+        pData.expMax=Math.floor(pData.expMax*1.2);
+        pData.intimacyMax+=20;
+        addMessage(`🎉 伙伴升级了！Lv.${pData.level}`,'bot');
+    }
+}
+function getPartnerBonus(partnerId){
+    const partner=partners.find(p=>p.id===partnerId);
+    const pData=partnerData[partnerId];
+    if(!partner||!pData)return{};
+    const levelBonus=Math.floor(pData.level/5);
+    const intimacyBonus=Math.floor(pData.intimacy/20);
+    const bonus={...partner.bonus};
+    Object.keys(bonus).forEach(key=>{
+        bonus[key]=bonus[key]+levelBonus+intimacyBonus;
+    });
+    return bonus;
+}
+function openPartnerDetail(partnerId){
+    const partner=partners.find(p=>p.id===partnerId);
+    if(!partner)return;
+    const pData=initPartnerData(partnerId);
+    const hearts='❤️'.repeat(Math.floor(pData.intimacy/20))+'🤍'.repeat(5-Math.floor(pData.intimacy/20));
+    let h='<div class="partner-detail">';
+    h+=`<div style="text-align:center;margin-bottom:15px">`;
+    h+=`<div style="font-size:48px">${partner.icon}</div>`;
+    h+=`<div style="font-size:18px;font-weight:bold">${partner.name}</div>`;
+    h+=`<div style="font-size:12px;color:var(--text-dim)">Lv.${pData.level}</div>`;
+    h+=`</div>`;
+    h+=`<div class="partner-exp-bar"><div class="partner-exp-fill" style="width:${(pData.exp/pData.expMax*100)}%"></div></div>`;
+    h+=`<div style="font-size:11px;color:var(--text-dim);text-align:center">经验: ${pData.exp}/${pData.expMax}</div>`;
+    h+=`<div class="partner-intimacy">`;
+    h+=`<span>亲密度:</span>`;
+    h+=`<span class="hearts">${hearts}</span>`;
+    h+=`<span style="font-size:11px;color:var(--accent)">${pData.intimacy}/${pData.intimacyMax}</span>`;
+    h+=`</div>`;
+    const bonus=getPartnerBonus(partnerId);
+    h+=`<div style="margin:10px 0;padding:10px;background:rgba(255,255,255,0.05);border-radius:10px">`;
+    h+=`<div style="font-size:12px;font-weight:bold;margin-bottom:5px">属性加成</div>`;
+    Object.entries(bonus).forEach(([key,val])=>{
+        const names={attack:'攻击',defense:'防御',speed:'速度',hpMax:'生命',mpMax:'魔力',happiness:'快乐'};
+        if(names[key])h+=`<span style="margin-right:10px">${names[key]}+${val}</span>`;
+    });
+    h+=`</div>`;
+    h+=`<div style="display:flex;gap:10px;margin-top:15px">`;
+    h+=`<button class="enhance-btn" onclick="feedPartner('${partnerId}')">🍖 喂食 (💰20)</button>`;
+    h+=`<button class="enhance-btn" onclick="playWithPartner('${partnerId}')">🎾 玩耍 (😊10)</button>`;
+    h+=`</div>`;
+    h+=`<div style="display:flex;gap:10px;margin-top:10px">`;
+    h+=`<button class="enhance-btn" onclick="closeEvent();openPartnerShop()" style="background:linear-gradient(135deg,#6c5ce7,#a29bfe)">🔄 切换</button>`;
+    h+=`<button class="enhance-btn" onclick="removePartner('${partnerId}')" style="background:linear-gradient(135deg,#e74c3c,#c0392b)">💔 解散</button>`;
+    h+=`</div>`;
+    h+='</div>';
+    showEvent(`${partner.icon} ${partner.name}`,`伙伴详情`,h);
+}
+function resetTowerDaily(){
+    const today=new Date().toDateString();
+    if(towerState.lastReset!==today){
+        towerState.attempts=3;
+        towerState.lastReset=today;
+        saveGame();
+    }
+}
+function getTowerMonster(floor){
+    let monster={...TOWER_MONSTERS[0]};
+    for(const m of TOWER_MONSTERS){
+        if(floor>=m.floor){
+            monster={...m};
+        }
+    }
+    const levelMultiplier=1+(floor-monster.floor)*0.1;
+    return{
+        name:monster.name,
+        icon:monster.icon,
+        hp:Math.floor(monster.hp*levelMultiplier),
+        attack:Math.floor(monster.attack*levelMultiplier),
+        defense:Math.floor(monster.defense*levelMultiplier),
+        exp:Math.floor(monster.exp*levelMultiplier),
+        coins:Math.floor(monster.coins*levelMultiplier),
+        floor
+    };
+}
+function startTowerBattle(){
+    resetTowerDaily();
+    if(towerState.attempts<=0){
+        addMessage('😢 今日挑战次数已用完！','bot');
+        return;
+    }
+    towerState.attempts--;
+    const monster=getTowerMonster(towerState.currentFloor);
+    battleState={
+        enemy:{
+            name:monster.name,
+            icon:monster.icon,
+            hp:monster.hp,
+            currentHp:monster.hp,
+            attack:monster.attack,
+            defense:monster.defense,
+            exp:monster.exp,
+            coins:monster.coins
+        },
+        shield:0,
+        playerEffects:[],
+        enemyEffects:[],
+        isTower:true,
+        floor:towerState.currentFloor
+    };
+    playSound('battle');
+    showBattleUI();
+    addBattleLog(`🏰 无尽之塔 第${towerState.currentFloor}层`);
+    addBattleLog(`${monster.icon} ${monster.name} 出现了！`);
+    saveGame();
+}
+function onTowerVictory(){
+    const floor=towerState.currentFloor;
+    const monster=battleState.enemy;
+    cat.exp+=monster.exp;
+    cat.coins+=monster.coins;
+    if(cat.exp>=cat.expMax)levelUp();
+    towerState.currentFloor++;
+    towerState.highestFloor=Math.max(towerState.highestFloor,towerState.currentFloor);
+    const reward=TOWER_REWARDS.find(r=>r.floor===floor);
+    if(reward){
+        if(reward.reward.coins)cat.coins+=reward.reward.coins;
+        if(reward.reward.gems)cat.gems+=reward.reward.gems;
+        if(reward.reward.item){
+            if(!cat.items)cat.items={};
+            cat.items[reward.reward.item]=(cat.items[reward.reward.item]||0)+1;
+        }
+        if(reward.reward.equipment){
+            if(!cat.ownedEquipment)cat.ownedEquipment=[];
+            if(!cat.ownedEquipment.includes(reward.reward.equipment)){
+                cat.ownedEquipment.push(reward.reward.equipment);
+            }
+        }
+        addMessage(`🎁 通过第${floor}层！获得奖励！`,'bot');
+    }
+    updateDailyTaskProgress('battle',1);
+    saveGame();
+}
+function openTower(){
+    resetTowerDaily();
+    let h='<div class="tower-panel">';
+    h+=`<div class="tower-floor">🏰 <span>第${towerState.currentFloor}层</span></div>`;
+    h+=`<div class="tower-info">`;
+    h+=`<div class="tower-stat"><div class="value">${towerState.highestFloor}</div><div class="label">最高层</div></div>`;
+    h+=`<div class="tower-stat"><div class="value">${towerState.attempts}</div><div class="label">剩余次数</div></div>`;
+    h+=`<div class="tower-stat"><div class="value">3</div><div class="label">每日次数</div></div>`;
+    h+=`</div>`;
+    const monster=getTowerMonster(towerState.currentFloor);
+    h+=`<div style="margin:15px 0;padding:15px;background:rgba(255,255,255,0.05);border-radius:12px">`;
+    h+=`<div style="font-size:32px;margin-bottom:10px">${monster.icon}</div>`;
+    h+=`<div style="font-size:14px;font-weight:bold">${monster.name}</div>`;
+    h+=`<div style="font-size:11px;color:var(--text-dim)">❤️${monster.hp} ⚔️${monster.attack} 🛡️${monster.defense}</div>`;
+    h+=`</div>`;
+    h+=`<button class="tower-btn" ${towerState.attempts<=0?'disabled':''} onclick="startTowerBattle()">⚔️ 挑战</button>`;
+    h+='<div class="tower-rewards">';
+    h+='<div style="width:100%;text-align:center;margin-bottom:10px;font-size:12px;color:var(--text-dim)">里程碑奖励</div>';
+    TOWER_REWARDS.forEach(r=>{
+        const claimed=towerState.highestFloor>r.floor;
+        h+=`<div class="tower-reward-item ${claimed?'claimed':''}">${r.floor}层: 💰${r.reward.coins} 💎${r.reward.gems}</div>`;
+    });
+    h+='</div>';
+    h+='</div>';
+    showEvent('🏰 无尽之塔','挑战极限，获取丰厚奖励',h);
 }
 function updateFatigue(){
     if(fatigue>0){
@@ -6819,6 +7362,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     }else{
         setTimeout(()=>fetchRealWeather(),5000);
     }
+    refreshDailyTasks();
+    checkLoginReward();
+    resetTowerDaily();
     let musicStarted=false;
     const startAudio=()=>{
         if(musicStarted)return;
