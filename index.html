@@ -6831,13 +6831,24 @@ function skipTutorial(){
 }
 let portraitModeEnabled=false;
 function checkOrientation(){
-    if(portraitModeEnabled){
-        document.getElementById('rotatePrompt').style.display='none';
-        document.body.classList.add('portrait-mode');
-        return;
-    }
     const isPortrait=window.innerHeight>window.innerWidth;
     const isMobile=window.innerWidth<=768;
+    if(portraitModeEnabled){
+        if(isPortrait){
+            document.getElementById('rotatePrompt').style.display='none';
+            document.body.classList.add('portrait-mode');
+        }else{
+            portraitModeEnabled=false;
+            localStorage.removeItem('hupo_portrait_mode');
+            document.body.classList.remove('portrait-mode');
+            document.getElementById('rotatePrompt').style.display='none';
+            const mainPanel=document.querySelector('.main-panel');
+            const rightPanel=document.querySelector('.right-panel');
+            if(mainPanel)mainPanel.classList.remove('show');
+            if(rightPanel)rightPanel.classList.remove('show');
+        }
+        return;
+    }
     if(isMobile&&isPortrait){
         document.getElementById('rotatePrompt').style.display='flex';
         document.body.classList.remove('portrait-mode');
@@ -6936,12 +6947,15 @@ function exitPortraitMode(){
     showPortraitToast('已切换到横屏模式');
 }
 function initPortraitMode(){
-    if(localStorage.getItem('hupo_portrait_mode')==='true'){
+    const isPortrait=window.innerHeight>window.innerWidth;
+    if(localStorage.getItem('hupo_portrait_mode')==='true' && isPortrait){
         portraitModeEnabled=true;
         document.body.classList.add('portrait-mode');
         setTimeout(()=>{
             switchPortraitTab('cat');
         },100);
+    }else if(localStorage.getItem('hupo_portrait_mode')==='true' && !isPortrait){
+        localStorage.removeItem('hupo_portrait_mode');
     }
     checkOrientation();
     window.addEventListener('resize',checkOrientation);
