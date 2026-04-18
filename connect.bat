@@ -13,10 +13,10 @@ if not exist "server.ini" (
     exit /b 1
 )
 
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "^host" server.ini') do set "SERVER_IP=%%b"
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "^user" server.ini') do set "SERVER_USER=%%b"
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "^port" server.ini') do set "SERVER_PORT=%%b"
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "^password" server.ini') do set "SERVER_PASS=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "host" server.ini ^| findstr /v "\["') do set "SERVER_IP=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "user" server.ini ^| findstr /v "\["') do set "SERVER_USER=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "port" server.ini ^| findstr /v "\["') do set "SERVER_PORT=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "password" server.ini ^| findstr /v "\["') do set "SERVER_PASS=%%b"
 
 if not defined SERVER_IP (
     echo Error: Cannot read host
