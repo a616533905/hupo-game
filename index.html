@@ -552,10 +552,9 @@ body.portrait-mode .portrait-nav-bar{display:flex}
 .portrait-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 5px;border:none;background:transparent;color:var(--text-dim);font-size:22px;cursor:pointer;border-radius:10px;transition:all 0.2s;min-height:50px}
 .portrait-nav-btn.active{color:var(--accent);background:rgba(255,217,61,0.1)}
 .portrait-nav-btn:active{transform:scale(0.95)}
-@media screen and (max-width:768px) and (orientation:portrait){
 body.portrait-mode{padding-bottom:70px}
-body.portrait-mode .rotate-prompt{display:flex}
-body.portrait-mode .container{display:flex;flex-direction:column;padding:10px;gap:10px;height:auto;min-height:calc(100vh - 70px)}
+body.portrait-mode .rotate-prompt{display:none!important}
+body.portrait-mode .container{display:flex!important;flex-direction:column;padding:10px;gap:10px;height:auto;min-height:calc(100vh - 70px)}
 body.portrait-mode .cat-panel{order:1;padding:15px;flex:none}
 body.portrait-mode .cat-sprite{width:100px;height:100px}
 body.portrait-mode .cat-info{gap:15px}
@@ -566,9 +565,10 @@ body.portrait-mode .stat-row{gap:8px}
 body.portrait-mode .stat-label{font-size:11px;width:30px}
 body.portrait-mode .bar-container{height:8px}
 body.portrait-mode .stat-value{font-size:11px}
-body.portrait-mode .main-panel{order:2;flex:1;min-height:300px;display:flex;flex-direction:column}
+body.portrait-mode .main-panel{order:2;flex:1;min-height:300px;display:none}
+body.portrait-mode .main-panel.show{display:flex;flex-direction:column}
 body.portrait-mode .right-panel{order:3;display:none;position:fixed;bottom:70px;left:0;right:0;top:auto;max-height:70vh;border-radius:20px 20px 0 0;z-index:var(--z-popup);transform:translateY(100%);transition:transform 0.3s}
-body.portrait-mode .right-panel.show{display:flex;transform:translateY(0)}
+body.portrait-mode .right-panel.show{display:flex!important;transform:translateY(0)}
 body.portrait-mode .actions{grid-template-columns:repeat(4,1fr);gap:6px}
 body.portrait-mode .action-btn{padding:10px 8px;font-size:11px;min-height:44px;border-radius:10px}
 body.portrait-mode .action-btn .icon{font-size:16px}
@@ -617,7 +617,6 @@ body.portrait-mode .wheel-container{transform:scale(0.8)}
 body.portrait-mode .story-text{font-size:13px;padding:10px}
 body.portrait-mode .story-choices{gap:8px}
 body.portrait-mode .story-choice{padding:10px;font-size:13px;min-height:44px}
-}
 .save-notification{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(39,174,96,0.95);color:#fff;padding:12px 24px;border-radius:25px;display:flex;align-items:center;gap:8px;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:var(--z-top);opacity:0;transition:all 0.3s ease;pointer-events:none}
 .save-notification.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .save-notification .icon{font-size:18px}
@@ -6871,29 +6870,30 @@ function switchPortraitTab(tab){
     switch(tab){
         case'cat':
             if(catPanel)catPanel.style.display='';
-            if(mainPanel)mainPanel.style.display='none';
+            if(mainPanel)mainPanel.classList.remove('show');
             if(rightPanel)rightPanel.classList.remove('show');
             if(actions)actions.style.display='grid';
             break;
         case'chat':
             if(catPanel)catPanel.style.display='none';
-            if(mainPanel)mainPanel.style.display='flex';
+            if(mainPanel)mainPanel.classList.add('show');
             if(rightPanel)rightPanel.classList.remove('show');
             if(actions)actions.style.display='none';
             break;
         case'battle':
-            openBattle();
+            if(catPanel)catPanel.style.display='none';
+            if(mainPanel)mainPanel.classList.add('show');
+            if(rightPanel)rightPanel.classList.remove('show');
             break;
         case'explore':
-            openMap();
+            if(catPanel)catPanel.style.display='none';
+            if(mainPanel)mainPanel.classList.add('show');
+            if(rightPanel)rightPanel.classList.remove('show');
             break;
         case'menu':
             if(catPanel)catPanel.style.display='none';
-            if(mainPanel)mainPanel.style.display='none';
-            if(rightPanel){
-                rightPanel.classList.add('show');
-                rightPanel.style.display='flex';
-            }
+            if(mainPanel)mainPanel.classList.remove('show');
+            if(rightPanel)rightPanel.classList.add('show');
             break;
     }
 }
@@ -6913,7 +6913,10 @@ function exitPortraitMode(){
     const rightPanel=document.querySelector('.right-panel');
     const actions=document.querySelector('.actions');
     if(catPanel)catPanel.style.display='';
-    if(mainPanel)mainPanel.style.display='';
+    if(mainPanel){
+        mainPanel.classList.remove('show');
+        mainPanel.style.display='';
+    }
     if(rightPanel)rightPanel.classList.remove('show');
     if(actions)actions.style.display='';
     checkOrientation();
