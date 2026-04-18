@@ -986,12 +986,14 @@ body.portrait-mode .story-choice{padding:10px;font-size:13px;min-height:44px}
 </div>
 </div>
 <div class="evolution-screen" id="evolutionScreen">
+<button class="popup-close-btn" onclick="closeEvolution()">✕</button>
 <h2>🌟 进化时刻！</h2>
 <p>琥珀已经准备好进化了！选择一个进化形态：</p>
 <div class="evolution-preview" id="evolutionOptions"></div>
 <button onclick="closeEvolution()" class="secondary">稍后再说</button>
 </div>
 <div class="npc-dialog" id="npcDialog" style="display:none">
+<button class="popup-close-btn" onclick="closeNpcDialog()" style="top:5px;right:5px;width:28px;height:28px;font-size:14px">✕</button>
 <div class="npc-avatar" id="npcAvatar">🧙‍♂️</div>
 <div class="npc-name" id="npcName">神秘商人</div>
 <div class="npc-text" id="npcText">你好，年轻的冒险者...</div>
@@ -3433,6 +3435,9 @@ function evolve(formId){
 }
 function closeEvolution(){
     document.getElementById('evolutionScreen').classList.remove('show');
+}
+function closeNpcDialog(){
+    document.getElementById('npcDialog').style.display='none';
 }
 function openShop(){
     let h='<div class="shop-tabs">';
@@ -6886,13 +6891,21 @@ function switchPortraitTab(tab){
             break;
         case'battle':
             if(catPanel)catPanel.style.display='none';
-            if(mainPanel)mainPanel.classList.add('show');
-            if(rightPanel)rightPanel.classList.remove('show');
+            if(mainPanel)mainPanel.classList.remove('show');
+            if(rightPanel){
+                rightPanel.classList.add('show');
+                rightPanel.scrollTop=0;
+            }
+            if(actions)actions.style.display='none';
             break;
         case'explore':
             if(catPanel)catPanel.style.display='none';
-            if(mainPanel)mainPanel.classList.add('show');
-            if(rightPanel)rightPanel.classList.remove('show');
+            if(mainPanel)mainPanel.classList.remove('show');
+            if(rightPanel){
+                rightPanel.classList.add('show');
+                rightPanel.scrollTop=0;
+            }
+            if(actions)actions.style.display='none';
             break;
         case'menu':
             if(catPanel)catPanel.style.display='none';
