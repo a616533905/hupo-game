@@ -1,4 +1,9 @@
 #!/bin/bash
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONFIG_FILE="$SCRIPT_DIR/config.json"
+LOG_DIR="$SCRIPT_DIR/logs"
 
 echo "========================================"
 echo "  琥珀冒险 - 服务状态"
@@ -9,8 +14,6 @@ SHOW_LOGS=0
 if [[ "$1" == "--logs" ]] || [[ "$1" == "-l" ]]; then
     SHOW_LOGS=1
 fi
-
-CONFIG_FILE="/root/hupo-game/config.json"
 
 load_config() {
     if [ -f "$CONFIG_FILE" ]; then
@@ -71,7 +74,6 @@ fi
 echo ""
 
 echo "【最近错误日志】"
-LOG_DIR="/root/hupo-game/logs"
 if [ -d "$LOG_DIR" ]; then
     echo "  --- Bridge 错误 (最近10条) ---"
     BRIDGE_ERRORS=$(grep '\[ERROR\]' "$LOG_DIR"/bridge_*.log 2>/dev/null | tail -10)
@@ -114,6 +116,20 @@ echo "  HTTP端口: $HTTP_PORT"
 echo "  Voice端口: $VOICE_PORT"
 echo ""
 
+echo "【SOAR 安全状态】"
+DATA_DIR="$SCRIPT_DIR/data"
+if [ -d "$DATA_DIR" ]; then
+    PERM_BAN=$(python3 -c "import json; data=json.load(open('$DATA_DIR/blacklist.json')); print(len(data.get('permanent',[])))" 2>/dev/null || echo "0")
+    TEMP_BAN=$(python3 -c "import json,time; data=json.load(open('$DATA_DIR/temp_ban.json')); print(len([ip for ip,t in data.items() if time.time() < t]))" 2>/dev/null || echo "0")
+    ALERTS=$(python3 -c "import json; data=json.load(open('$DATA_DIR/alerts.json')); print(len(data.get('active',{})))" 2>/dev/null || echo "0")
+    echo "  永久封禁IP: $PERM_BAN"
+    echo "  临时封禁IP: $TEMP_BAN"
+    echo "  活跃告警: $ALERTS"
+else
+    echo "  数据目录不存在"
+fi
+echo ""
+
 if [ $SHOW_LOGS -eq 1 ]; then
     echo "========================================"
     echo ""
@@ -140,6 +156,8 @@ else
     echo ""
     echo "停止服务: ./stop.sh"
     echo "强制停止: ./stop.sh --force"
+    echo "SOAR状态: soar status"
+    echo "查看告警: soar alerts"
     echo ""
     echo "========================================"
 fi

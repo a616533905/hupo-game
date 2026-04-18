@@ -11,6 +11,9 @@ server_account.txt
 # 日志目录
 logs/
 
+# 数据目录（SOAR数据、告警等）
+data/
+
 # 音频临时文件
 temp_*.webm
 temp_*.pcm

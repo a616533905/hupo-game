@@ -116,7 +116,8 @@ hupo-game/
 │   ├── start.sh           # 启动服务（守护进程）
 │   ├── stop.sh            # 停止服务
 │   ├── status.sh          # 查看状态和日志
-│   └── install.sh         # 安装依赖和配置服务
+│   ├── install.sh         # 安装依赖和配置服务
+│   └── uninstall.sh       # 卸载脚本
 │
 ├── 🔐 SSL 证书
 │   ├── cert.pem           # SSL 证书
@@ -127,11 +128,24 @@ hupo-game/
 │   ├── hupo-voice.service    # 语音服务配置
 │   └── logrotate.conf        # 日志轮转配置
 │
-└── 📂 logs/               # 日志目录（自动创建）
-    ├── bridge_*.log       # AI 服务日志
-    └── voice_*.log        # 语音服务日志
-
-├── 📸 screenshots/        # 游戏截图
+├── 🛡️ SOAR 安全系统
+│   └── cron/
+│       ├── log_auditor.py    # 日志审计与安全响应
+│       └── health_check.sh   # 健康检查脚本
+│
+├── 📂 logs/               # 日志目录（自动创建）
+│   ├── bridge_*.log       # AI 服务日志
+│   ├── voice_*.log        # 语音服务日志
+│   ├── soar.log           # SOAR 审计日志
+│   ├── health_check.log   # 健康检查日志
+│   └── recover.log        # 自动恢复日志
+│
+├── 📂 data/               # 数据目录（自动创建）
+│   ├── blacklist.json     # IP 黑名单
+│   ├── alerts.json        # 活跃告警
+│   └── config_checksums.json  # 配置文件校验
+│
+└── 📸 screenshots/        # 游戏截图
     └── game.png           # 游戏主界面
 ```
 
@@ -301,6 +315,65 @@ curl http://localhost/health
 
 ---
 
+## 🛡️ SOAR 安全系统
+
+琥珀冒险内置完整的 SOAR（安全编排自动化响应）系统，提供全方位的安全防护。
+
+### 定时任务
+
+| 任务 | 频率 | 说明 |
+|------|------|------|
+| 健康检查 | 每5分钟 | 快速检查服务状态 |
+| SOAR审计 | 每5分钟 | 安全审计与攻击检测 |
+| 自动恢复 | 每10分钟 | 自动恢复异常服务 |
+| 完整检查 | 每6小时 | API/SSL/配置完整性检查 |
+| 日志审计 | 每天3点 | AI分析日志生成报告 |
+
+### soar 命令
+
+```bash
+soar status    # 显示系统状态
+soar health    # 完整健康检查
+soar recover   # 自动恢复异常服务
+soar run       # 手动运行安全审计
+soar alerts    # 显示活跃告警
+soar list      # 列出封禁IP
+soar stats     # 显示攻击统计
+soar api       # 检查API状态
+soar ban <IP>  # 封禁IP
+soar unban <IP> # 解封IP
+soar restart <service> # 重启服务
+soar cron      # 显示定时任务
+soar notify [url] # 发送告警通知
+```
+
+### 联动功能
+
+- **进程异常** → 自动检测 + 告警 + 尝试恢复
+- **端口异常** → 自动检测 + 告警 + 尝试恢复
+- **API不可用** → 自动检测 + 告警
+- **SSL证书过期** → 自动检测 + 告警
+- **配置文件篡改** → 自动检测 + 告警
+- **攻击检测** → 自动封禁IP
+- **服务异常** → 自动尝试重启恢复
+
+### 告警通知
+
+在 `config.json` 中配置 Webhook URL：
+
+```json
+{
+    "audit": {
+        "webhook_url": "https://your-webhook-url",
+        "enabled": true
+    }
+}
+```
+
+或使用环境变量：`AUDIT_WEBHOOK_URL`
+
+---
+
 ## 📊 监控特性
 
 | 特性 | 说明 |
@@ -415,7 +488,19 @@ ffmpeg -version
 
 ## 📋 更新日志
 
-### v1.3.0 (最新)
+### v1.4.0 (最新)
+- 🛡️ 新增完整 SOAR 安全系统
+- 🔍 新增 API 健康检查（MiniMax、百度、OpenRouter）
+- 📊 新增进程和端口监控
+- 🔒 新增配置文件完整性审计
+- 📢 新增告警通知联动（Webhook）
+- 🔄 新增自动恢复功能
+- 📝 新增 Nginx 错误日志审计
+- ⏰ 新增定时任务检查
+- 📦 新增 logrotate 配置安装
+- 📝 更新 README.md 添加 SOAR 文档
+
+### v1.3.0
 - ✨ 增强 API 错误日志详细程度（HTTP状态码、错误码、响应内容）
 - 🐛 修复切换 API 提供商后模型名称不更新的问题
 - 🐛 修复默认配置缺少 openrouter 和 baidu 的问题

@@ -4,11 +4,32 @@
 # ========================================
 # 检查服务健康状态，自动恢复异常服务
 
-CONFIG_FILE="/root/hupo-game/config.json"
-LOG_DIR="/root/hupo-game/logs"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+CONFIG_FILE="$PROJECT_DIR/config.json"
+LOG_DIR="$PROJECT_DIR/logs"
+DATA_DIR="$PROJECT_DIR/data"
 ALERT_LOG="$LOG_DIR/health_check.log"
+MAX_LOG_SIZE=10485760
+MAX_LOG_FILES=5
 
 mkdir -p "$LOG_DIR"
+
+rotate_log() {
+    if [ -f "$ALERT_LOG" ]; then
+        local size=$(stat -f%z "$ALERT_LOG" 2>/dev/null || stat -c%s "$ALERT_LOG" 2>/dev/null || echo 0)
+        if [ "$size" -gt "$MAX_LOG_SIZE" ]; then
+            for i in $(seq $((MAX_LOG_FILES-1)) -1 1); do
+                if [ -f "${ALERT_LOG}.$i" ]; then
+                    mv "${ALERT_LOG}.$i" "${ALERT_LOG}.$((i+1))"
+                fi
+            done
+            mv "$ALERT_LOG" "${ALERT_LOG}.1"
+        fi
+    fi
+}
+
+rotate_log
 
 log_alert() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$ALERT_LOG"
@@ -17,7 +38,7 @@ log_alert() {
 check_port() {
     local port=$1
     local service=$2
-    if ! netstat -tlnp 2>/dev/null | grep -q ":$port "; then
+    if ! netstat -tlnp 2>/dev/null | grep -q ":$port " && ! ss -tlnp 2>/dev/null | grep -q ":$port "; then
         log_alert "[警告] $service 端口 $port 未监听"
         return 1
     fi
@@ -33,6 +54,28 @@ check_process() {
     return 0
 }
 
+check_disk_space() {
+    local usage=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
+    if [ "$usage" -gt 90 ]; then
+        log_alert "[严重] 磁盘空间不足: ${usage}%"
+        return 1
+    elif [ "$usage" -gt 80 ]; then
+        log_alert "[警告] 磁盘空间紧张: ${usage}%"
+    fi
+    return 0
+}
+
+check_memory() {
+    local mem_free=$(free -m | grep Mem | awk '{print $7}')
+    if [ "$mem_free" -lt 100 ]; then
+        log_alert "[严重] 内存不足: 可用 ${mem_free}MB"
+        return 1
+    elif [ "$mem_free" -lt 500 ]; then
+        log_alert "[警告] 内存紧张: 可用 ${mem_free}MB"
+    fi
+    return 0
+}
+
 restart_service() {
     local service=$1
     log_alert "[恢复] 重启服务: $service"
@@ -40,13 +83,18 @@ restart_service() {
     sleep 3
     if systemctl is-active --quiet "$service"; then
         log_alert "[成功] $service 重启成功"
+        return 0
     else
         log_alert "[失败] $service 重启失败"
+        return 1
     fi
 }
 
 BRIDGE_OK=true
 VOICE_OK=true
+
+check_disk_space
+check_memory
 
 if ! check_port 443 "AI Bridge"; then
     BRIDGE_OK=false

@@ -84,44 +84,43 @@ function audioToPcm(audioBase64, format) {
         const audioBuffer = Buffer.from(audioBase64, 'base64');
         fs.writeFileSync(tempAudio, audioBuffer);
 
+        const cleanup = () => {
+            try { fs.unlinkSync(tempAudio); } catch (e) {}
+            try { fs.unlinkSync(tempPcm); } catch (e) {}
+        };
+
         const ffmpeg = spawn('ffmpeg', [
             '-y', '-i', tempAudio,
             '-f', 's16le', '-acodec', 'pcm_s16le',
             '-ar', '16000', '-ac', '1', tempPcm
-        ]);
+        ], { timeout: 30000 });
 
         let stderr = '';
         ffmpeg.stderr.on('data', (data) => { stderr += data; });
 
         ffmpeg.on('close', (code) => {
-            try {
-                fs.unlinkSync(tempAudio);
-            } catch (e) {}
-
             if (code !== 0) {
-                try { fs.unlinkSync(tempPcm); } catch (e) {}
+                cleanup();
                 reject(new Error('音频转换失败: ' + stderr));
                 return;
             }
 
             try {
                 const pcmBuffer = fs.readFileSync(tempPcm);
-                fs.unlinkSync(tempPcm);
+                cleanup();
                 resolve({
                     base64: pcmBuffer.toString('base64'),
                     len: pcmBuffer.length,
                     buffer: pcmBuffer
                 });
             } catch (e) {
+                cleanup();
                 reject(e);
             }
         });
 
         ffmpeg.on('error', (err) => {
-            try {
-                fs.unlinkSync(tempAudio);
-                fs.unlinkSync(tempPcm);
-            } catch (e) {}
+            cleanup();
             reject(new Error('ffmpeg启动失败: ' + err.message));
         });
     });
