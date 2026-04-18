@@ -6943,38 +6943,6 @@ function exitPortraitMode(){
     checkOrientation();
     showPortraitToast('已切换到横屏模式');
 }
-function startBattle(type){
-    if(typeof startBattleEncounter==='function'){
-        startBattleEncounter(type);
-    }else{
-        showPortraitToast('战斗功能暂不可用');
-    }
-}
-function exploreArea(area){
-    if(typeof exploreLocation==='function'){
-        exploreLocation(area);
-    }else if(area==='shop'&&typeof openShop==='function'){
-        openShop();
-    }else if(area==='quest'&&typeof showQuests==='function'){
-        showQuests();
-    }else{
-        showPortraitToast('探索功能暂不可用');
-    }
-}
-function useItem(itemId){
-    if(typeof useInventoryItem==='function'){
-        useInventoryItem(itemId);
-    }else{
-        showPortraitToast('使用物品功能暂不可用');
-    }
-}
-function toggleSound(){
-    if(typeof toggleGameSound==='function'){
-        toggleGameSound();
-    }else{
-        showPortraitToast('音效切换');
-    }
-}
 function initPortraitMode(){
     if(localStorage.getItem('hupo_portrait_mode')==='true'){
         portraitModeEnabled=true;
