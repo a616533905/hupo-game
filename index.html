@@ -152,6 +152,9 @@ body.snow .snowfall{display:block}
 .map-item .map-level{font-size:9px;padding:2px 6px;border-radius:4px;background:var(--primary);color:#fff}
 .event-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);background:var(--bg-card);padding:20px;border-radius:16px;text-align:center;z-index:var(--z-popup);transition:transform 0.3s;border:2px solid var(--primary);max-width:400px;max-height:85vh;display:flex;flex-direction:column;overflow-x:hidden}
 .event-popup.show{transform:translate(-50%,-50%) scale(1)}
+.popup-close-btn{position:absolute;top:10px;right:10px;width:36px;height:36px;border:none;border-radius:50%;background:rgba(255,255,255,0.1);color:var(--text-dim);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;z-index:10}
+.popup-close-btn:hover{background:rgba(255,107,157,0.3);color:#fff;transform:scale(1.1)}
+body.portrait-mode .popup-close-btn{width:44px;height:44px;font-size:20px}
 .event-popup h3{color:var(--primary);margin-bottom:10px;font-size:16px;flex-shrink:0}
 .event-popup p{margin-bottom:10px;line-height:1.5;font-size:13px}
 .event-popup button{padding:14px 28px;border:none;border-radius:14px;background:var(--primary);color:#fff;cursor:pointer;margin:5px;font-size:14px;min-height:48px;min-width:100px;transition:all 0.2s}
@@ -948,6 +951,7 @@ body.portrait-mode .story-choice{padding:10px;font-size:13px;min-height:44px}
 </div>
 <div class="overlay" id="overlay"></div>
 <div class="event-popup" id="eventPopup">
+<button class="popup-close-btn" onclick="closeEvent()">✕</button>
 <h3 id="eventTitle">事件</h3>
 <div class="event-popup-content">
 <p id="eventContent">内容</p>
