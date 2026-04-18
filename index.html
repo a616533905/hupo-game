@@ -2198,7 +2198,6 @@ function saveGame(immediate=false){
     try{
         const saveData={...cat,weather,outfits,achievements,questProgress,currentMap,signInState,wheelState,equipment,intimacyLevel,intimacyPoints,fatigue,arenaRank,arenaPoints,arenaStreak,arenaDailyWins,arenaLastReset,diaryEntries,currentSkin,skillMastery,sleepState,hospitalState,storyProgress,storyChoices,storyEnding,savedAt:Date.now()};
         localStorage.setItem(SAVE_KEY,JSON.stringify(saveData));
-        showSaveNotification();
     }catch(e){
         GameLogger.error('SAVE','Save game failed',e);
         console.error('Save error:',e);
