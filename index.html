@@ -1882,13 +1882,15 @@ async function fetchWithTimeout(url,timeout=5000){
 async function fetchRealWeather(){
     try{
         let lat,lon,city='未知';
-        const position=await new Promise((resolve,reject)=>{
-            if(navigator.geolocation){
-                navigator.geolocation.getCurrentPosition(resolve,reject,{timeout:5000,enableHighAccuracy:false});
-            }else{
-                reject(new Error('Geolocation not supported'));
+        let position=null;
+        try{
+            const permission=await navigator.permissions?.query({name:'geolocation'});
+            if(permission&&permission.state!=='denied'&&navigator.geolocation){
+                position=await new Promise((resolve,reject)=>{
+                    navigator.geolocation.getCurrentPosition(resolve,reject,{timeout:5000,enableHighAccuracy:false});
+                }).catch(()=>null);
             }
-        }).catch(()=>null);
+        }catch(e){}
         if(position&&position.coords){
             lat=position.coords.latitude;
             lon=position.coords.longitude;
