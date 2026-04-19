@@ -83,8 +83,13 @@ cleanup_port() {
         proc_name=$(ps -p $pid -o comm= 2>/dev/null || echo "未知")
         echo "    进程: $proc_name"
         echo "    正在关闭..."
-        kill -9 $pid 2>/dev/null
-        sleep 1
+        kill $pid 2>/dev/null
+        sleep 2
+        if lsof -t -i:$port 2>/dev/null > /dev/null; then
+            echo "    进程未响应，强制终止..."
+            kill -9 $pid 2>/dev/null
+            sleep 1
+        fi
         if lsof -t -i:$port 2>/dev/null > /dev/null; then
             echo "    警告: 端口 $port 仍被占用"
         else
@@ -105,7 +110,12 @@ cleanup_process() {
         for pid in $pids; do
             echo "    发现 $display_name, PID: $pid"
             echo "    正在停止..."
-            kill -9 $pid 2>/dev/null
+            kill $pid 2>/dev/null
+            sleep 2
+            if ps -p $pid > /dev/null 2>&1; then
+                echo "    进程未响应，强制终止..."
+                kill -9 $pid 2>/dev/null
+            fi
             echo "    已停止 PID: $pid"
         done
         sleep 1

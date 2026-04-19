@@ -1,5 +1,3 @@
-@echo off
-chcp 65001 >nul
 setlocal enabledelayedexpansion
 
 echo ========================================
@@ -16,7 +14,6 @@ if not exist "server.ini" (
 for /f "tokens=1,2 delims== " %%a in ('findstr /i "host" server.ini ^| findstr /v "\["') do set "SERVER_IP=%%b"
 for /f "tokens=1,2 delims== " %%a in ('findstr /i "user" server.ini ^| findstr /v "\["') do set "SERVER_USER=%%b"
 for /f "tokens=1,2 delims== " %%a in ('findstr /i "port" server.ini ^| findstr /v "\["') do set "SERVER_PORT=%%b"
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "password" server.ini ^| findstr /v "\["') do set "SERVER_PASS=%%b"
 
 if not defined SERVER_IP (
     echo Error: Cannot read host
@@ -29,13 +26,8 @@ if not defined SERVER_USER (
     exit /b 1
 )
 if not defined SERVER_PORT set SERVER_PORT=22
-if not defined SERVER_PASS (
-    echo Error: Cannot read password
-    pause
-    exit /b 1
-)
 
 echo Connecting to %SERVER_USER%@%SERVER_IP%:%SERVER_PORT%...
 echo.
 
-echo %SERVER_PASS% | plink -P %SERVER_PORT% %SERVER_USER%@%SERVER_IP% -pw %SERVER_PASS%
+ssh -t -p %SERVER_PORT% %SERVER_USER%@%SERVER_IP% "cd /root/hupo-game; bash --login"

@@ -111,7 +111,7 @@ fi
 
 echo ""
 echo "  初始化审计基线..."
-cd $INSTALL_DIR && /usr/bin/python3 $CRON_DIR/log_auditor.py init
+/usr/bin/python3 $INSTALL_DIR/cron/log_auditor.py init
 echo "  配置文件校验和已初始化"
 
 echo "[8/10] 配置定时任务 (Cron)..."
