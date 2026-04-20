@@ -392,17 +392,29 @@ MAX_HISTORY_LENGTH = 20
 
 MINIMAX_ERROR_MAP = {
     1000: "服务暂时繁忙，请稍后重试",
-    1001: "请求超时，请检查网络后重试",
-    1002: "请求过于频繁，请稍后重试",
-    1004: "API鉴权失败，请检查API密钥是否正确",
+    1001: "请求超时，请稍后重试",
+    1002: "请求频率超限，请稍后重试",
+    1004: "API未授权，请检查API密钥是否正确",
     1008: "账户余额不足，请及时充值",
-    1013: "服务内部错误，请稍后重试",
-    1026: "输入内容包含非法字符，请修改后重试",
-    1027: "输出内容异常，请稍后重试",
-    1039: "请求过于频繁，请稍后重试",
-    2013: "输入格式异常，请检查输入内容",
+    1024: "服务内部错误，请稍后重试",
+    1026: "输入内容涉及敏感信息，请调整后重试",
+    1027: "输出内容涉及敏感信息，请稍后重试",
+    1033: "系统错误，请稍后重试",
+    1039: "Token限制，请调整max_tokens参数",
+    1041: "连接数超限，请联系我们",
+    1042: "输入包含非法字符，请检查输入内容",
+    1043: "语音识别失败，请检查音频与文本匹配度",
+    1044: "克隆提示词相似度检查失败",
+    2013: "参数错误，请检查请求参数",
     20132: "语音克隆样本或voice_id参数错误",
-    2064: "服务高峰期繁忙，建议错峰使用或升级套餐",
+    2037: "语音时长不符合要求（需10秒-5分钟）",
+    2038: "语音克隆功能被禁用，需完成账户身份认证",
+    2039: "voice_id已存在，请修改voice_id",
+    2042: "无权访问该voice_id",
+    2045: "请求频率增长超限，请避免骤增骤减",
+    2048: "提示音频太长，请控制在8秒以内",
+    2049: "无效的API Key，请检查API密钥",
+    2056: "超出Token Plan资源限制，请等待后重试",
 }
 
 def get_minimax_error_msg(status_code):
@@ -472,7 +484,7 @@ def call_minimax_chat(message, model_override=None):
             user_msg = get_minimax_error_msg(status_code_resp)
             if user_msg:
                 return user_msg
-            return f"服务暂时异常，请稍后重试"
+            return f"MiniMax API服务暂时异常，请稍后重试"
     except json.JSONDecodeError as e:
         logger.error(f"MiniMax API响应解析失败: HTTP {status_code}, response={result[:500] if 'result' in dir() else 'N/A'}")
         return f"响应解析失败: {str(e)}"
@@ -825,7 +837,7 @@ def call_openrouter_api(message, model_override=None):
             error_code = error_info.get('code', 'N/A')
             error_type = error_info.get('type', 'N/A')
             logger.error(f"OpenRouter API错误: HTTP {status_code}, code={error_code}, type={error_type}, message={error_msg}, response={result[:500]}")
-            return f"AI服务暂时异常，请稍后重试"
+            return f"OpenRouter AI服务暂时异常，请稍后重试"
     except json.JSONDecodeError as e:
         logger.error(f"OpenRouter API响应解析失败: HTTP {status_code}, response={result[:500] if 'result' in dir() else 'N/A'}")
         return f"响应解析失败: {str(e)}"
