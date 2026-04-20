@@ -57,7 +57,8 @@ else
 fi
 
 if [ -n "$VOICE_PID" ]; then
-    echo "  Voice PID: $VOICE_PID"
+    VOICE_UPTIME=$(ps -o etime= -p $VOICE_PID 2>/dev/null | tr -d ' ')
+    echo "  Voice PID: $VOICE_PID (运行时间: $VOICE_UPTIME)"
 else
     echo "  Voice PID: 未运行"
 fi
