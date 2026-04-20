@@ -777,6 +777,22 @@ def call_ollama_api(message, model_override=None, host_override=None):
         logger.error(f"Ollama请求失败: {str(e)}")
         return f"Ollama请求失败: {str(e)}"
 
+OPENROUTER_ERROR_MAP = {
+    400: "请求参数错误，请检查输入内容",
+    401: "API密钥无效，请检查密钥是否正确",
+    402: "账户余额不足，请充值后重试",
+    403: "输入内容被标记为违规，无法处理",
+    408: "请求超时，请稍后重试",
+    429: "请求频率超限，请稍后重试",
+    502: "AI模型服务暂不可用，请稍后重试",
+    503: "当前无可用模型提供商，请稍后重试",
+}
+
+def get_openrouter_error_msg(status_code):
+    if status_code in OPENROUTER_ERROR_MAP:
+        return OPENROUTER_ERROR_MAP[status_code]
+    return None
+
 def call_openrouter_api(message, model_override=None):
     """调用 OpenRouter API (带并发控制和连接池)"""
     global conversation_history
@@ -837,7 +853,10 @@ def call_openrouter_api(message, model_override=None):
             error_code = error_info.get('code', 'N/A')
             error_type = error_info.get('type', 'N/A')
             logger.error(f"OpenRouter API错误: HTTP {status_code}, code={error_code}, type={error_type}, message={error_msg}, response={result[:500]}")
-            return f"OpenRouter AI服务暂时异常，请稍后重试"
+            user_msg = get_openrouter_error_msg(status_code)
+            if user_msg:
+                return user_msg
+            return "AI服务暂时异常，请稍后重试"
     except json.JSONDecodeError as e:
         logger.error(f"OpenRouter API响应解析失败: HTTP {status_code}, response={result[:500] if 'result' in dir() else 'N/A'}")
         return f"响应解析失败: {str(e)}"
