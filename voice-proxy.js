@@ -160,11 +160,24 @@ async function recognizeBaidu(speech, token, format) {
         },
         body: JSON.stringify(requestBody)
     });
-    
+
+    const BAIDU_ERROR_MAP = {
+        '3301': '请说话声音大一点，录音质量不达标',
+        '3302': '说话时间太短，请多说一点',
+        '3303': '音频采样率不支持，请检查麦克风设置',
+        '3304': '识别过程出错，请重试',
+        '3305': '音频编码不支持，请使用支持的格式'
+    };
+
+    const getBaiduErrorMsg = (err_no) => {
+        const key = String(err_no);
+        return BAIDU_ERROR_MAP[key] || '识别失败，请重试';
+    };
+
     const httpStatus = apiRes.status;
     const data = await apiRes.json();
     logInfo('百度API响应: HTTP ' + httpStatus + ', err_no=' + data.err_no + ', err_msg=' + data.err_msg);
-    
+
     if (data.err_no === 0 && data.result && data.result.length > 0) {
         return {
             success: true,
@@ -172,10 +185,11 @@ async function recognizeBaidu(speech, token, format) {
             provider: 'baidu'
         };
     } else {
+        const userMsg = getBaiduErrorMsg(data.err_no);
         logError('百度识别失败: HTTP ' + httpStatus + ', err_no=' + data.err_no + ', err_msg=' + data.err_msg);
         return {
             success: false,
-            error: data.err_msg || '识别失败',
+            error: userMsg,
             err_no: data.err_no,
             http_status: httpStatus,
             provider: 'baidu'
