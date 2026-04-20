@@ -96,12 +96,6 @@ SERVICE_CONFIG = {
         'check_url': '/voice/config',
         'restart_cmd': 'systemctl restart voice-proxy',
     },
-    'nginx': {
-        'name': 'Nginx 服务',
-        'port': 80,
-        'check_cmd': 'nginx -t',
-        'restart_cmd': 'systemctl restart nginx',
-    },
 }
 
 ALERT_LEVELS = {
@@ -863,11 +857,6 @@ class ProcessMonitor:
                 'pattern': 'voice-proxy.js',
                 'restart_cmd': 'systemctl restart hupo-voice',
             },
-            'nginx': {
-                'name': 'Nginx 进程',
-                'pattern': 'nginx:',
-                'restart_cmd': 'systemctl restart nginx',
-            },
         }
     
     def _run_cmd(self, cmd):
@@ -1046,83 +1035,6 @@ class ConfigAuditor:
                     'last_checked': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 }
         self._save_checksums(checksums)
-
-class NginxErrorAuditor:
-    def __init__(self, alert_manager):
-        self.alert_manager = alert_manager
-        self.nginx_error_log = '/var/log/nginx/error.log'
-    
-    def analyze_nginx_errors(self, hours=24):
-        stats = {
-            'total_errors': 0,
-            'error_types': Counter(),
-            'critical_errors': [],
-            'upstream_errors': 0,
-            'ssl_errors': 0,
-            'limit_errors': 0,
-        }
-        
-        if not os.path.exists(self.nginx_error_log):
-            return stats
-        
-        cutoff_time = datetime.now() - timedelta(hours=hours)
-        
-        try:
-            with open(self.nginx_error_log, 'r', encoding='utf-8', errors='ignore') as f:
-                for line in f:
-                    stats['total_errors'] += 1
-                    
-                    try:
-                        time_match = re.search(r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})', line)
-                        if time_match:
-                            line_time = datetime.strptime(time_match.group(1), '%Y/%m/%d %H:%M:%S')
-                            if line_time < cutoff_time:
-                                continue
-                    except:
-                        pass
-                    
-                    if 'upstream' in line.lower() and ('error' in line.lower() or 'timeout' in line.lower()):
-                        stats['upstream_errors'] += 1
-                        stats['error_types']['upstream_error'] += 1
-                    
-                    if 'ssl' in line.lower() or 'certificate' in line.lower():
-                        stats['ssl_errors'] += 1
-                        stats['error_types']['ssl_error'] += 1
-                    
-                    if 'limiting' in line.lower() or 'limit' in line.lower():
-                        stats['limit_errors'] += 1
-                        stats['error_types']['rate_limit'] += 1
-                    
-                    if '[crit]' in line or '[alert]' in line:
-                        stats['critical_errors'].append(line.strip()[:200])
-                        stats['error_types']['critical'] += 1
-                    
-                    if '[emerg]' in line:
-                        stats['error_types']['emergency'] += 1
-                        self.alert_manager.create_alert(
-                            'nginx', 'critical',
-                            f"Nginx 紧急错误",
-                            {'line': line.strip()[:200]}
-                        )
-            
-            if stats['upstream_errors'] > 10:
-                self.alert_manager.create_alert(
-                    'nginx', 'warning',
-                    f"上游服务错误较多: {stats['upstream_errors']} 次",
-                    {'count': stats['upstream_errors']}
-                )
-            
-            if stats['ssl_errors'] > 0:
-                self.alert_manager.create_alert(
-                    'nginx', 'warning',
-                    f"SSL 错误: {stats['ssl_errors']} 次",
-                    {'count': stats['ssl_errors']}
-                )
-            
-        except Exception as e:
-            stats['error'] = str(e)
-        
-        return stats
 
 class AlertNotifier:
     def __init__(self, alert_manager):
@@ -1920,7 +1832,6 @@ def run_soar_mode(mode='audit'):
     process_monitor = ProcessMonitor(alert_manager)
     port_monitor = PortMonitor(alert_manager)
     config_auditor = ConfigAuditor(alert_manager)
-    nginx_auditor = NginxErrorAuditor(alert_manager)
     alert_notifier = AlertNotifier(alert_manager)
     auto_recovery = AutoRecovery(alert_manager)
     cron_checker = CronJobChecker(alert_manager)
@@ -2127,11 +2038,7 @@ def run_soar_mode(mode='audit'):
     config_status = config_auditor.check_config_integrity()
     if config_status['modified']:
         log(f"⚠️ 配置文件被修改: {', '.join([os.path.basename(f) for f in config_status['modified']])}")
-    
-    nginx_stats = nginx_auditor.analyze_nginx_errors()
-    if nginx_stats['total_errors'] > 0:
-        log(f"Nginx 错误: {nginx_stats['total_errors']} 条 (上游: {nginx_stats['upstream_errors']}, SSL: {nginx_stats['ssl_errors']})")
-    
+
     voice_log = voice_analyzer.get_latest_voice_log()
     if voice_log:
         voice_stats = voice_analyzer.analyze_voice_logs(voice_log)
