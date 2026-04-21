@@ -1,6 +1,7 @@
 const http = require('http');
 const https = require('https');
 const url = require('url');
+const os = require('os');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -10,6 +11,7 @@ const ALLOWED_FORMATS = ['webm', 'mp3', 'wav', 'ogg', 'm4a', 'aac'];
 
 const CONFIG_FILE = path.join(__dirname, 'config.json');
 const LOG_DIR = path.join(__dirname, 'logs');
+const TEMP_DIR = os.tmpdir();
 
 if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR, { recursive: true });
@@ -78,8 +80,8 @@ function audioToPcm(audioBase64, format) {
         const ext = ALLOWED_FORMATS.includes(format) ? format : 'webm';
         const timestamp = Date.now();
         const randomSuffix = Math.random().toString(36).substring(7);
-        const tempAudio = path.join(__dirname, `temp_${timestamp}_${randomSuffix}.${ext}`);
-        const tempPcm = path.join(__dirname, `temp_${timestamp}_${randomSuffix}.pcm`);
+        const tempAudio = path.join(TEMP_DIR, `hupo_voice_${timestamp}_${randomSuffix}.${ext}`);
+        const tempPcm = path.join(TEMP_DIR, `hupo_voice_${timestamp}_${randomSuffix}.pcm`);
 
         const audioBuffer = Buffer.from(audioBase64, 'base64');
         fs.writeFileSync(tempAudio, audioBuffer);
@@ -336,6 +338,16 @@ const requestHandler = async (req, res) => {
                 
                 const useProvider = provider || VOICE_PROVIDER;
                 const audioFormat = format || 'webm';
+                
+                if (format && !ALLOWED_FORMATS.includes(format)) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        success: false,
+                        error: '不支持的音频格式: ' + format + '，支持: ' + ALLOWED_FORMATS.join(', ')
+                    }));
+                    return;
+                }
+                
                 logInfo('收到识别请求, 提供商: ' + useProvider + ' 格式: ' + audioFormat + ' 音频base64长度: ' + speech.length);
 
                 if (useProvider === 'baidu') {

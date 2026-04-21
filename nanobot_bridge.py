@@ -388,6 +388,7 @@ def get_provider_config(provider_name):
     return config.get(provider_name, {})
 
 conversation_history = []
+conversation_lock = threading.Lock()
 MAX_HISTORY_LENGTH = 20
 
 MINIMAX_ERROR_MAP = {
@@ -437,16 +438,17 @@ def call_minimax_chat(message, model_override=None):
         return "错误: MiniMax API未配置（请在config.json中设置api_key和group_id）"
 
     logger.info(f"调用MiniMax API, model={model}, message_length={len(message)}")
-    conversation_history.append({"role": "user", "content": message})
+    with conversation_lock:
+        conversation_history.append({"role": "user", "content": message})
 
-    if len(conversation_history) > MAX_HISTORY_LENGTH:
-        conversation_history = conversation_history[-MAX_HISTORY_LENGTH:]
+        if len(conversation_history) > MAX_HISTORY_LENGTH:
+            conversation_history = conversation_history[-MAX_HISTORY_LENGTH:]
 
-    data = {
-        "model": model,
-        "messages": conversation_history,
-        "temperature": 0.7
-    }
+        data = {
+            "model": model,
+            "messages": conversation_history.copy(),
+            "temperature": 0.7
+        }
 
     headers = {
         "Content-Type": "application/json",
@@ -461,6 +463,7 @@ def call_minimax_chat(message, model_override=None):
         return "系统繁忙，请稍后重试"
 
     conn = None
+    conn_returned = False
     try:
         conn = get_http_connection("api.minimax.chat", http_pool_minimax)
         conn.request("POST", path, json.dumps(data), headers)
@@ -471,9 +474,11 @@ def call_minimax_chat(message, model_override=None):
 
         if "choices" in result_json and len(result_json["choices"]) > 0:
             assistant_message = result_json["choices"][0]["message"]["content"]
-            conversation_history.append({"role": "assistant", "content": assistant_message})
+            with conversation_lock:
+                conversation_history.append({"role": "assistant", "content": assistant_message})
             logger.info(f"MiniMax API调用成功, response_length={len(assistant_message)}")
             return_http_connection(conn, http_pool_minimax)
+            conn_returned = True
             return assistant_message
         else:
             base_resp = result_json.get('base_resp', {})
@@ -493,7 +498,7 @@ def call_minimax_chat(message, model_override=None):
         return f"请求失败: {str(e)}"
     finally:
         ai_request_semaphore.release()
-        if conn:
+        if conn and not conn_returned:
             try:
                 conn.close()
             except:
@@ -703,24 +708,25 @@ def call_ollama_api(message, model_override=None, host_override=None):
     
     ensure_ollama_model(model, host, port)
 
-    conversation_history.append({"role": "user", "content": message})
+    with conversation_lock:
+        conversation_history.append({"role": "user", "content": message})
 
-    if len(conversation_history) > MAX_HISTORY_LENGTH:
-        conversation_history = conversation_history[-MAX_HISTORY_LENGTH:]
+        if len(conversation_history) > MAX_HISTORY_LENGTH:
+            conversation_history = conversation_history[-MAX_HISTORY_LENGTH:]
 
-    use_https = parsed.scheme == 'https'
-    conn_class = http.client.HTTPSConnection if use_https else http.client.HTTPConnection
+        use_https = parsed.scheme == 'https'
+        conn_class = http.client.HTTPSConnection if use_https else http.client.HTTPConnection
 
-    data_openai = {
-        "model": model,
-        "messages": conversation_history,
-        "temperature": 0.7
-    }
-    data_native = {
-        "model": model,
-        "messages": conversation_history,
-        "stream": False
-    }
+        data_openai = {
+            "model": model,
+            "messages": conversation_history.copy(),
+            "temperature": 0.7
+        }
+        data_native = {
+            "model": model,
+            "messages": conversation_history.copy(),
+            "stream": False
+        }
 
     headers = {"Content-Type": "application/json"}
 
@@ -761,13 +767,15 @@ def call_ollama_api(message, model_override=None, host_override=None):
     try:
         result = try_openai_api()
         if result:
-            conversation_history.append({"role": "assistant", "content": result})
+            with conversation_lock:
+                conversation_history.append({"role": "assistant", "content": result})
             logger.info(f"Ollama API调用成功(OpenAI格式), response_length={len(result)}")
             return result
 
         result = try_native_api()
         if result:
-            conversation_history.append({"role": "assistant", "content": result})
+            with conversation_lock:
+                conversation_history.append({"role": "assistant", "content": result})
             logger.info(f"Ollama API调用成功(Native格式), response_length={len(result)}")
             return result
 
@@ -809,16 +817,17 @@ def call_openrouter_api(message, model_override=None):
         return "错误: OpenRouter API未配置（请在config.json中设置api_key）"
 
     logger.info(f"调用OpenRouter API, model={model}, message_length={len(message)}")
-    conversation_history.append({"role": "user", "content": message})
+    with conversation_lock:
+        conversation_history.append({"role": "user", "content": message})
 
-    if len(conversation_history) > MAX_HISTORY_LENGTH:
-        conversation_history = conversation_history[-MAX_HISTORY_LENGTH:]
+        if len(conversation_history) > MAX_HISTORY_LENGTH:
+            conversation_history = conversation_history[-MAX_HISTORY_LENGTH:]
 
-    data = {
-        "model": model,
-        "messages": conversation_history,
-        "temperature": 0.7
-    }
+        data = {
+            "model": model,
+            "messages": conversation_history.copy(),
+            "temperature": 0.7
+        }
 
     headers = {
         "Content-Type": "application/json",
@@ -833,6 +842,7 @@ def call_openrouter_api(message, model_override=None):
         return "系统繁忙，请稍后重试"
 
     conn = None
+    conn_returned = False
     try:
         conn = get_http_connection("openrouter.ai", http_pool_openrouter)
         conn.request("POST", "/api/v1/chat/completions", json.dumps(data), headers)
@@ -843,9 +853,11 @@ def call_openrouter_api(message, model_override=None):
 
         if "choices" in result_json and len(result_json["choices"]) > 0:
             assistant_message = result_json["choices"][0]["message"]["content"]
-            conversation_history.append({"role": "assistant", "content": assistant_message})
+            with conversation_lock:
+                conversation_history.append({"role": "assistant", "content": assistant_message})
             logger.info(f"OpenRouter API调用成功, response_length={len(assistant_message)}")
             return_http_connection(conn, http_pool_openrouter)
+            conn_returned = True
             return assistant_message
         else:
             error_info = result_json.get('error', {})
@@ -865,7 +877,7 @@ def call_openrouter_api(message, model_override=None):
         return f"OpenRouter请求失败: {str(e)}"
     finally:
         ai_request_semaphore.release()
-        if conn:
+        if conn and not conn_returned:
             try:
                 conn.close()
             except:
@@ -1239,15 +1251,25 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 return
 
             if self.path == "/config.json":
+                if client_ip not in ('127.0.0.1', '::1'):
+                    logger.warning(f"[{client_ip}] GET /config.json - 拒绝外部访问")
+                    self.send_response(404)
+                    self.end_headers()
+                    return
                 file_path = os.path.join(WEB_ROOT, 'config.json')
                 if os.path.isfile(file_path):
                     try:
-                        with open(file_path, 'rb') as f:
-                            content = f.read()
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            cfg = json.load(f)
+                        safe_cfg = {
+                            'active_provider': cfg.get('active_provider', 'minimax'),
+                            'token_required': cfg.get('token_required', 'no'),
+                            'server': cfg.get('server', {}),
+                        }
                         self.send_response(200)
                         self.send_header("Content-Type", "application/json")
                         self.end_headers()
-                        self.wfile.write(content)
+                        self.wfile.write(json.dumps(safe_cfg, ensure_ascii=False).encode('utf-8'))
                     except Exception as e:
                         logger.error(f"读取 config.json 失败：{str(e)}")
                         self.send_response(500)
