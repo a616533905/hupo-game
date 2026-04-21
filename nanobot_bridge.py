@@ -1295,11 +1295,6 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 return
 
             if self.path == "/config.json":
-                if client_ip not in ('127.0.0.1', '::1'):
-                    logger.warning(f"[{client_ip}] GET /config.json - 拒绝外部访问")
-                    self.send_response(404)
-                    self.end_headers()
-                    return
                 file_path = os.path.join(WEB_ROOT, 'config.json')
                 if os.path.isfile(file_path):
                     try:
@@ -1309,9 +1304,11 @@ class NanobotHandler(BaseHTTPRequestHandler):
                             'active_provider': cfg.get('active_provider', 'minimax'),
                             'token_required': cfg.get('token_required', 'no'),
                             'server': cfg.get('server', {}),
+                            'ollama': {'api_base': cfg.get('ollama', {}).get('api_base', 'http://localhost:11434/v1')},
                         }
                         self.send_response(200)
                         self.send_header("Content-Type", "application/json")
+                        self.send_header('Access-Control-Allow-Origin', '*')
                         self.end_headers()
                         self.wfile.write(json.dumps(safe_cfg, ensure_ascii=False).encode('utf-8'))
                     except Exception as e:
