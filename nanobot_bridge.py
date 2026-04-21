@@ -422,17 +422,14 @@ def get_provider_config(provider_name):
 
 conversation_history = []
 conversation_lock = threading.Lock()
-MAX_HISTORY_LENGTH = 20
-conversation_last_access = time.time()
-CONVERSATION_TIMEOUT = 3600
+MAX_HISTORY_LENGTH = 100
 
 def cleanup_conversation_history():
-    global conversation_history, conversation_last_access
+    global conversation_history
     with conversation_lock:
-        if time.time() - conversation_last_access > CONVERSATION_TIMEOUT:
-            if len(conversation_history) > 0:
-                logger.info(f"清理超时对话历史，当前长度: {len(conversation_history)}")
-            conversation_history = []
+        if len(conversation_history) > MAX_HISTORY_LENGTH:
+            conversation_history = conversation_history[-MAX_HISTORY_LENGTH:]
+            logger.info(f"清理对话历史，保留最近{MAX_HISTORY_LENGTH}条")
 
 MINIMAX_ERROR_MAP = {
     1000: "服务暂时繁忙，请稍后重试",
@@ -470,9 +467,8 @@ def get_minimax_error_msg(status_code):
 
 def call_minimax_chat(message, model_override=None):
     """调用 MiniMax API (带并发控制和连接池)"""
-    global conversation_history, conversation_last_access
+    global conversation_history
     cleanup_conversation_history()
-    conversation_last_access = time.time()
     
     provider_config = get_provider_config('minimax')
     api_key = provider_config.get('api_key', '')
@@ -729,9 +725,8 @@ def ensure_ollama_model(model, host="localhost", port=11434):
 
 def call_ollama_api(message, model_override=None, host_override=None):
     """调用 Ollama API (本地) - 兼容 OpenAI 格式和原生 Ollama 格式"""
-    global conversation_history, conversation_last_access
+    global conversation_history
     cleanup_conversation_history()
-    conversation_last_access = time.time()
 
     provider_config = get_provider_config('ollama')
     model = model_override or provider_config.get('model', 'llama2')
@@ -851,9 +846,8 @@ def get_openrouter_error_msg(status_code):
 
 def call_openrouter_api(message, model_override=None):
     """调用 OpenRouter API (带并发控制和连接池)"""
-    global conversation_history, conversation_last_access
+    global conversation_history
     cleanup_conversation_history()
-    conversation_last_access = time.time()
 
     provider_config = get_provider_config('openrouter')
     api_key = provider_config.get('api_key', '')

@@ -1052,7 +1052,12 @@ const RUNTIME_CONFIG={
         if(saved){
             try{
                 const cfg=JSON.parse(saved);
-                Object.assign(this,cfg);
+                if(cfg.mode)this.mode=cfg.mode;
+                if(cfg.apiPort)this.server.apiPort=cfg.apiPort;
+                if(cfg.voicePort)this.server.voicePort=cfg.voicePort;
+                if(cfg.ollamaHost)this.local.ollama.host=cfg.ollamaHost;
+                if(cfg.ollamaModel)this.local.ollama.model=cfg.ollamaModel;
+                if(cfg.accessToken)this.accessToken=cfg.accessToken;
             }catch(e){
                 GameLogger.warn('CONFIG','Failed to parse runtime config',e);
             }
@@ -1071,8 +1076,10 @@ const RUNTIME_CONFIG={
     save(){
         localStorage.setItem('hupo_runtime_config',JSON.stringify({
             mode:this.mode,
-            server:this.server,
-            local:this.local,
+            apiPort:this.server.apiPort,
+            voicePort:this.server.voicePort,
+            ollamaHost:this.local.ollama.host,
+            ollamaModel:this.local.ollama.model,
             accessToken:this.accessToken
         }));
     },
