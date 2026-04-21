@@ -504,47 +504,57 @@ def call_minimax_chat(message, model_override=None):
         logger.warning("AI 请求队列已满，请稍后重试")
         return "系统繁忙，请稍后重试"
 
-    conn = None
-    conn_returned = False
-    try:
-        conn = get_http_connection("api.minimax.chat", http_pool_minimax)
-        conn.request("POST", path, json.dumps(data), headers)
-        response = conn.getresponse()
-        status_code = response.status
-        result = response.read().decode('utf-8')
-        result_json = json.loads(result)
+    max_retries = 2
+    for retry in range(max_retries + 1):
+        conn = None
+        conn_returned = False
+        try:
+            conn = get_http_connection("api.minimax.chat", http_pool_minimax)
+            conn.request("POST", path, json.dumps(data), headers)
+            response = conn.getresponse()
+            status_code = response.status
+            result = response.read().decode('utf-8')
+            result_json = json.loads(result)
 
-        if "choices" in result_json and len(result_json["choices"]) > 0:
-            assistant_message = result_json["choices"][0]["message"]["content"]
-            with conversation_lock:
-                conversation_history.append({"role": "assistant", "content": assistant_message})
-            logger.info(f"MiniMax API调用成功, response_length={len(assistant_message)}")
-            return_http_connection(conn, http_pool_minimax)
-            conn_returned = True
-            return assistant_message
-        else:
-            base_resp = result_json.get('base_resp', {})
-            status_code_resp = base_resp.get('status_code', 'N/A')
-            status_msg = base_resp.get('status_msg', '未知错误')
-            error_msg = result_json.get('error', {}).get('message', '')
-            logger.error(f"MiniMax API错误: HTTP {status_code}, status_code={status_code_resp}, status_msg={status_msg}, error={error_msg}, response={result[:500]}")
-            user_msg = get_minimax_error_msg(status_code_resp)
-            if user_msg:
-                return user_msg
-            return f"MiniMax API服务暂时异常，请稍后重试"
-    except json.JSONDecodeError as e:
-        logger.error(f"MiniMax API响应解析失败: HTTP {status_code}, response={result[:500] if 'result' in dir() else 'N/A'}")
-        return f"响应解析失败: {str(e)}"
-    except Exception as e:
-        logger.error(f"MiniMax API请求失败: {str(e)}")
-        return f"请求失败: {str(e)}"
-    finally:
-        ai_request_semaphore.release()
-        if conn and not conn_returned:
-            try:
-                conn.close()
-            except:
-                pass
+            if "choices" in result_json and len(result_json["choices"]) > 0:
+                assistant_message = result_json["choices"][0]["message"]["content"]
+                with conversation_lock:
+                    conversation_history.append({"role": "assistant", "content": assistant_message})
+                logger.info(f"MiniMax API调用成功, response_length={len(assistant_message)}")
+                return_http_connection(conn, http_pool_minimax)
+                conn_returned = True
+                return assistant_message
+            else:
+                base_resp = result_json.get('base_resp', {})
+                status_code_resp = base_resp.get('status_code', 'N/A')
+                status_msg = base_resp.get('status_msg', '未知错误')
+                error_msg = result_json.get('error', {}).get('message', '')
+                logger.error(f"MiniMax API错误: HTTP {status_code}, status_code={status_code_resp}, status_msg={status_msg}, error={error_msg}, response={result[:500]}")
+                user_msg = get_minimax_error_msg(status_code_resp)
+                if user_msg:
+                    return user_msg
+                return f"MiniMax API服务暂时异常，请稍后重试"
+        except json.JSONDecodeError as e:
+            logger.error(f"MiniMax API响应解析失败: HTTP {status_code}, response={result[:500] if 'result' in dir() else 'N/A'}")
+            return f"响应解析失败: {str(e)}"
+        except (http.client.RemoteDisconnected, ConnectionResetError, BrokenPipeError, OSError) as e:
+            if retry < max_retries:
+                logger.warning(f"MiniMax连接断开，第{retry+1}次重试...")
+                time.sleep(0.5)
+                continue
+            logger.error(f"MiniMax API请求失败(重试后): {str(e)}")
+            return "网络连接不稳定，请稍后重试"
+        except Exception as e:
+            logger.error(f"MiniMax API请求失败: {str(e)}")
+            return f"请求失败: {str(e)}"
+        finally:
+            ai_request_semaphore.release()
+            if conn and not conn_returned:
+                try:
+                    conn.close()
+                except:
+                    pass
+    return "网络连接不稳定，请稍后重试"
 
 def call_minimax_tts(text, voice_id="female-tianmei"):
     """调用 MiniMax TTS API 进行语音合成"""
@@ -885,47 +895,57 @@ def call_openrouter_api(message, model_override=None):
         logger.warning("AI 请求队列已满，请稍后重试")
         return "系统繁忙，请稍后重试"
 
-    conn = None
-    conn_returned = False
-    try:
-        conn = get_http_connection("openrouter.ai", http_pool_openrouter)
-        conn.request("POST", "/api/v1/chat/completions", json.dumps(data), headers)
-        response = conn.getresponse()
-        status_code = response.status
-        result = response.read().decode('utf-8')
-        result_json = json.loads(result)
+    max_retries = 2
+    for retry in range(max_retries + 1):
+        conn = None
+        conn_returned = False
+        try:
+            conn = get_http_connection("openrouter.ai", http_pool_openrouter)
+            conn.request("POST", "/api/v1/chat/completions", json.dumps(data), headers)
+            response = conn.getresponse()
+            status_code = response.status
+            result = response.read().decode('utf-8')
+            result_json = json.loads(result)
 
-        if "choices" in result_json and len(result_json["choices"]) > 0:
-            assistant_message = result_json["choices"][0]["message"]["content"]
-            with conversation_lock:
-                conversation_history.append({"role": "assistant", "content": assistant_message})
-            logger.info(f"OpenRouter API调用成功, response_length={len(assistant_message)}")
-            return_http_connection(conn, http_pool_openrouter)
-            conn_returned = True
-            return assistant_message
-        else:
-            error_info = result_json.get('error', {})
-            error_msg = error_info.get('message', '未知错误')
-            error_code = error_info.get('code', 'N/A')
-            error_type = error_info.get('type', 'N/A')
-            logger.error(f"OpenRouter API错误: HTTP {status_code}, code={error_code}, type={error_type}, message={error_msg}, response={result[:500]}")
-            user_msg = get_openrouter_error_msg(status_code)
-            if user_msg:
-                return user_msg
-            return "AI服务暂时异常，请稍后重试"
-    except json.JSONDecodeError as e:
-        logger.error(f"OpenRouter API响应解析失败: HTTP {status_code}, response={result[:500] if 'result' in dir() else 'N/A'}")
-        return f"响应解析失败: {str(e)}"
-    except Exception as e:
-        logger.error(f"OpenRouter请求失败: {str(e)}")
-        return f"OpenRouter请求失败: {str(e)}"
-    finally:
-        ai_request_semaphore.release()
-        if conn and not conn_returned:
-            try:
-                conn.close()
-            except:
-                pass
+            if "choices" in result_json and len(result_json["choices"]) > 0:
+                assistant_message = result_json["choices"][0]["message"]["content"]
+                with conversation_lock:
+                    conversation_history.append({"role": "assistant", "content": assistant_message})
+                logger.info(f"OpenRouter API调用成功, response_length={len(assistant_message)}")
+                return_http_connection(conn, http_pool_openrouter)
+                conn_returned = True
+                return assistant_message
+            else:
+                error_info = result_json.get('error', {})
+                error_msg = error_info.get('message', '未知错误')
+                error_code = error_info.get('code', 'N/A')
+                error_type = error_info.get('type', 'N/A')
+                logger.error(f"OpenRouter API错误: HTTP {status_code}, code={error_code}, type={error_type}, message={error_msg}, response={result[:500]}")
+                user_msg = get_openrouter_error_msg(status_code)
+                if user_msg:
+                    return user_msg
+                return "AI服务暂时异常，请稍后重试"
+        except json.JSONDecodeError as e:
+            logger.error(f"OpenRouter API响应解析失败: HTTP {status_code}, response={result[:500] if 'result' in dir() else 'N/A'}")
+            return f"响应解析失败: {str(e)}"
+        except (http.client.RemoteDisconnected, ConnectionResetError, BrokenPipeError, OSError) as e:
+            if retry < max_retries:
+                logger.warning(f"OpenRouter连接断开，第{retry+1}次重试...")
+                time.sleep(0.5)
+                continue
+            logger.error(f"OpenRouter请求失败(重试后): {str(e)}")
+            return "网络连接不稳定，请稍后重试"
+        except Exception as e:
+            logger.error(f"OpenRouter请求失败: {str(e)}")
+            return f"OpenRouter请求失败: {str(e)}"
+        finally:
+            ai_request_semaphore.release()
+            if conn and not conn_returned:
+                try:
+                    conn.close()
+                except:
+                    pass
+    return "网络连接不稳定，请稍后重试"
 
 def call_api(message, provider=None, model=None, ollama_host=None):
     """根据配置调用对应的API"""
