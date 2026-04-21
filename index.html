@@ -676,38 +676,15 @@ body.snow .snowfall{display:block}
 </div>
 </div>
 <div class="settings-section">
-<h4>🤖 对话模型设置</h4>
-<div class="setting-item">
-<label>模型来源</label>
-<select id="modelSource" onchange="updateModelSource()">
-<option value="remote">远程 API</option>
-<option value="ollama">本地 Ollama</option>
-</select>
-</div>
-<div id="remoteModelSection">
-<div class="setting-item">
-<label>API 提供商</label>
-<select id="apiProvider" onchange="updateApiProvider()">
-<option value="minimax">MiniMax</option>
-<option value="openrouter">OpenRouter</option>
-</select>
-</div>
-<div class="setting-item">
-<label>模型</label>
-<input type="text" id="modelName" placeholder="模型名称" onchange="updateModelName()">
-</div>
-<div class="setting-note">💡 API Key 请在 config.json 中配置</div>
-</div>
-<div id="ollamaModelSection" style="display:none">
-<div class="setting-item">
+<h4>🤖 模型配置</h4>
+<div class="setting-note">💡 模型配置请在服务端 config.json 中设置</div>
+<div class="setting-item" id="ollamaModelSection">
 <label>Ollama 地址</label>
 <input type="text" id="ollamaHost" value="http://127.0.0.1:11434" onchange="updateOllamaConfig()">
 </div>
 <div class="setting-item">
-<label>模型名称</label>
+<label>Ollama 模型</label>
 <input type="text" id="ollamaModel" value="gemma3:270m" onchange="updateOllamaConfig()">
-</div>
-<div class="setting-note">💡 确保已安装 Ollama 并运行: ollama serve</div>
 </div>
 </div>
 <div class="settings-section">
@@ -1122,8 +1099,7 @@ const ENV_CONFIG={
         return url;
     },
     isOfflineMode(){
-        const modelSource=localStorage.getItem('hupo_model_source')||'remote';
-        return modelSource!=='remote';
+        return window.gameConfig?.active_provider==='ollama';
     }
 };
 RUNTIME_CONFIG.load();
@@ -2259,7 +2235,7 @@ function updateSkillSlots(){
         const skill=skills[skillId];
         const slot=document.createElement('div');
         slot.className='skill-slot'+(skill?'':' locked');
-        slot.innerHTML=skill?skill.icon:'🔒';
+        slot.textContent=skill?skill.icon:'🔒';
         slot.title=skill?`${skill.name} (${skill.mp}MP)`:'未装备技能';
         slot.onclick=()=>openSkillEquip(i);
         container.appendChild(slot);
@@ -2275,7 +2251,7 @@ function updateSkillSlots(){
     const boostNames={attack:'攻击',defense:'防御',hpMax:'HP',speed:'速度'};
     const activeBoost=cat.activeStatBoost||'attack';
     const boostLevel=cat.statBoost[activeBoost]||0;
-    boostSlot.innerHTML=boostIcons[activeBoost];
+    boostSlot.textContent=boostIcons[activeBoost];
     boostSlot.title=`${boostNames[activeBoost]}强化 Lv.${boostLevel}\n点击切换属性`;
     boostSlot.onclick=()=>openStatBoostSelect();
     container.appendChild(boostSlot);
@@ -2289,7 +2265,7 @@ function updatePartnerList(){
         if(p){
             const slot=document.createElement('div');
             slot.className='partner-slot';
-            slot.innerHTML=p.icon;
+            slot.textContent=p.icon;
             slot.title=`${p.name}: ${p.desc}`;
             slot.onclick=()=>showPartnerDetail(p.id);
             container.appendChild(slot);
@@ -2299,7 +2275,7 @@ function updatePartnerList(){
         for(let i=cat.partners.length;i<3;i++){
             const slot=document.createElement('div');
             slot.className='partner-slot';
-            slot.innerHTML='➕';
+            slot.textContent='➕';
             slot.title='点击购买伙伴';
             slot.onclick=()=>openPartnerShop();
             container.appendChild(slot);
@@ -2328,7 +2304,7 @@ function updateMapList(){
     const digBtn=document.createElement('button');
     digBtn.className='action-btn';
     digBtn.style.cssText='width:100%;margin-top:10px;padding:8px;font-size:11px';
-    digBtn.innerHTML='⛏️ 地图开挖';
+    digBtn.textContent='⛏️ 地图开挖';
     digBtn.onclick=()=>openDigPanel();
     container.appendChild(digBtn);
 }
@@ -2473,90 +2449,24 @@ function loadSettingsToUI(){
     }
     document.getElementById('voiceProvider').value=getVoiceProvider();
     loadModelSettingsToUI();
-    updateSettingsVisibility();
     updateSettingsStatus();
     loadVoiceConfig();
 }
 function loadModelSettingsToUI(){
     const gameCfg=window.gameConfig||{};
-    const activeProvider=gameCfg.active_provider||'minimax';
-    const savedProvider=localStorage.getItem('hupo_api_provider')||activeProvider;
-    const modelSource=localStorage.getItem('hupo_model_source')||'remote';
-    document.getElementById('modelSource').value=modelSource;
-    if(modelSource==='remote'){
-        document.getElementById('apiProvider').value=savedProvider;
-        const providerConfig=gameCfg[savedProvider]||{};
-        document.getElementById('modelName').value=localStorage.getItem('hupo_remote_model')||providerConfig.model||'';
-    }else if(modelSource==='ollama'){
-        const ollamaHost=gameCfg.local?.ollama?.host||gameCfg.ollama?.api_base||'http://localhost:11434/v1';
-        const ollamaModel=localStorage.getItem('hupo_ollama_model')||gameCfg.local?.ollama?.model||gameCfg.ollama?.model||'gemma3:270m';
-        document.getElementById('ollamaHost').value=ollamaHost;
-        document.getElementById('ollamaModel').value=ollamaModel;
-    }
-}
-function updateSettingsVisibility(){
-    const modelSource=document.getElementById('modelSource').value;
-    document.getElementById('remoteModelSection').style.display=modelSource==='remote'?'block':'none';
-    document.getElementById('ollamaModelSection').style.display=modelSource==='ollama'?'block':'none';
+    const ollamaHost=gameCfg.ollama?.api_base||'http://localhost:11434/v1';
+    const ollamaModel=localStorage.getItem('hupo_ollama_model')||gameCfg.ollama?.model||'gemma3:270m';
+    document.getElementById('ollamaHost').value=ollamaHost;
+    document.getElementById('ollamaModel').value=ollamaModel;
 }
 function updateSettingsStatus(){
-    const modelSource=document.getElementById('modelSource').value;
-    const sourceNames={remote:'远程 API',ollama:'Ollama'};
-    let modelInfo='';
-    if(modelSource==='remote'){
-        const provider=document.getElementById('apiProvider').value;
-        const providerNames={minimax:'MiniMax',openrouter:'OpenRouter'};
-        modelInfo=providerNames[provider]||provider;
-    }else if(modelSource==='ollama'){
-        modelInfo=document.getElementById('ollamaModel').value||'未设置';
-    }
+    const activeProvider=window.gameConfig?.active_provider||'minimax';
+    const ollamaModel=document.getElementById('ollamaModel').value||'未设置';
+    const providerNames={minimax:'MiniMax',openrouter:'OpenRouter',ollama:'Ollama'};
+    const providerName=providerNames[activeProvider]||activeProvider;
     document.getElementById('settingsStatus').innerHTML=`
-        <span class="status-model">模型：${sourceNames[modelSource]} (${modelInfo})</span>
+        <span class="status-model">当前模型：${providerName}${activeProvider==='ollama'?' ('+ollamaModel+')':''}</span>
     `;
-}
-function updateModelSource(){
-    const source=document.getElementById('modelSource').value;
-    localStorage.setItem('hupo_model_source',source);
-    if(source==='ollama'){
-        const ollamaModel=document.getElementById('ollamaModel').value||window.gameConfig?.ollama?.model||window.gameConfig?.local?.ollama?.model||'gemma3:270m';
-        localStorage.setItem('hupo_ollama_model',ollamaModel);
-    }else if(source==='remote'){
-        const provider=document.getElementById('apiProvider').value;
-        const model=document.getElementById('modelName').value||window.gameConfig?.[provider]?.model||'';
-        localStorage.setItem('hupo_remote_model',model);
-    }
-    updateSettingsVisibility();
-    updateSettingsStatus();
-    updateModelTag();
-    showSaveToast();
-    if(source==='ollama'){
-        RUNTIME_CONFIG.setLocal('ollama',{});
-        if(typeof AndroidApp!=='undefined'){
-            AndroidApp.initLLM(source);
-        }
-    }
-}
-function updateApiProvider(){
-    const provider=document.getElementById('apiProvider').value;
-    const providerConfig=window.gameConfig?.[provider]||{};
-    const defaultModel=providerConfig.model||'';
-    document.getElementById('modelName').value=defaultModel;
-    localStorage.setItem('hupo_api_provider',provider);
-    localStorage.setItem('hupo_remote_model',defaultModel);
-    updateSettingsStatus();
-    updateModelTag();
-    showSaveToast();
-}
-function updateModelName(){
-    const provider=document.getElementById('apiProvider').value;
-    const model=document.getElementById('modelName').value;
-    if(window.gameConfig&&window.gameConfig[provider]){
-        window.gameConfig[provider].model=model;
-    }
-    localStorage.setItem('hupo_remote_model',model);
-    updateSettingsStatus();
-    updateModelTag();
-    showSaveToast();
 }
 function updateOllamaConfig(){
     const host=document.getElementById('ollamaHost').value;
@@ -2567,7 +2477,6 @@ function updateOllamaConfig(){
         AndroidApp.setOllamaConfig(host,model);
     }
     updateSettingsStatus();
-    updateModelTag();
     showSaveToast();
 }
 function onLLMInit(success,message){
@@ -2926,7 +2835,7 @@ function renderBattleSkills(){
         if(skill.damage)displayText+=` (${Math.floor(skill.damage*masteryBonus)})`;
         if(skill.heal)displayText+=` (+${Math.floor(skill.heal*masteryBonus)})`;
         displayText+=` ${skill.mp}MP`;
-        btn.innerHTML=displayText;
+        btn.textContent=displayText;
         btn.disabled=cat.mp<skill.mp;
         btn.onclick=()=>useSkill(skillId);
         container.appendChild(btn);
@@ -2935,7 +2844,7 @@ function renderBattleSkills(){
         const emptyBtn=document.createElement('button');
         emptyBtn.className='battle-skill-btn';
         emptyBtn.style.background='#333';
-        emptyBtn.innerHTML='空槽位';
+        emptyBtn.textContent='空槽位';
         emptyBtn.disabled=true;
         container.appendChild(emptyBtn);
     }
@@ -2946,7 +2855,7 @@ function renderBattleSkills(){
     const boostBtn=document.createElement('button');
     boostBtn.className='battle-skill-btn';
     boostBtn.style.background='linear-gradient(135deg,#e74c3c,#c0392b)';
-    boostBtn.innerHTML=`${boostIcons[activeBoost]} ${boostNames[activeBoost]}+${boostLevel>0?boostLevel*{attack:2,defense:2,hpMax:15,speed:1}[activeBoost]:0}`;
+    boostBtn.textContent=`${boostIcons[activeBoost]} ${boostNames[activeBoost]}+${boostLevel>0?boostLevel*{attack:2,defense:2,hpMax:15,speed:1}[activeBoost]:0}`;
     boostBtn.disabled=true;
     boostBtn.title='属性增强（被动效果）';
     container.appendChild(boostBtn);
@@ -2954,14 +2863,14 @@ function renderBattleSkills(){
         const itemBtn=document.createElement('button');
         itemBtn.className='battle-skill-btn';
         itemBtn.style.background='linear-gradient(135deg,#a29bfe,#6c5ce7)';
-        itemBtn.innerHTML='🎒 物品';
+        itemBtn.textContent='🎒 物品';
         itemBtn.onclick=()=>openBattleInventory();
         container.appendChild(itemBtn);
     }
     const fleeBtn=document.createElement('button');
     fleeBtn.className='battle-skill-btn';
     fleeBtn.style.background='linear-gradient(135deg,#636e72,#2d3436)';
-    fleeBtn.innerHTML='🏃 逃跑';
+    fleeBtn.textContent='🏃 逃跑';
     fleeBtn.onclick=()=>endBattle(false);
     container.appendChild(fleeBtn);
 }
@@ -3455,7 +3364,7 @@ function processIntruderActions(){
 function addBattleLog(text){
     const log=document.getElementById('battleLog');
     const p=document.createElement('p');
-    p.innerHTML=text;
+    p.textContent=text;
     log.appendChild(p);
     log.scrollTop=log.scrollHeight;
 }
@@ -5096,15 +5005,11 @@ async function generateAIResponse(context,fallbackTexts){
     lastAIResponseTime=now;
     const fallback=fallbackTexts[Math.floor(Math.random()*fallbackTexts.length)];
     try{
-        const modelSource=localStorage.getItem('hupo_model_source')||'remote';
-        let provider,model,ollamaHost=null;
-        if(modelSource==='ollama'){
-            provider='ollama';
-            model=localStorage.getItem('hupo_ollama_model')||window.gameConfig?.ollama?.model||window.gameConfig?.local?.ollama?.model||'gemma3:270m';
+        const activeProvider=window.gameConfig?.active_provider||'minimax';
+        let provider=activeProvider,model=null,ollamaHost=null;
+        if(activeProvider==='ollama'){
+            model=localStorage.getItem('hupo_ollama_model')||window.gameConfig?.ollama?.model||'gemma3:270m';
             ollamaHost=RUNTIME_CONFIG.local.ollama.host;
-        }else{
-            provider=localStorage.getItem('hupo_api_provider')||window.gameConfig?.active_provider||'minimax';
-            model=localStorage.getItem('hupo_remote_model')||window.gameConfig?.[provider]?.model||'';
         }
         const r=await fetch(ENV_CONFIG.getApiUrl('/'),{
             method:'POST',
@@ -5158,15 +5063,11 @@ async function sendMessage(){
     }
     showTyping();
     try{
-        const modelSource=localStorage.getItem('hupo_model_source')||'remote';
-        let provider,model,ollamaHost=null;
-        if(modelSource==='ollama'){
-            provider='ollama';
-            model=localStorage.getItem('hupo_ollama_model')||window.gameConfig?.ollama?.model||window.gameConfig?.local?.ollama?.model||'gemma3:270m';
+        const activeProvider=window.gameConfig?.active_provider||'minimax';
+        let provider=activeProvider,model=null,ollamaHost=null;
+        if(activeProvider==='ollama'){
+            model=localStorage.getItem('hupo_ollama_model')||window.gameConfig?.ollama?.model||'gemma3:270m';
             ollamaHost=RUNTIME_CONFIG.local.ollama.host;
-        }else{
-            provider=localStorage.getItem('hupo_api_provider')||window.gameConfig?.active_provider||'minimax';
-            model=localStorage.getItem('hupo_remote_model')||window.gameConfig?.[provider]?.model||'';
         }
         const r=await fetch(ENV_CONFIG.getApiUrl('/'),{
             method:'POST',
@@ -5207,12 +5108,13 @@ function getSysPrompt(){
 }
 document.getElementById('messageInput').addEventListener('keypress',e=>{if(e.key==='Enter')sendMessage()});
 function loadModelInfo(){
-    const modelSource=localStorage.getItem('hupo_model_source')||'remote';
-    if(modelSource==='ollama'){
-        const model=localStorage.getItem('hupo_ollama_model')||window.gameConfig?.ollama?.model||window.gameConfig?.local?.ollama?.model||'Ollama';
-        document.getElementById('modelTag').innerHTML='🤖 '+model.split('/').pop();
+    const activeProvider=window.gameConfig?.active_provider||'minimax';
+    const providerNames={minimax:'MiniMax',openrouter:'OpenRouter',ollama:'Ollama'};
+    if(activeProvider==='ollama'){
+        const model=localStorage.getItem('hupo_ollama_model')||window.gameConfig?.ollama?.model||'Ollama';
+        document.getElementById('modelTag').textContent='🤖 '+model.split('/').pop();
     }else{
-        document.getElementById('modelTag').innerHTML='🤖 AI';
+        document.getElementById('modelTag').textContent='🤖 '+(providerNames[activeProvider]||activeProvider);
     }
 }
 function showNpcDialog(npc){
@@ -8203,18 +8105,15 @@ function initRuntimeConfigFromGameConfig(){
     RUNTIME_CONFIG.save();
 }
 function updateModelTag(){
-    const modelSource=localStorage.getItem('hupo_model_source')||'remote';
     const tag=document.getElementById('modelTag');
     if(!tag)return;
-    if(modelSource==='remote'){
-        const provider=localStorage.getItem('hupo_api_provider')||window.gameConfig?.active_provider||'minimax';
-        const model=localStorage.getItem('hupo_remote_model')||window.gameConfig?.[provider]?.model||'';
-        const providerNames={minimax:'MiniMax',openrouter:'OpenRouter'};
-        const displayName=model?model.split('/').pop():(providerNames[provider]||provider);
-        tag.textContent=displayName;
-    }else if(modelSource==='ollama'){
-        const model=localStorage.getItem('hupo_ollama_model')||window.gameConfig?.ollama?.model||window.gameConfig?.local?.ollama?.model||'Ollama';
+    const activeProvider=window.gameConfig?.active_provider||'minimax';
+    const providerNames={minimax:'MiniMax',openrouter:'OpenRouter',ollama:'Ollama'};
+    if(activeProvider==='ollama'){
+        const model=localStorage.getItem('hupo_ollama_model')||window.gameConfig?.ollama?.model||'Ollama';
         tag.textContent=model.split('/').pop();
+    }else{
+        tag.textContent=providerNames[activeProvider]||activeProvider;
     }
 }
 window.addEventListener('beforeunload',()=>{
