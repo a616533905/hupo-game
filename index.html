@@ -677,14 +677,23 @@ body.snow .snowfall{display:block}
 </div>
 <div class="settings-section">
 <h4>🤖 模型配置</h4>
-<div class="setting-note">💡 模型配置请在服务端 config.json 中设置</div>
-<div class="setting-item" id="ollamaModelSection">
+<div class="setting-item">
+<label>API 提供商</label>
+<select id="apiProvider" onchange="updateApiProvider()">
+<option value="minimax">MiniMax</option>
+<option value="openrouter">OpenRouter</option>
+<option value="ollama">Ollama (本地)</option>
+</select>
+</div>
+<div id="ollamaModelSection">
+<div class="setting-item">
 <label>Ollama 地址</label>
 <input type="text" id="ollamaHost" value="http://127.0.0.1:11434" onchange="updateOllamaConfig()">
 </div>
 <div class="setting-item">
 <label>Ollama 模型</label>
 <input type="text" id="ollamaModel" value="gemma3:270m" onchange="updateOllamaConfig()">
+</div>
 </div>
 </div>
 <div class="settings-section">
@@ -1099,7 +1108,8 @@ const ENV_CONFIG={
         return url;
     },
     isOfflineMode(){
-        return window.gameConfig?.active_provider==='ollama';
+        const provider=localStorage.getItem('hupo_api_provider')||window.gameConfig?.active_provider||'minimax';
+        return provider==='ollama';
     }
 };
 RUNTIME_CONFIG.load();
@@ -2454,18 +2464,34 @@ function loadSettingsToUI(){
 }
 function loadModelSettingsToUI(){
     const gameCfg=window.gameConfig||{};
+    const savedProvider=localStorage.getItem('hupo_api_provider')||gameCfg.active_provider||'minimax';
+    document.getElementById('apiProvider').value=savedProvider;
     const ollamaHost=gameCfg.ollama?.api_base||'http://localhost:11434/v1';
     const ollamaModel=localStorage.getItem('hupo_ollama_model')||gameCfg.ollama?.model||'gemma3:270m';
     document.getElementById('ollamaHost').value=ollamaHost;
     document.getElementById('ollamaModel').value=ollamaModel;
+    updateOllamaVisibility();
+}
+function updateOllamaVisibility(){
+    const provider=document.getElementById('apiProvider').value;
+    const ollamaSection=document.getElementById('ollamaModelSection');
+    if(ollamaSection)ollamaSection.style.display=provider==='ollama'?'block':'none';
+}
+function updateApiProvider(){
+    const provider=document.getElementById('apiProvider').value;
+    localStorage.setItem('hupo_api_provider',provider);
+    updateOllamaVisibility();
+    updateSettingsStatus();
+    updateModelTag();
+    showSaveToast();
 }
 function updateSettingsStatus(){
-    const activeProvider=window.gameConfig?.active_provider||'minimax';
+    const provider=document.getElementById('apiProvider')?.value||localStorage.getItem('hupo_api_provider')||'minimax';
     const ollamaModel=document.getElementById('ollamaModel').value||'未设置';
     const providerNames={minimax:'MiniMax',openrouter:'OpenRouter',ollama:'Ollama'};
-    const providerName=providerNames[activeProvider]||activeProvider;
+    const providerName=providerNames[provider]||provider;
     document.getElementById('settingsStatus').innerHTML=`
-        <span class="status-model">当前模型：${providerName}${activeProvider==='ollama'?' ('+ollamaModel+')':''}</span>
+        <span class="status-model">当前模型：${providerName}${provider==='ollama'?' ('+ollamaModel+')':''}</span>
     `;
 }
 function updateOllamaConfig(){
@@ -5005,9 +5031,9 @@ async function generateAIResponse(context,fallbackTexts){
     lastAIResponseTime=now;
     const fallback=fallbackTexts[Math.floor(Math.random()*fallbackTexts.length)];
     try{
-        const activeProvider=window.gameConfig?.active_provider||'minimax';
-        let provider=activeProvider,model=null,ollamaHost=null;
-        if(activeProvider==='ollama'){
+        const provider=localStorage.getItem('hupo_api_provider')||window.gameConfig?.active_provider||'minimax';
+        let model=null,ollamaHost=null;
+        if(provider==='ollama'){
             model=localStorage.getItem('hupo_ollama_model')||window.gameConfig?.ollama?.model||'gemma3:270m';
             ollamaHost=RUNTIME_CONFIG.local.ollama.host;
         }
@@ -5063,9 +5089,9 @@ async function sendMessage(){
     }
     showTyping();
     try{
-        const activeProvider=window.gameConfig?.active_provider||'minimax';
-        let provider=activeProvider,model=null,ollamaHost=null;
-        if(activeProvider==='ollama'){
+        const provider=localStorage.getItem('hupo_api_provider')||window.gameConfig?.active_provider||'minimax';
+        let model=null,ollamaHost=null;
+        if(provider==='ollama'){
             model=localStorage.getItem('hupo_ollama_model')||window.gameConfig?.ollama?.model||'gemma3:270m';
             ollamaHost=RUNTIME_CONFIG.local.ollama.host;
         }
@@ -5108,13 +5134,13 @@ function getSysPrompt(){
 }
 document.getElementById('messageInput').addEventListener('keypress',e=>{if(e.key==='Enter')sendMessage()});
 function loadModelInfo(){
-    const activeProvider=window.gameConfig?.active_provider||'minimax';
+    const provider=localStorage.getItem('hupo_api_provider')||window.gameConfig?.active_provider||'minimax';
     const providerNames={minimax:'MiniMax',openrouter:'OpenRouter',ollama:'Ollama'};
-    if(activeProvider==='ollama'){
+    if(provider==='ollama'){
         const model=localStorage.getItem('hupo_ollama_model')||window.gameConfig?.ollama?.model||'Ollama';
         document.getElementById('modelTag').textContent='🤖 '+model.split('/').pop();
     }else{
-        document.getElementById('modelTag').textContent='🤖 '+(providerNames[activeProvider]||activeProvider);
+        document.getElementById('modelTag').textContent='🤖 '+(providerNames[provider]||provider);
     }
 }
 function showNpcDialog(npc){
@@ -8107,13 +8133,13 @@ function initRuntimeConfigFromGameConfig(){
 function updateModelTag(){
     const tag=document.getElementById('modelTag');
     if(!tag)return;
-    const activeProvider=window.gameConfig?.active_provider||'minimax';
+    const provider=localStorage.getItem('hupo_api_provider')||window.gameConfig?.active_provider||'minimax';
     const providerNames={minimax:'MiniMax',openrouter:'OpenRouter',ollama:'Ollama'};
-    if(activeProvider==='ollama'){
+    if(provider==='ollama'){
         const model=localStorage.getItem('hupo_ollama_model')||window.gameConfig?.ollama?.model||'Ollama';
         tag.textContent=model.split('/').pop();
     }else{
-        tag.textContent=providerNames[activeProvider]||activeProvider;
+        tag.textContent=providerNames[provider]||provider;
     }
 }
 window.addEventListener('beforeunload',()=>{
