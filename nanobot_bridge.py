@@ -64,10 +64,43 @@ http_pool_lock = threading.Lock()
 http_pool_minimax = []
 http_pool_minimax_tts = []
 http_pool_openrouter = []
+http_pool_last_cleanup = time.time()
+
+def is_connection_valid(conn):
+    if conn is None:
+        return False
+    try:
+        if hasattr(conn, 'sock') and conn.sock is None:
+            return False
+        return True
+    except:
+        return False
+
+def cleanup_connection_pools():
+    global http_pool_last_cleanup
+    with http_pool_lock:
+        for pool in [http_pool_minimax, http_pool_minimax_tts, http_pool_openrouter]:
+            valid = []
+            for conn in pool:
+                if conn is not None and is_connection_valid(conn):
+                    valid.append(conn)
+                else:
+                    try:
+                        if conn:
+                            conn.close()
+                    except:
+                        pass
+            pool.clear()
+            pool.extend(valid)
+        http_pool_last_cleanup = time.time()
 
 def get_http_connection(host, pool_list, timeout=HTTP_TIMEOUT):
+    global http_pool_last_cleanup
+    if time.time() - http_pool_last_cleanup > 300:
+        cleanup_connection_pools()
+    
     with http_pool_lock:
-        valid_connections = [c for c in pool_list if c is not None]
+        valid_connections = [c for c in pool_list if is_connection_valid(c)]
         pool_list.clear()
         pool_list.extend(valid_connections)
         
@@ -390,6 +423,16 @@ def get_provider_config(provider_name):
 conversation_history = []
 conversation_lock = threading.Lock()
 MAX_HISTORY_LENGTH = 20
+conversation_last_access = time.time()
+CONVERSATION_TIMEOUT = 3600
+
+def cleanup_conversation_history():
+    global conversation_history, conversation_last_access
+    with conversation_lock:
+        if time.time() - conversation_last_access > CONVERSATION_TIMEOUT:
+            if len(conversation_history) > 0:
+                logger.info(f"清理超时对话历史，当前长度: {len(conversation_history)}")
+            conversation_history = []
 
 MINIMAX_ERROR_MAP = {
     1000: "服务暂时繁忙，请稍后重试",
@@ -427,7 +470,10 @@ def get_minimax_error_msg(status_code):
 
 def call_minimax_chat(message, model_override=None):
     """调用 MiniMax API (带并发控制和连接池)"""
-    global conversation_history
+    global conversation_history, conversation_last_access
+    cleanup_conversation_history()
+    conversation_last_access = time.time()
+    
     provider_config = get_provider_config('minimax')
     api_key = provider_config.get('api_key', '')
     group_id = provider_config.get('group_id', '')
@@ -683,7 +729,9 @@ def ensure_ollama_model(model, host="localhost", port=11434):
 
 def call_ollama_api(message, model_override=None, host_override=None):
     """调用 Ollama API (本地) - 兼容 OpenAI 格式和原生 Ollama 格式"""
-    global conversation_history
+    global conversation_history, conversation_last_access
+    cleanup_conversation_history()
+    conversation_last_access = time.time()
 
     provider_config = get_provider_config('ollama')
     model = model_override or provider_config.get('model', 'llama2')
@@ -803,7 +851,9 @@ def get_openrouter_error_msg(status_code):
 
 def call_openrouter_api(message, model_override=None):
     """调用 OpenRouter API (带并发控制和连接池)"""
-    global conversation_history
+    global conversation_history, conversation_last_access
+    cleanup_conversation_history()
+    conversation_last_access = time.time()
 
     provider_config = get_provider_config('openrouter')
     api_key = provider_config.get('api_key', '')

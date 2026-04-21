@@ -1073,7 +1073,6 @@ const RUNTIME_CONFIG={
             mode:this.mode,
             server:this.server,
             local:this.local,
-            cloud:this.cloud,
             accessToken:this.accessToken
         }));
     },
@@ -5845,7 +5844,7 @@ function addMessage(text,sender){
     container.appendChild(msg);
     container.scrollTop=container.scrollHeight;
     chatHistoryList.push({role:sender,content:text,time});
-    if(chatHistoryList.length>100)chatHistoryList.shift();
+    if(chatHistoryList.length>20)chatHistoryList.shift();
     saveChatHistory();
     updateChatHistory();
     if(sender==='bot'&&autoSpeak&&!text.includes('🎤')&&!text.includes('🔄')){
