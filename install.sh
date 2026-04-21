@@ -122,6 +122,7 @@ CRON_AUDIT="0 3 * * * cd $INSTALL_DIR && /usr/bin/python3 $CRON_DIR/log_auditor.
 CRON_SOAR="*/5 * * * * /usr/bin/python3 $CRON_DIR/log_auditor.py soar >> $INSTALL_DIR/logs/soar.log 2>&1"
 CRON_RECOVER="*/10 * * * * /usr/bin/python3 $CRON_DIR/log_auditor.py recover >> $INSTALL_DIR/logs/recover.log 2>&1"
 CRON_HEALTH_FULL="0 */6 * * * /usr/bin/python3 $CRON_DIR/log_auditor.py health >> $INSTALL_DIR/logs/health_full.log 2>&1"
+CRON_RESTART="0 3 * * * $INSTALL_DIR/start.sh >> $INSTALL_DIR/logs/restart.log 2>&1"
 
 if ! crontab -l 2>/dev/null | grep -q "health_check.sh"; then
     (crontab -l 2>/dev/null; echo "$CRON_HEALTH") | crontab -
@@ -156,6 +157,13 @@ if ! crontab -l 2>/dev/null | grep -q "log_auditor.py health"; then
     echo "  已添加完整健康检查任务 (每6小时)"
 else
     echo "  完整健康检查任务已存在"
+fi
+
+if ! crontab -l 2>/dev/null | grep -q "start.sh"; then
+    (crontab -l 2>/dev/null; echo "$CRON_RESTART") | crontab -
+    echo "  已添加服务重启任务 (每天凌晨3点)"
+else
+    echo "  服务重启任务已存在"
 fi
 
 echo ""
@@ -334,6 +342,7 @@ echo "  SOAR审计: 每5分钟 (log_auditor.py soar)"
 echo "  自动恢复: 每10分钟 (log_auditor.py recover)"
 echo "  完整检查: 每6小时 (log_auditor.py health)"
 echo "  日志审计: 每天3点 (log_auditor.py 24)"
+echo "  服务重启: 每天3点 (start.sh)"
 echo ""
 echo "【SOAR 安全系统命令】"
 echo "  soar status    - 显示系统状态"

@@ -880,9 +880,9 @@ def call_api(message, provider=None, model=None, ollama_host=None):
     elif active_provider == 'openrouter':
         return call_openrouter_api(message, model)
     elif active_provider == 'minimax':
-        return call_minimax_api(message, model)
+        return call_minimax_chat(message, model)
     else:
-        return call_minimax_api(message, model)
+        return call_minimax_chat(message, model)
 
 class HTTPtoHTTPSRedirectHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
