@@ -168,6 +168,16 @@ VOICE_OK=true
 check_disk_space
 check_memory
 
+CURRENT_HOUR=$(date +%H)
+if [ "$CURRENT_HOUR" = "00" ] || [ "$CURRENT_HOUR" = "06" ] || [ "$CURRENT_HOUR" = "12" ] || [ "$CURRENT_HOUR" = "18" ]; then
+    CURRENT_MIN=$(date +%M)
+    if [ "$CURRENT_MIN" -lt 5 ]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] [检查] 开始 API 健康检查..." >> "$ALERT_LOG"
+        check_minimax_api
+        check_openrouter_api
+    fi
+fi
+
 if ! check_port 443 "AI Bridge"; then
     BRIDGE_OK=false
 fi
