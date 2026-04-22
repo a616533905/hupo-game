@@ -122,17 +122,6 @@ else
     echo "  waf_rules.json 已存在，跳过"
 fi
 
-if [ ! -f "$INSTALL_DIR/error_codes.json" ]; then
-    if [ -f "$INSTALL_DIR/error_codes.example.json" ]; then
-        cp "$INSTALL_DIR/error_codes.example.json" "$INSTALL_DIR/error_codes.json"
-        echo "  已从 error_codes.example.json 创建 error_codes.json"
-    else
-        echo "  error_codes.example.json 不存在，跳过"
-    fi
-else
-    echo "  error_codes.json 已存在，跳过"
-fi
-
 echo ""
 echo "  初始化审计基线..."
 /usr/bin/python3 $INSTALL_DIR/cron/log_auditor.py init

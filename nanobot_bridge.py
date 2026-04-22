@@ -50,7 +50,6 @@ CONFIG_FILE = "config.json"
 WAF_RULES_FILE = "waf_rules.json"
 WAF_RULES_EXAMPLE = "waf_rules.example.json"
 ERROR_CODES_FILE = "error_codes.json"
-ERROR_CODES_EXAMPLE = "error_codes.example.json"
 WEB_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 def load_waf_rules():
@@ -76,7 +75,6 @@ def load_waf_rules():
 
 def load_error_codes():
     error_path = os.path.join(WEB_ROOT, ERROR_CODES_FILE)
-    error_example_path = os.path.join(WEB_ROOT, ERROR_CODES_EXAMPLE)
     
     if os.path.exists(error_path):
         try:
@@ -84,14 +82,6 @@ def load_error_codes():
                 return json.load(f)
         except Exception as e:
             logger.warning(f"错误码配置加载失败: {e}")
-    
-    if os.path.exists(error_example_path):
-        try:
-            with open(error_example_path, 'r', encoding='utf-8') as f:
-                logger.info(f"使用默认错误码配置: {ERROR_CODES_EXAMPLE}")
-                return json.load(f)
-        except Exception as e:
-            logger.warning(f"默认错误码配置加载失败: {e}")
     
     return None
 

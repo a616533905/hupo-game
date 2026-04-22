@@ -28,7 +28,6 @@ CONFIG_FILE = os.path.join(PROJECT_DIR, "config.json")
 WAF_RULES_FILE = os.path.join(PROJECT_DIR, "waf_rules.json")
 WAF_RULES_EXAMPLE = os.path.join(PROJECT_DIR, "waf_rules.example.json")
 ERROR_CODES_FILE = os.path.join(PROJECT_DIR, "error_codes.json")
-ERROR_CODES_EXAMPLE = os.path.join(PROJECT_DIR, "error_codes.example.json")
 LOG_DIR = os.path.join(PROJECT_DIR, 'logs')
 DATA_DIR = os.path.join(PROJECT_DIR, 'data')
 
