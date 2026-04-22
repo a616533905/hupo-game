@@ -47,7 +47,32 @@ debug_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(mess
 debug_logger.addHandler(debug_handler)
 
 CONFIG_FILE = "config.json"
+WAF_RULES_FILE = "waf_rules.json"
+ERROR_CODES_FILE = "error_codes.json"
 WEB_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+def load_waf_rules():
+    try:
+        waf_path = os.path.join(WEB_ROOT, WAF_RULES_FILE)
+        if os.path.exists(waf_path):
+            with open(waf_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        logger.warning(f"WAF规则加载失败，使用默认规则: {e}")
+    return None
+
+def load_error_codes():
+    try:
+        error_path = os.path.join(WEB_ROOT, ERROR_CODES_FILE)
+        if os.path.exists(error_path):
+            with open(error_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        logger.warning(f"错误码配置加载失败，使用默认配置: {e}")
+    return None
+
+WAF_RULES = load_waf_rules()
+ERROR_CODES = load_error_codes()
 
 import psutil
 import threading
@@ -62,26 +87,9 @@ rate_limit_data = {}
 chat_rate_limit_data = {}
 rate_limit_lock = threading.Lock()
 
-WAF_BLACKLIST_DURATION = 3600
+WAF_BLACKLIST_DURATION = WAF_RULES.get('blacklist_duration', 3600) if WAF_RULES else 3600
 WAF_BLACKLIST = {}
 WAF_BLACKLIST_LOCK = threading.Lock()
-
-WAF_ATTACK_PATTERNS = [
-    'phpunit', 'eval-stdin', 'think\\\\app', 'invokefunction',
-    'call_user_func', 'pearcmd', '/etc/passwd', '/../',
-    'base64_decode', 'shell_exec', 'passthru', 'system(',
-    'exec(', 'popen(', 'proc_open', 'pcntl_exec',
-    '<?php', '<?=', 'script>alert', 'union select',
-    'order by', 'group by', 'having 1=1', 'or 1=1',
-    'and 1=1', 'sleep(', 'benchmark(', 'load_file',
-    'into outfile', 'into dumpfile', 'information_schema',
-    '.env', 'web.config', 'backup.sql', 'dump.sql',
-    'wp-admin', 'wp-login', 'phpmyadmin', 'adminer',
-    'manager/html', 'jmx-console', 'web-console',
-    'invoker/JMXInvokerServlet', '.git/config', '.svn/',
-    'CFIDE/administrator', 'solr/admin', 'actuator/',
-    'console/', 'debug/', 'trace/', '.DS_Store',
-]
 
 def waf_check_request(client_ip, path, headers):
     with WAF_BLACKLIST_LOCK:
@@ -92,22 +100,25 @@ def waf_check_request(client_ip, path, headers):
                 del WAF_BLACKLIST[client_ip]
     
     path_lower = path.lower()
-    for pattern in WAF_ATTACK_PATTERNS:
+    attack_patterns = WAF_RULES.get('attack_patterns', []) if WAF_RULES else []
+    for item in attack_patterns:
+        pattern = item['pattern'] if isinstance(item, dict) else item
         if pattern.lower() in path_lower:
             with WAF_BLACKLIST_LOCK:
                 WAF_BLACKLIST[client_ip] = time.time() + WAF_BLACKLIST_DURATION
-            logger.warning(f"[WAF] 检测到攻击: IP={client_ip}, Pattern={pattern}, Path={path[:100]}")
+            category = item.get('category', 'unknown') if isinstance(item, dict) else 'unknown'
+            logger.warning(f"[WAF] 检测到攻击: IP={client_ip}, Category={category}, Pattern={pattern}, Path={path[:100]}")
             return True, f"Attack pattern detected: {pattern}"
     
     user_agent = headers.get('User-Agent', '').lower()
-    suspicious_agents = ['sqlmap', 'nmap', 'masscan', 'nikto', 'acunetix', 
-                         'nessus', 'burp', 'metasploit', 'dirbuster', 'gobuster']
-    for agent in suspicious_agents:
-        if agent in user_agent:
+    scanner_signatures = WAF_RULES.get('scanner_signatures', []) if WAF_RULES else []
+    for item in scanner_signatures:
+        pattern = item['pattern'] if isinstance(item, dict) else item
+        if pattern.lower() in user_agent:
             with WAF_BLACKLIST_LOCK:
                 WAF_BLACKLIST[client_ip] = time.time() + WAF_BLACKLIST_DURATION
             logger.warning(f"[WAF] 检测到扫描器: IP={client_ip}, Agent={user_agent[:50]}")
-            return True, f"Scanner detected: {agent}"
+            return True, f"Scanner detected: {pattern}"
     
     return False, None
 
@@ -497,36 +508,23 @@ def cleanup_conversation_history():
             conversation_history = conversation_history[-MAX_HISTORY_LENGTH:]
             logger.info(f"清理对话历史，保留最近{MAX_HISTORY_LENGTH}条")
 
-MINIMAX_ERROR_MAP = {
-    1000: "服务暂时繁忙，请稍后重试",
-    1001: "请求超时，请稍后重试",
-    1002: "请求频率超限，请稍后重试",
-    1004: "API未授权，请检查API密钥是否正确",
-    1008: "账户余额不足，请及时充值",
-    1024: "服务内部错误，请稍后重试",
-    1026: "输入内容涉及敏感信息，请调整后重试",
-    1027: "输出内容涉及敏感信息，请稍后重试",
-    1033: "系统错误，请稍后重试",
-    1039: "Token限制，请调整max_tokens参数",
-    1041: "连接数超限，请联系我们",
-    1042: "输入包含非法字符，请检查输入内容",
-    1043: "语音识别失败，请检查音频与文本匹配度",
-    1044: "克隆提示词相似度检查失败",
-    2013: "参数错误，请检查请求参数",
-    20132: "语音克隆样本或voice_id参数错误",
-    2037: "语音时长不符合要求（需10秒-5分钟）",
-    2038: "语音克隆功能被禁用，需完成账户身份认证",
-    2039: "voice_id已存在，请修改voice_id",
-    2042: "无权访问该voice_id",
-    2045: "请求频率增长超限，请避免骤增骤减",
-    2048: "提示音频太长，请控制在8秒以内",
-    2049: "无效的API Key，请检查API密钥",
-    2056: "超出Token Plan资源限制，请等待后重试",
-}
-
 def get_minimax_error_msg(status_code):
-    if status_code in MINIMAX_ERROR_MAP:
-        return MINIMAX_ERROR_MAP[status_code]
+    if ERROR_CODES and 'minimax' in ERROR_CODES:
+        error_map = ERROR_CODES['minimax']
+        key = str(status_code) if isinstance(status_code, str) else status_code
+        if str(key) in error_map:
+            return error_map[str(key)]
+        if key in error_map:
+            return error_map[key]
+    default_map = {
+        1000: "服务暂时繁忙，请稍后重试",
+        1001: "请求超时，请稍后重试",
+        1002: "请求频率超限，请稍后重试",
+        1004: "API未授权，请检查API密钥是否正确",
+        1008: "账户余额不足，请及时充值",
+    }
+    if status_code in default_map:
+        return default_map[status_code]
     if isinstance(status_code, int) and 1000 <= status_code <= 9999:
         return f"服务暂时异常，请稍后重试"
     return None
@@ -907,20 +905,26 @@ def call_ollama_api(message, model_override=None, host_override=None):
         logger.error(f"Ollama请求失败: {str(e)}")
         return f"Ollama请求失败: {str(e)}"
 
-OPENROUTER_ERROR_MAP = {
-    400: "请求参数错误，请检查输入内容",
-    401: "API密钥无效，请检查密钥是否正确",
-    402: "账户余额不足，请充值后重试",
-    403: "输入内容被标记为违规，无法处理",
-    408: "请求超时，请稍后重试",
-    429: "请求频率超限，请稍后重试",
-    502: "AI模型服务暂不可用，请稍后重试",
-    503: "当前无可用模型提供商，请稍后重试",
-}
-
 def get_openrouter_error_msg(status_code):
-    if status_code in OPENROUTER_ERROR_MAP:
-        return OPENROUTER_ERROR_MAP[status_code]
+    if ERROR_CODES and 'openrouter' in ERROR_CODES:
+        error_map = ERROR_CODES['openrouter']
+        key = str(status_code) if isinstance(status_code, str) else status_code
+        if str(key) in error_map:
+            return error_map[str(key)]
+        if key in error_map:
+            return error_map[key]
+    default_map = {
+        400: "请求参数错误，请检查输入内容",
+        401: "API密钥无效，请检查密钥是否正确",
+        402: "账户余额不足，请充值后重试",
+        403: "输入内容被标记为违规，无法处理",
+        408: "请求超时，请稍后重试",
+        429: "请求频率超限，请稍后重试",
+        502: "AI模型服务暂不可用，请稍后重试",
+        503: "当前无可用模型提供商，请稍后重试",
+    }
+    if status_code in default_map:
+        return default_map[status_code]
     return None
 
 def call_openrouter_api(message, model_override=None):

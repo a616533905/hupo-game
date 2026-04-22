@@ -25,6 +25,8 @@ if sys.stdout.encoding != 'utf-8':
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 CONFIG_FILE = os.path.join(PROJECT_DIR, "config.json")
+WAF_RULES_FILE = os.path.join(PROJECT_DIR, "waf_rules.json")
+ERROR_CODES_FILE = os.path.join(PROJECT_DIR, "error_codes.json")
 LOG_DIR = os.path.join(PROJECT_DIR, 'logs')
 DATA_DIR = os.path.join(PROJECT_DIR, 'data')
 
@@ -1349,6 +1351,189 @@ class FirewallManager:
             'attack_stats': attack_data
         }
 
+class WAFRuleLearner:
+    def __init__(self):
+        self.waf_rules_file = WAF_RULES_FILE
+        self.learned_patterns_file = os.path.join(DATA_DIR, 'learned_patterns.json')
+        ensure_data_dir()
+    
+    def load_waf_rules(self):
+        return load_json_file(self.waf_rules_file, {'attack_patterns': [], 'scanner_signatures': []})
+    
+    def save_waf_rules(self, rules):
+        with open(self.waf_rules_file, 'w', encoding='utf-8') as f:
+            json.dump(rules, f, indent=2, ensure_ascii=False)
+    
+    def load_learned_patterns(self):
+        return load_json_file(self.learned_patterns_file, {'patterns': [], 'last_updated': None})
+    
+    def save_learned_patterns(self, data):
+        data['last_updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        save_json_file(self.learned_patterns_file, data)
+    
+    def extract_path_patterns(self, log_file, hours=24):
+        patterns = Counter()
+        cutoff_time = datetime.now() - timedelta(hours=hours)
+        
+        suspicious_keywords = [
+            'php', 'asp', 'aspx', 'jsp', 'cgi', 'pl', 'py', 'sh',
+            'admin', 'manager', 'config', 'backup', 'dump', 'sql',
+            'shell', 'cmd', 'exec', 'eval', 'system', 'passthru',
+            'upload', 'download', 'file', 'path', 'dir', 'ls',
+            'passwd', 'shadow', 'hosts', 'proc', 'etc',
+            'git', 'svn', 'env', 'log', 'tmp', 'temp',
+            'wp-', 'xmlrpc', 'cgi-bin', 'phpmyadmin', 'adminer',
+            'vendor', 'node_modules', 'composer', 'package',
+            'debug', 'test', 'dev', 'staging', 'beta',
+            'api/v1', 'api/v2', 'graphql', 'swagger', 'openapi',
+            'oauth', 'token', 'auth', 'login', 'signin',
+            'redirect', 'callback', 'webhook', 'hook',
+            'ajax', 'json', 'xml', 'rpc', 'soap',
+        ]
+        
+        if not os.path.exists(log_file):
+            return patterns
+        
+        with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
+            for line in f:
+                try:
+                    time_match = re.match(r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})', line)
+                    if time_match:
+                        line_time = datetime.strptime(time_match.group(1), '%Y-%m-%d %H:%M:%S')
+                        if line_time < cutoff_time:
+                            continue
+                except:
+                    pass
+                
+                if 'GET ' in line or 'POST ' in line:
+                    match = re.search(r'(GET|POST)\s+([^\s]+)', line)
+                    if match:
+                        path = match.group(2)
+                        path_lower = path.lower()
+                        
+                        for keyword in suspicious_keywords:
+                            if keyword in path_lower:
+                                path_parts = re.split(r'[/\\?&=]', path)
+                                for part in path_parts:
+                                    if len(part) > 2 and part not in ['http', 'https', 'www', 'index', 'html', 'js', 'css', 'json']:
+                                        part_lower = part.lower()
+                                        if any(kw in part_lower for kw in suspicious_keywords):
+                                            patterns[part_lower] += 1
+                                break
+        
+        return patterns
+    
+    def categorize_pattern(self, pattern):
+        pattern_lower = pattern.lower()
+        
+        if any(kw in pattern_lower for kw in ['php', 'asp', 'jsp', 'cgi', 'pl', 'py']):
+            return 'rce'
+        elif any(kw in pattern_lower for kw in ['admin', 'manager', 'login', 'dashboard']):
+            return 'admin'
+        elif any(kw in pattern_lower for kw in ['config', 'env', 'ini', 'conf', 'yaml', 'yml']):
+            return 'sensitive'
+        elif any(kw in pattern_lower for kw in ['backup', 'dump', 'sql', 'db', 'database']):
+            return 'sensitive'
+        elif any(kw in pattern_lower for kw in ['shell', 'cmd', 'exec', 'eval', 'system']):
+            return 'rce'
+        elif any(kw in pattern_lower for kw in ['passwd', 'shadow', 'etc', 'proc']):
+            return 'lfi'
+        elif any(kw in pattern_lower for kw in ['git', 'svn', 'cvs']):
+            return 'sensitive'
+        elif any(kw in pattern_lower for kw in ['wp-', 'wordpress', 'joomla', 'drupal']):
+            return 'cms'
+        elif any(kw in pattern_lower for kw in ['phpmyadmin', 'adminer', 'pma']):
+            return 'admin'
+        elif any(kw in pattern_lower for kw in ['api', 'graphql', 'swagger', 'rpc']):
+            return 'probe'
+        else:
+            return 'probe'
+    
+    def learn_new_patterns(self, min_occurrences=3):
+        log_file = get_latest_log_file()
+        if not log_file:
+            return [], "未找到日志文件"
+        
+        patterns = self.extract_path_patterns(log_file)
+        waf_rules = self.load_waf_rules()
+        existing_patterns = {p['pattern'].lower() if isinstance(p, dict) else p.lower() 
+                           for p in waf_rules.get('attack_patterns', [])}
+        
+        learned = self.load_learned_patterns()
+        already_learned = {p['pattern'] for p in learned.get('patterns', [])}
+        
+        new_patterns = []
+        for pattern, count in patterns.most_common(100):
+            if count >= min_occurrences:
+                pattern_lower = pattern.lower()
+                if pattern_lower not in existing_patterns and pattern_lower not in already_learned:
+                    if len(pattern) > 2 and not pattern.isdigit():
+                        category = self.categorize_pattern(pattern)
+                        new_patterns.append({
+                            'pattern': pattern,
+                            'category': category,
+                            'count': count,
+                            'description': f'自动学习: 发现{count}次访问'
+                        })
+        
+        return new_patterns, None
+    
+    def update_waf_rules(self, auto_apply=False, min_confidence=5):
+        new_patterns, error = self.learn_new_patterns(min_occurrences=min_confidence)
+        
+        if error:
+            return {'success': False, 'error': error, 'new_patterns': 0}
+        
+        if not new_patterns:
+            return {'success': True, 'new_patterns': 0, 'message': '未发现新的攻击模式'}
+        
+        waf_rules = self.load_waf_rules()
+        
+        if auto_apply:
+            for p in new_patterns:
+                waf_rules['attack_patterns'].append({
+                    'pattern': p['pattern'],
+                    'category': p['category'],
+                    'description': p['description']
+                })
+            
+            self.save_waf_rules(waf_rules)
+            
+            learned = self.load_learned_patterns()
+            for p in new_patterns:
+                learned['patterns'].append({
+                    'pattern': p['pattern'],
+                    'category': p['category'],
+                    'learned_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                })
+            self.save_learned_patterns(learned)
+            
+            return {
+                'success': True,
+                'new_patterns': len(new_patterns),
+                'patterns': new_patterns,
+                'message': f'已自动添加 {len(new_patterns)} 条新规则到 WAF'
+            }
+        else:
+            return {
+                'success': True,
+                'new_patterns': len(new_patterns),
+                'patterns': new_patterns,
+                'message': f'发现 {len(new_patterns)} 条潜在新规则，需要手动确认'
+            }
+    
+    def get_learning_stats(self):
+        learned = self.load_learned_patterns()
+        waf_rules = self.load_waf_rules()
+        
+        return {
+            'total_waf_rules': len(waf_rules.get('attack_patterns', [])),
+            'total_scanner_rules': len(waf_rules.get('scanner_signatures', [])),
+            'learned_patterns_count': len(learned.get('patterns', [])),
+            'last_learning': learned.get('last_updated', '从未'),
+            'recent_patterns': learned.get('patterns', [])[-10:]
+        }
+
 class AttackDetector:
     def __init__(self, firewall):
         self.firewall = firewall
@@ -1998,6 +2183,59 @@ def run_soar_mode(mode='audit'):
         log("配置文件校验和已初始化")
         return
     
+    if mode == 'learn':
+        log("========== WAF 规则学习 ==========")
+        waf_learner = WAFRuleLearner()
+        
+        auto_apply = False
+        min_confidence = 5
+        if len(sys.argv) > 2:
+            if sys.argv[2] == 'auto':
+                auto_apply = True
+            elif sys.argv[2].isdigit():
+                min_confidence = int(sys.argv[2])
+        
+        log(f"分析日志中的攻击模式 (最小置信度: {min_confidence})...")
+        result = waf_learner.update_waf_rules(auto_apply=auto_apply, min_confidence=min_confidence)
+        
+        if result['success']:
+            log(f"✅ {result['message']}")
+            if result.get('patterns'):
+                log(f"\n发现的新模式:")
+                for p in result['patterns'][:10]:
+                    log(f"  - [{p['category']}] {p['pattern']} ({p['count']}次)")
+        else:
+            log(f"❌ 学习失败: {result.get('error', '未知错误')}")
+        
+        stats = waf_learner.get_learning_stats()
+        log(f"\n📊 WAF 规则统计:")
+        log(f"  - 总攻击规则: {stats['total_waf_rules']}")
+        log(f"  - 总扫描器规则: {stats['total_scanner_rules']}")
+        log(f"  - 已学习规则: {stats['learned_patterns_count']}")
+        log(f"  - 上次学习: {stats['last_learning']}")
+        log("========== WAF 规则学习完成 ==========")
+        return
+    
+    if mode == 'waf-status':
+        waf_learner = WAFRuleLearner()
+        stats = waf_learner.get_learning_stats()
+        
+        print("=" * 60)
+        print("       WAF 规则学习状态")
+        print("=" * 60)
+        print(f"\n📊 规则统计:")
+        print(f"  - 总攻击规则: {stats['total_waf_rules']}")
+        print(f"  - 总扫描器规则: {stats['total_scanner_rules']}")
+        print(f"  - 已学习规则: {stats['learned_patterns_count']}")
+        print(f"  - 上次学习: {stats['last_learning']}")
+        
+        if stats['recent_patterns']:
+            print(f"\n📚 最近学习的规则:")
+            for p in stats['recent_patterns']:
+                print(f"  - [{p['category']}] {p['pattern']} ({p.get('learned_at', 'N/A')})")
+        print("\n" + "=" * 60)
+        return
+    
     log("========== SOAR 安全审计开始 ==========")
     
     firewall.unban_expired()
@@ -2049,6 +2287,18 @@ def run_soar_mode(mode='audit'):
     if cron_status['expected_missing']:
         log(f"⚠️ 定时任务缺失: {', '.join(cron_status['expected_missing'])}")
     
+    waf_learner = WAFRuleLearner()
+    log("学习新的攻击模式...")
+    waf_result = waf_learner.update_waf_rules(auto_apply=True, min_confidence=5)
+    if waf_result['success'] and waf_result['new_patterns'] > 0:
+        log(f"✅ WAF规则学习: 新增 {waf_result['new_patterns']} 条规则")
+        for p in waf_result.get('patterns', [])[:5]:
+            log(f"  - [{p['category']}] {p['pattern']}")
+    elif waf_result['success']:
+        log("WAF规则学习: 未发现新的攻击模式")
+    else:
+        log(f"⚠️ WAF规则学习失败: {waf_result.get('error', '未知错误')}")
+    
     log_size = log_cleaner.check_and_clean()
     
     log(f"========== SOAR 安全审计完成 ==========")
@@ -2088,6 +2338,12 @@ def main():
         elif arg == 'init':
             run_soar_mode('init')
             return
+        elif arg == 'learn':
+            run_soar_mode('learn')
+            return
+        elif arg == 'waf-status':
+            run_soar_mode('waf-status')
+            return
         elif arg == 'help' or arg == '--help' or arg == '-h':
             print("=" * 60)
             print("  琥珀冒险 - 日志审计与安全响应系统 (SOAR)")
@@ -2103,6 +2359,8 @@ def main():
             print("  notify [webhook_url] - 发送告警通知")
             print("  init        - 初始化审计基线")
             print("  restore     - 恢复防火墙规则")
+            print("  learn       - 学习新的攻击模式并更新WAF规则")
+            print("  waf-status  - 查看WAF规则学习状态")
             print("\n可用服务ID:")
             for service_id in SERVICE_CONFIG:
                 print(f"  - {service_id}")
@@ -2113,6 +2371,10 @@ def main():
             print("  python log_auditor.py health   # 健康检查")
             print("  python log_auditor.py restart nanobot_bridge  # 重启服务")
             print("  python log_auditor.py recover  # 自动恢复")
+            print("  python log_auditor.py learn    # 学习新攻击模式(预览)")
+            print("  python log_auditor.py learn auto  # 自动添加新规则")
+            print("  python log_auditor.py learn 3  # 使用更低置信度学习")
+            print("  python log_auditor.py waf-status  # 查看WAF学习状态")
             print("=" * 60)
             return
     
