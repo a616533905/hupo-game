@@ -54,6 +54,21 @@ function logError(message) {
     log('ERROR', message);
 }
 
+function getDebugLogFileName() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `voice_debug_${year}${month}${day}.log`;
+}
+
+function logDebug(message) {
+    const timestamp = formatTimestamp();
+    const logLine = `${timestamp} [DEBUG] ${message}`;
+    const debugLogFile = path.join(LOG_DIR, getDebugLogFileName());
+    fs.appendFileSync(debugLogFile, logLine + '\n', 'utf8');
+}
+
 function loadConfig() {
     try {
         if (fs.existsSync(CONFIG_FILE)) {
@@ -192,6 +207,7 @@ async function recognizeBaidu(speech, token, format) {
     logInfo('百度API响应: HTTP ' + httpStatus + ', err_no=' + data.err_no + ', err_msg=' + data.err_msg);
 
     if (data.err_no === 0 && data.result && data.result.length > 0) {
+        logDebug('[百度识别] 识别结果: ' + data.result[0]);
         return {
             success: true,
             text: data.result[0],

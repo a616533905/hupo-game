@@ -38,6 +38,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+DEBUG_LOG_FILE = os.path.join(LOG_DIR, f'api_debug_{datetime.now().strftime("%Y%m%d")}.log')
+debug_logger = logging.getLogger('api_debug')
+debug_logger.setLevel(logging.DEBUG)
+debug_logger.propagate = False
+debug_handler = logging.FileHandler(DEBUG_LOG_FILE, encoding='utf-8')
+debug_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+debug_logger.addHandler(debug_handler)
+
 CONFIG_FILE = "config.json"
 WEB_ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -538,6 +546,7 @@ def call_minimax_chat(message, model_override=None):
         return "错误: MiniMax API未配置（请在config.json中设置api_key和group_id）"
 
     logger.info(f"调用MiniMax API, model={model}, message_length={len(message)}")
+    debug_logger.debug(f"[MiniMax] 请求内容: {message[:500]}{'...' if len(message) > 500 else ''}")
     with conversation_lock:
         conversation_history.append({"role": "user", "content": message})
 
@@ -579,6 +588,7 @@ def call_minimax_chat(message, model_override=None):
                 with conversation_lock:
                     conversation_history.append({"role": "assistant", "content": assistant_message})
                 logger.info(f"MiniMax API调用成功, response_length={len(assistant_message)}")
+                debug_logger.debug(f"[MiniMax] 返回内容: {assistant_message[:500]}{'...' if len(assistant_message) > 500 else ''}")
                 return_http_connection(conn, http_pool_minimax)
                 conn_returned = True
                 return assistant_message
@@ -719,6 +729,7 @@ def call_minimax_asr(audio_data, audio_format="mp3"):
         result_json = json.loads(result)
         
         if "text" in result_json:
+            debug_logger.debug(f"[MiniMax ASR] 识别结果: {result_json['text']}")
             return result_json["text"], None
         else:
             base_resp = result_json.get('base_resp', {})
@@ -929,6 +940,7 @@ def call_openrouter_api(message, model_override=None):
         return "错误: OpenRouter API未配置（请在config.json中设置api_key）"
 
     logger.info(f"调用OpenRouter API, model={model}, message_length={len(message)}")
+    debug_logger.debug(f"[OpenRouter] 请求内容: {message[:500]}{'...' if len(message) > 500 else ''}")
     with conversation_lock:
         conversation_history.append({"role": "user", "content": message})
 
@@ -970,6 +982,7 @@ def call_openrouter_api(message, model_override=None):
                 with conversation_lock:
                     conversation_history.append({"role": "assistant", "content": assistant_message})
                 logger.info(f"OpenRouter API调用成功, response_length={len(assistant_message)}")
+                debug_logger.debug(f"[OpenRouter] 返回内容: {assistant_message[:500]}{'...' if len(assistant_message) > 500 else ''}")
                 return_http_connection(conn, http_pool_openrouter)
                 conn_returned = True
                 return assistant_message
