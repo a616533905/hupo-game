@@ -1253,7 +1253,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
         client_ip = self.client_address[0]
         increment_metric('requests_total')
         
-        if HTTPS_DOMAIN:
+        if HTTPS_DOMAIN and not USE_HTTPS:
             forwarded_proto = self.headers.get('X-Forwarded-Proto', '')
             if forwarded_proto != 'https':
                 https_url = f"https://{HTTPS_DOMAIN}{self.path}"
