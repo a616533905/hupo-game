@@ -76,6 +76,78 @@ check_memory() {
     return 0
 }
 
+check_minimax_api() {
+    if [ ! -f "$CONFIG_FILE" ]; then
+        return 0
+    fi
+    
+    local api_key=$(grep -o '"api_key"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" | head -1 | sed 's/.*: *"\([^"]*\)".*/\1/')
+    local group_id=$(grep -o '"group_id"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" | head -1 | sed 's/.*: *"\([^"]*\)".*/\1/')
+    
+    if [ -z "$api_key" ] || [ -z "$group_id" ]; then
+        return 0
+    fi
+    
+    local response=$(curl -s -w "\n%{http_code}" -X POST "https://api.minimax.chat/v1/text/chatcompletion_v2?GroupId=$group_id" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $api_key" \
+        -d '{"model":"MiniMax-M2.7","messages":[{"role":"user","content":"hi"}],"temperature":0.7}' \
+        --connect-timeout 10 \
+        --max-time 15 2>/dev/null)
+    
+    local http_code=$(echo "$response" | tail -1)
+    local body=$(echo "$response" | head -n -1)
+    
+    if [ "$http_code" = "200" ]; then
+        if echo "$body" | grep -q '"choices"'; then
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] [正常] MiniMax API 响应正常" >> "$ALERT_LOG"
+            return 0
+        else
+            log_alert "[警告] MiniMax API 返回异常: $(echo "$body" | head -c 200)"
+            return 1
+        fi
+    else
+        log_alert "[警告] MiniMax API HTTP错误: $http_code"
+        return 1
+    fi
+}
+
+check_openrouter_api() {
+    if [ ! -f "$CONFIG_FILE" ]; then
+        return 0
+    fi
+    
+    local api_key=$(grep -A 20 '"openrouter"' "$CONFIG_FILE" | grep -o '"api_key"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*: *"\([^"]*\)".*/\1/')
+    
+    if [ -z "$api_key" ]; then
+        return 0
+    fi
+    
+    local response=$(curl -s -w "\n%{http_code}" -X POST "https://openrouter.ai/api/v1/chat/completions" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $api_key" \
+        -H "HTTP-Referer: https://localhost" \
+        -d '{"model":"openrouter/auto","messages":[{"role":"user","content":"hi"}],"temperature":0.7}' \
+        --connect-timeout 10 \
+        --max-time 15 2>/dev/null)
+    
+    local http_code=$(echo "$response" | tail -1)
+    local body=$(echo "$response" | head -n -1)
+    
+    if [ "$http_code" = "200" ]; then
+        if echo "$body" | grep -q '"choices"'; then
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] [正常] OpenRouter API 响应正常" >> "$ALERT_LOG"
+            return 0
+        else
+            log_alert "[警告] OpenRouter API 返回异常: $(echo "$body" | head -c 200)"
+            return 1
+        fi
+    else
+        log_alert "[警告] OpenRouter API HTTP错误: $http_code"
+        return 1
+    fi
+}
+
 restart_service() {
     local service=$1
     log_alert "[恢复] 重启服务: $service"
@@ -95,6 +167,14 @@ VOICE_OK=true
 
 check_disk_space
 check_memory
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] [检查] 开始 API 健康检查..." >> "$ALERT_LOG"
+
+check_minimax_api
+MINIMAX_OK=$?
+
+check_openrouter_api
+OPENROUTER_OK=$?
 
 if ! check_port 443 "AI Bridge"; then
     BRIDGE_OK=false
