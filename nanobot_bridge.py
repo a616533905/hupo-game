@@ -54,6 +54,64 @@ rate_limit_data = {}
 chat_rate_limit_data = {}
 rate_limit_lock = threading.Lock()
 
+WAF_BLACKLIST_DURATION = 3600
+WAF_BLACKLIST = {}
+WAF_BLACKLIST_LOCK = threading.Lock()
+
+WAF_ATTACK_PATTERNS = [
+    'phpunit', 'eval-stdin', 'think\\\\app', 'invokefunction',
+    'call_user_func', 'pearcmd', '/etc/passwd', '/../',
+    'base64_decode', 'shell_exec', 'passthru', 'system(',
+    'exec(', 'popen(', 'proc_open', 'pcntl_exec',
+    '<?php', '<?=', 'script>alert', 'union select',
+    'order by', 'group by', 'having 1=1', 'or 1=1',
+    'and 1=1', 'sleep(', 'benchmark(', 'load_file',
+    'into outfile', 'into dumpfile', 'information_schema',
+    '.env', 'web.config', 'backup.sql', 'dump.sql',
+    'wp-admin', 'wp-login', 'phpmyadmin', 'adminer',
+    'manager/html', 'jmx-console', 'web-console',
+    'invoker/JMXInvokerServlet', '.git/config', '.svn/',
+    'CFIDE/administrator', 'solr/admin', 'actuator/',
+    'console/', 'debug/', 'trace/', '.DS_Store',
+]
+
+def waf_check_request(client_ip, path, headers):
+    with WAF_BLACKLIST_LOCK:
+        if client_ip in WAF_BLACKLIST:
+            if time.time() < WAF_BLACKLIST[client_ip]:
+                return True, "IP in blacklist"
+            else:
+                del WAF_BLACKLIST[client_ip]
+    
+    path_lower = path.lower()
+    for pattern in WAF_ATTACK_PATTERNS:
+        if pattern.lower() in path_lower:
+            with WAF_BLACKLIST_LOCK:
+                WAF_BLACKLIST[client_ip] = time.time() + WAF_BLACKLIST_DURATION
+            logger.warning(f"[WAF] 检测到攻击: IP={client_ip}, Pattern={pattern}, Path={path[:100]}")
+            return True, f"Attack pattern detected: {pattern}"
+    
+    user_agent = headers.get('User-Agent', '').lower()
+    suspicious_agents = ['sqlmap', 'nmap', 'masscan', 'nikto', 'acunetix', 
+                         'nessus', 'burp', 'metasploit', 'dirbuster', 'gobuster']
+    for agent in suspicious_agents:
+        if agent in user_agent:
+            with WAF_BLACKLIST_LOCK:
+                WAF_BLACKLIST[client_ip] = time.time() + WAF_BLACKLIST_DURATION
+            logger.warning(f"[WAF] 检测到扫描器: IP={client_ip}, Agent={user_agent[:50]}")
+            return True, f"Scanner detected: {agent}"
+    
+    return False, None
+
+def waf_is_blacklisted(client_ip):
+    with WAF_BLACKLIST_LOCK:
+        if client_ip in WAF_BLACKLIST:
+            if time.time() < WAF_BLACKLIST[client_ip]:
+                return True
+            else:
+                del WAF_BLACKLIST[client_ip]
+    return False
+
 MAX_CONCURRENT_AI_REQUESTS = 10
 ai_request_semaphore = threading.Semaphore(MAX_CONCURRENT_AI_REQUESTS)
 ai_request_queue = []
@@ -1030,6 +1088,21 @@ class NanobotHandler(BaseHTTPRequestHandler):
         client_ip = self.client_address[0]
         increment_metric('requests_total')
         
+        if waf_is_blacklisted(client_ip):
+            self.send_response(403)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b'Forbidden')
+            return
+        
+        blocked, reason = waf_check_request(client_ip, self.path, self.headers)
+        if blocked:
+            self.send_response(403)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b'Forbidden')
+            return
+        
         if not check_rate_limit(client_ip):
             logger.warning(f"[{client_ip}] 请求频率超限")
             increment_metric('requests_error')
@@ -1252,6 +1325,21 @@ class NanobotHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         client_ip = self.client_address[0]
         increment_metric('requests_total')
+        
+        if waf_is_blacklisted(client_ip):
+            self.send_response(403)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b'Forbidden')
+            return
+        
+        blocked, reason = waf_check_request(client_ip, self.path, self.headers)
+        if blocked:
+            self.send_response(403)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b'Forbidden')
+            return
         
         if HTTPS_DOMAIN and not USE_HTTPS:
             forwarded_proto = self.headers.get('X-Forwarded-Proto', '')
