@@ -48,27 +48,51 @@ debug_logger.addHandler(debug_handler)
 
 CONFIG_FILE = "config.json"
 WAF_RULES_FILE = "waf_rules.json"
+WAF_RULES_EXAMPLE = "waf_rules.example.json"
 ERROR_CODES_FILE = "error_codes.json"
+ERROR_CODES_EXAMPLE = "error_codes.example.json"
 WEB_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 def load_waf_rules():
-    try:
-        waf_path = os.path.join(WEB_ROOT, WAF_RULES_FILE)
-        if os.path.exists(waf_path):
+    waf_path = os.path.join(WEB_ROOT, WAF_RULES_FILE)
+    waf_example_path = os.path.join(WEB_ROOT, WAF_RULES_EXAMPLE)
+    
+    if os.path.exists(waf_path):
+        try:
             with open(waf_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
-    except Exception as e:
-        logger.warning(f"WAF规则加载失败，使用默认规则: {e}")
+        except Exception as e:
+            logger.warning(f"WAF规则加载失败: {e}")
+    
+    if os.path.exists(waf_example_path):
+        try:
+            with open(waf_example_path, 'r', encoding='utf-8') as f:
+                logger.info(f"使用默认WAF规则: {WAF_RULES_EXAMPLE}")
+                return json.load(f)
+        except Exception as e:
+            logger.warning(f"默认WAF规则加载失败: {e}")
+    
     return None
 
 def load_error_codes():
-    try:
-        error_path = os.path.join(WEB_ROOT, ERROR_CODES_FILE)
-        if os.path.exists(error_path):
+    error_path = os.path.join(WEB_ROOT, ERROR_CODES_FILE)
+    error_example_path = os.path.join(WEB_ROOT, ERROR_CODES_EXAMPLE)
+    
+    if os.path.exists(error_path):
+        try:
             with open(error_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
-    except Exception as e:
-        logger.warning(f"错误码配置加载失败，使用默认配置: {e}")
+        except Exception as e:
+            logger.warning(f"错误码配置加载失败: {e}")
+    
+    if os.path.exists(error_example_path):
+        try:
+            with open(error_example_path, 'r', encoding='utf-8') as f:
+                logger.info(f"使用默认错误码配置: {ERROR_CODES_EXAMPLE}")
+                return json.load(f)
+        except Exception as e:
+            logger.warning(f"默认错误码配置加载失败: {e}")
+    
     return None
 
 WAF_RULES = load_waf_rules()

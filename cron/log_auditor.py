@@ -26,7 +26,9 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 CONFIG_FILE = os.path.join(PROJECT_DIR, "config.json")
 WAF_RULES_FILE = os.path.join(PROJECT_DIR, "waf_rules.json")
+WAF_RULES_EXAMPLE = os.path.join(PROJECT_DIR, "waf_rules.example.json")
 ERROR_CODES_FILE = os.path.join(PROJECT_DIR, "error_codes.json")
+ERROR_CODES_EXAMPLE = os.path.join(PROJECT_DIR, "error_codes.example.json")
 LOG_DIR = os.path.join(PROJECT_DIR, 'logs')
 DATA_DIR = os.path.join(PROJECT_DIR, 'data')
 
@@ -1354,11 +1356,16 @@ class FirewallManager:
 class WAFRuleLearner:
     def __init__(self):
         self.waf_rules_file = WAF_RULES_FILE
+        self.waf_rules_example = WAF_RULES_EXAMPLE
         self.learned_patterns_file = os.path.join(DATA_DIR, 'learned_patterns.json')
         ensure_data_dir()
     
     def load_waf_rules(self):
-        return load_json_file(self.waf_rules_file, {'attack_patterns': [], 'scanner_signatures': []})
+        if os.path.exists(self.waf_rules_file):
+            return load_json_file(self.waf_rules_file, {'attack_patterns': [], 'scanner_signatures': []})
+        if os.path.exists(self.waf_rules_example):
+            return load_json_file(self.waf_rules_example, {'attack_patterns': [], 'scanner_signatures': []})
+        return {'attack_patterns': [], 'scanner_signatures': []}
     
     def save_waf_rules(self, rules):
         with open(self.waf_rules_file, 'w', encoding='utf-8') as f:
