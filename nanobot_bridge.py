@@ -1469,6 +1469,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     with open(file_path, 'rb') as f:
                         content = f.read()
                     
+                    logger.info(f"[{client_ip}] GET {self.path} - 成功 (200)")
                     self.send_response(200)
                     self.send_header("Content-Type", mime_type)
                     self.send_header("Content-Length", len(content))
