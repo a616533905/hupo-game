@@ -1346,7 +1346,8 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 has_token = query.get('token', [None])[0] is not None
                 cookie_header = self.headers.get('Cookie', '')
                 has_cookie = 'hupo_token=' in cookie_header
-                if has_token or has_cookie:
+                has_error = query.get('error', [None])[0] is not None
+                if (has_token or has_cookie) and not has_error:
                     logger.warning(f"[{client_ip}] GET {self.path} - Token验证失败")
                     self.send_response(302)
                     self.send_header("Location", "/?error=1")
