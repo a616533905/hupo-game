@@ -67,4 +67,3 @@ echo   1. SSH to server: ssh %SERVER_USER%@%SERVER_IP%
 echo   2. Run install: cd %SERVER_DIR% ^&^& ./install.sh
 echo   3. Start services: ./start.sh or systemctl start hupo-bridge hupo-voice
 echo.
-pause
