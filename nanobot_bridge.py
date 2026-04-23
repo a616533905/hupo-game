@@ -105,6 +105,44 @@ WAF_BLACKLIST_DURATION = WAF_RULES.get('blacklist_duration', 3600) if WAF_RULES 
 WAF_BLACKLIST = {}
 WAF_BLACKLIST_LOCK = threading.Lock()
 
+LOGIN_FAIL_TRACKER = {}
+LOGIN_FAIL_LOCK = threading.Lock()
+LOGIN_FAIL_TEMP_BAN = 86400
+LOGIN_FAIL_PERM_THRESHOLD = 10
+
+def record_login_failure(client_ip, fail_type="web"):
+    with LOGIN_FAIL_LOCK:
+        if client_ip not in LOGIN_FAIL_TRACKER:
+            LOGIN_FAIL_TRACKER[client_ip] = {'count': 0, 'first_fail': time.time(), 'type': fail_type}
+        
+        LOGIN_FAIL_TRACKER[client_ip]['count'] += 1
+        LOGIN_FAIL_TRACKER[client_ip]['last_fail'] = time.time()
+        count = LOGIN_FAIL_TRACKER[client_ip]['count']
+        
+        logger.warning(f"[LOGIN_FAIL] IP={client_ip}, Type={fail_type}, Count={count}")
+        
+        if count >= LOGIN_FAIL_PERM_THRESHOLD:
+            with WAF_BLACKLIST_LOCK:
+                WAF_BLACKLIST[client_ip] = time.time() + (LOGIN_FAIL_TEMP_BAN * 365)
+            logger.warning(f"[LOGIN_BAN] IP={client_ip} 永久封禁 - 登录失败累计{count}次")
+            return 'permanent'
+        elif count >= 5:
+            with WAF_BLACKLIST_LOCK:
+                WAF_BLACKLIST[client_ip] = time.time() + LOGIN_FAIL_TEMP_BAN
+            logger.warning(f"[LOGIN_BAN] IP={client_ip} 临时封禁1天 - 登录失败累计{count}次")
+            return 'temp'
+        
+        return 'recorded'
+
+def check_login_banned(client_ip):
+    with WAF_BLACKLIST_LOCK:
+        if client_ip in WAF_BLACKLIST:
+            if time.time() < WAF_BLACKLIST[client_ip]:
+                return True
+            else:
+                del WAF_BLACKLIST[client_ip]
+    return False
+
 def waf_check_request(client_ip, path, headers):
     with WAF_BLACKLIST_LOCK:
         if client_ip in WAF_BLACKLIST:
@@ -1190,12 +1228,18 @@ class NanobotHandler(BaseHTTPRequestHandler):
                         expected_token = config.get('access_token', '')
                         if not expected_token or token != expected_token:
                             logger.warning(f"[{client_ip}] POST /chat - 认证失败")
+                            ban_status = record_login_failure(client_ip, "web_token")
                             increment_metric('requests_error')
                             self.send_response(401)
                             self.send_header("Content-Type", "application/json; charset=utf-8")
                             self.send_header('Access-Control-Allow-Origin', '*')
                             self.end_headers()
-                            self.wfile.write(b'{"error": "Unauthorized: invalid token"}')
+                            error_msg = "Unauthorized: invalid token"
+                            if ban_status == 'permanent':
+                                error_msg = "Unauthorized: IP has been permanently banned"
+                            elif ban_status == 'temp':
+                                error_msg = "Unauthorized: IP has been temporarily banned for 24 hours"
+                            self.wfile.write(json.dumps({"error": error_msg}).encode('utf-8'))
                             return
 
                     message = data.get("message", "")

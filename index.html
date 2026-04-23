@@ -1920,33 +1920,59 @@ async function fetchRealWeather(){
     try{
         let lat,lon,city='未知';
         let position=null;
-        try{
-            const permission=await navigator.permissions?.query({name:'geolocation'});
-            if(permission&&permission.state!=='denied'&&navigator.geolocation){
-                position=await new Promise((resolve,reject)=>{
-                    navigator.geolocation.getCurrentPosition(resolve,reject,{timeout:5000,enableHighAccuracy:false});
-                }).catch(()=>null);
+        let locationSource='未知';
+        
+        const isSecureContext=window.isSecureContext||location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
+        
+        if(isSecureContext&&navigator.geolocation){
+            try{
+                const permission=await navigator.permissions?.query({name:'geolocation'});
+                if(permission&&permission.state!=='denied'){
+                    position=await new Promise((resolve,reject)=>{
+                        navigator.geolocation.getCurrentPosition(resolve,reject,{timeout:10000,enableHighAccuracy:false});
+                    }).catch((e)=>{
+                        console.log('地理位置获取失败:',e.message);
+                        return null;
+                    });
+                }
+            }catch(e){
+                console.log('地理位置权限检查失败:',e.message);
             }
-        }catch(e){}
+        }else{
+            console.log('非安全上下文，跳过地理位置API，使用IP定位');
+        }
+        
         if(position&&position.coords){
             lat=position.coords.latitude;
             lon=position.coords.longitude;
+            locationSource='GPS';
             try{
                 const geoRes=await fetchWithTimeout(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=zh`);
                 if(geoRes&&geoRes.ok){
                     const geoData=await geoRes.json();
-                    city=geoData.address?.city||geoData.address?.town||geoData.address?.county||'未知';
+                    city=geoData.address?.city||geoData.address?.town||geoData.address?.county||geoData.address?.state||'未知';
                 }
             }catch(e){GameLogger.debug('WEATHER','Geocoding API failed (non-critical)',e.message)}
         }else{
-            const ipRes=await fetchWithTimeout('https://ipapi.co/json/');
-            if(!ipRes||!ipRes.ok)return null;
-            const ipData=await ipRes.json();
-            lat=ipData.latitude;
-            lon=ipData.longitude;
-            city=ipData.city||'未知';
+            try{
+                const ipRes=await fetchWithTimeout('https://ipapi.co/json/');
+                if(ipRes&&ipRes.ok){
+                    const ipData=await ipRes.json();
+                    lat=ipData.latitude;
+                    lon=ipData.longitude;
+                    city=ipData.city||ipData.region||'未知';
+                    locationSource='IP';
+                }
+            }catch(e){
+                console.log('IP定位失败:',e.message);
+            }
         }
-        if(!lat||!lon)return null;
+        
+        if(!lat||!lon){
+            addMessage('🌍 无法获取位置信息，使用默认天气','bot');
+            return null;
+        }
+        
         const weatherRes=await fetchWithTimeout(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=weather_code`);
         if(!weatherRes||!weatherRes.ok)return null;
         const weatherData=await weatherRes.json();
@@ -1973,7 +1999,7 @@ async function fetchRealWeather(){
         }
         setWeather(gameWeather,0);
         const effectDesc=getWeatherEffectDesc();
-        addMessage(`🌍 检测到 ${city} 天气：${weatherName}，已切换场景~\n💡 ${effectDesc}`,'bot');
+        addMessage(`🌍 检测到 ${city} 天气：${weatherName}（${locationSource}定位），已切换场景~\n💡 ${effectDesc}`,'bot');
         return gameWeather;
     }catch(e){
         GameLogger.warn('WEATHER','fetchRealWeather failed',e);
@@ -5548,8 +5574,9 @@ let autoSpeak=true;
 let speakMode='edge';
 let voiceGender='xiaoyi';
 let userInteracted=false;
-document.addEventListener('click',()=>{userInteracted=true},{once:true});
-document.addEventListener('touchstart',()=>{userInteracted=true},{once:true});
+document.addEventListener('click',()=>{userInteracted=true;initAudio();});
+document.addEventListener('touchstart',()=>{userInteracted=true;initAudio();});
+document.addEventListener('keydown',()=>{userInteracted=true;initAudio();});
 const edgeVoices={
     xiaoxiao:'zh-CN-XiaoxiaoNeural',
     yunxi:'zh-CN-YunxiNeural',
@@ -5754,8 +5781,14 @@ async function playEdgeTTS(text){
         edgeAudio=audio;
         await audio.play();
     }catch(e){
-        GameLogger.error('TTS','Edge TTS failed',e);
-        console.error('Edge TTS错误:',e);
+        GameLogger.error('TTS','Edge TTS failed, fallback to system TTS',e);
+        console.error('Edge TTS错误，回退到系统语音:',e);
+        if(speechSynthesis){
+            const utterance=new SpeechSynthesisUtterance(text.replace(/[^\u4e00-\u9fa5a-zA-Z0-9，。！？、；：""''（）\s]/g,'').trim());
+            utterance.lang='zh-CN';
+            utterance.rate=1.0;
+            speechSynthesis.speak(utterance);
+        }
     }
 }
 let currentDrops=[];

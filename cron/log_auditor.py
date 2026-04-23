@@ -1297,15 +1297,17 @@ class FirewallManager:
         self.add_to_firewall(ip, f"永久封禁 - {reason}")
         self._log(f"[PERMANENT] IP {ip} 永久封禁 - {reason}")
     
-    def temp_ban(self, ip, reason=""):
-        ban_until = time.time() + SOAR_CONFIG['temp_ban_hours'] * 3600
+    def temp_ban(self, ip, reason="", duration_hours=None):
+        if duration_hours is None:
+            duration_hours = SOAR_CONFIG['temp_ban_hours']
+        ban_until = time.time() + duration_hours * 3600
         
         data = load_json_file(self.temp_ban_file, {})
         data[ip] = ban_until
         save_json_file(self.temp_ban_file, data)
         
         ban_time_str = datetime.fromtimestamp(ban_until).strftime('%Y-%m-%d %H:%M:%S')
-        self.add_to_firewall(ip, f"临时封禁({SOAR_CONFIG['temp_ban_hours']}小时) - {reason}")
+        self.add_to_firewall(ip, f"临时封禁({duration_hours}小时) - {reason}")
         self._log(f"[TEMP] IP {ip} 临时封禁至 {ban_time_str} - {reason}")
     
     def unban_expired(self):
@@ -1549,33 +1551,51 @@ class AttackDetector:
     def detect_ssh_brute_force(self):
         self._log_audit("检测SSH暴力破解...")
         if not os.path.exists(self.ssh_log):
+            self._log_audit(f"SSH日志文件不存在: {self.ssh_log}")
             return []
         
-        ssh_threshold = SOAR_CONFIG['ssh_fail_threshold']
         try:
             result = subprocess.run(
-                f"tail -n 1000 {self.ssh_log} 2>/dev/null | "
-                f"grep -iE 'failed password|invalid user|authentication failure' | "
+                f"tail -n 2000 {self.ssh_log} 2>/dev/null | "
+                f"grep -iE 'failed password|invalid user|authentication failure|Connection closed by authenticating user' | "
                 f"grep -oE '([0-9]{{1,3}}\\.){{3}}[0-9]{{1,3}}' | "
-                f"sort | uniq -c | awk '$1 >= {ssh_threshold} {{print $2}}'",
+                f"sort | uniq -c | sort -rn",
                 shell=True, capture_output=True, text=True, timeout=30
             )
-            suspicious_ips = result.stdout.strip().split('\n')
-            suspicious_ips = [ip for ip in suspicious_ips if ip and not is_private_ip(ip)]
             
+            if not result.stdout.strip():
+                self._log_audit("未检测到SSH登录失败")
+                return []
+            
+            lines = result.stdout.strip().split('\n')
             banned = []
-            for ip in suspicious_ips:
-                if self.firewall.is_permanent_banned(ip):
+            
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) < 2:
                     continue
                 
-                count = self.firewall.increment_attack_count(ip)
-                self._log_detected("SSH暴力破解", ip, count)
+                fail_count = int(parts[0])
+                ip = parts[1]
                 
-                if count >= SOAR_CONFIG['max_attack_count']:
-                    self.firewall.permanent_ban(ip, f"SSH暴力破解累计{count}次")
-                elif not self.firewall.is_temp_banned(ip):
-                    self.firewall.temp_ban(ip, "SSH暴力破解")
-                banned.append(ip)
+                if not ip or is_private_ip(ip):
+                    continue
+                
+                if self.firewall.is_permanent_banned(ip):
+                    self._log_audit(f"IP {ip} 已在永久黑名单中，跳过")
+                    continue
+                
+                self._log_detected("SSH暴力破解", ip, fail_count)
+                
+                if fail_count >= 10:
+                    self.firewall.permanent_ban(ip, f"SSH暴力破解{fail_count}次")
+                    self._log_audit(f"🔒 永久封禁: {ip} (SSH失败{fail_count}次)")
+                    banned.append(ip)
+                elif fail_count >= 5:
+                    if not self.firewall.is_temp_banned(ip):
+                        self.firewall.temp_ban(ip, "SSH暴力破解", duration_hours=24)
+                        self._log_audit(f"⏰ 临时封禁24小时: {ip} (SSH失败{fail_count}次)")
+                        banned.append(ip)
             
             return banned
         except Exception as e:
