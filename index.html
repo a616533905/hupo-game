@@ -4024,7 +4024,14 @@ function renderSkillNode(s){
         if(skill.heal)statsText+=`治疗:${Math.floor(skill.heal*masteryBonus)} `;
         if(skill.mp)statsText+=`MP:${skill.mp}`;
         infoHtml+=`<div class="stats" style="font-size:11px;color:#ffd700;margin-top:3px">${statsText}</div>`;
-        infoHtml+=`<div class="mastery" style="font-size:10px;color:#aaa;margin-top:2px">熟练度 Lv.${mastery.level}</div>`;
+        const expPercent=Math.min(100,(mastery.exp/mastery.expMax)*100);
+        infoHtml+=`<div class="mastery" style="margin-top:4px">
+            <span style="font-size:10px;color:#aaa">熟练度 Lv.${mastery.level}</span>
+            <div style="background:rgba(255,255,255,0.1);border-radius:4px;height:6px;margin-top:2px;overflow:hidden;position:relative">
+                <div style="width:${expPercent}%;height:100%;background:linear-gradient(90deg,#667eea,#a29bfe);border-radius:4px;transition:width 0.3s"></div>
+            </div>
+            <span style="font-size:8px;color:#888">${mastery.exp}/${mastery.expMax}</span>
+        </div>`;
     }
     let actionHtml='';
     if(unlocked){
