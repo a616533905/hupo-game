@@ -1608,6 +1608,7 @@ if __name__ == "__main__":
             super().server_bind()
 
     server = ReuseAddrHTTPServer(("0.0.0.0", PORT), NanobotHandler)
+    redirect_server = None
 
     if USE_HTTPS:
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -1624,8 +1625,12 @@ if __name__ == "__main__":
     def graceful_shutdown(signum, frame):
         logger.info("收到关闭信号，正在优雅关闭...")
         logger.info("等待当前请求完成...")
+        if redirect_server:
+            logger.info("关闭 HTTP 重定向服务器 (端口 80)...")
+            redirect_server.shutdown()
+            logger.info("HTTP 重定向服务器已关闭")
         server.shutdown()
-        logger.info("服务器已关闭")
+        logger.info("主服务器已关闭")
         sys.exit(0)
     
     signal.signal(signal.SIGTERM, graceful_shutdown)

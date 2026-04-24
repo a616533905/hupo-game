@@ -13,6 +13,9 @@ const CONFIG_FILE = path.join(__dirname, 'config.json');
 const LOG_DIR = path.join(__dirname, 'logs');
 const TEMP_DIR = os.tmpdir();
 
+const activeProcesses = new Set();
+const activeConnections = new Set();
+
 if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR, { recursive: true });
 }
@@ -112,10 +115,13 @@ function audioToPcm(audioBase64, format) {
             '-ar', '16000', '-ac', '1', tempPcm
         ], { timeout: 30000 });
 
+        activeProcesses.add(ffmpeg);
+        
         let stderr = '';
         ffmpeg.stderr.on('data', (data) => { stderr += data; });
 
         ffmpeg.on('close', (code) => {
+            activeProcesses.delete(ffmpeg);
             if (code !== 0) {
                 cleanup();
                 reject(new Error('音频转换失败: ' + stderr));
@@ -137,6 +143,7 @@ function audioToPcm(audioBase64, format) {
         });
 
         ffmpeg.on('error', (err) => {
+            activeProcesses.delete(ffmpeg);
             cleanup();
             reject(new Error('ffmpeg启动失败: ' + err.message));
         });
@@ -236,6 +243,11 @@ logInfo('  cert文件存在: ' + (sslCertFile && fs.existsSync(sslCertFile) ? '�
 logInfo('  key文件存在: ' + (sslKeyFile && fs.existsSync(sslKeyFile) ? '是' : '否'));
 
 const requestHandler = async (req, res) => {
+    activeConnections.add(req.socket);
+    req.socket.on('close', () => {
+        activeConnections.delete(req.socket);
+    });
+    
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -450,6 +462,26 @@ function gracefulShutdown(signal) {
     isShuttingDown = true;
     
     logInfo('收到 ' + signal + ' 信号，正在关闭服务器...');
+    
+    if (activeProcesses.size > 0) {
+        logInfo('终止 ' + activeProcesses.size + ' 个活跃的 ffmpeg 进程...');
+        for (const proc of activeProcesses) {
+            try {
+                proc.kill('SIGTERM');
+            } catch (e) {}
+        }
+        activeProcesses.clear();
+    }
+    
+    if (activeConnections.size > 0) {
+        logInfo('关闭 ' + activeConnections.size + ' 个活跃连接...');
+        for (const conn of activeConnections) {
+            try {
+                conn.destroy();
+            } catch (e) {}
+        }
+        activeConnections.clear();
+    }
     
     server.close(() => {
         logInfo('服务器已关闭');
