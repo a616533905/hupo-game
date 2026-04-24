@@ -1601,8 +1601,17 @@ if __name__ == "__main__":
     logger.info("环境变量可覆盖配置 (MINIMAX_API_KEY, MINIMAX_GROUP_ID)")
     logger.info("="*50)
 
-    ThreadingHTTPServer.allow_reuse_address = True
-    server = ThreadingHTTPServer(("0.0.0.0", PORT), NanobotHandler)
+    class ReuseAddrHTTPServer(ThreadingHTTPServer):
+        allow_reuse_address = True
+        def server_bind(self):
+            self.socket.setsockopt(__import__('socket').SOL_SOCKET, __import__('socket').SO_REUSEADDR, 1)
+            try:
+                self.socket.setsockopt(__import__('socket').SOL_SOCKET, __import__('socket').SO_REUSEPORT, 1)
+            except (AttributeError, OSError):
+                pass
+            super().server_bind()
+
+    server = ReuseAddrHTTPServer(("0.0.0.0", PORT), NanobotHandler)
 
     if USE_HTTPS:
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -1610,8 +1619,7 @@ if __name__ == "__main__":
         server.socket = ssl_context.wrap_socket(server.socket, server_side=True)
         logger.info(f"HTTPS 已启用，证书: {SSL_CERT_FILE}")
 
-        ThreadingHTTPServer.allow_reuse_address = True
-        redirect_server = ThreadingHTTPServer(("0.0.0.0", 80), HTTPtoHTTPSRedirectHandler)
+        redirect_server = ReuseAddrHTTPServer(("0.0.0.0", 80), HTTPtoHTTPSRedirectHandler)
         redirect_server_thread = threading.Thread(target=redirect_server.serve_forever)
         redirect_server_thread.daemon = True
         redirect_server_thread.start()
