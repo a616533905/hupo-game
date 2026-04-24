@@ -151,9 +151,11 @@ check_openrouter_api() {
 restart_service() {
     local service=$1
     log_alert "[恢复] 重启服务: $service"
-    systemctl restart "$service" 2>&1 >> "$ALERT_LOG"
+    cd "$PROJECT_DIR" && ./stop.sh --wait --max-wait=15 2>&1 >> "$ALERT_LOG"
+    sleep 2
+    cd "$PROJECT_DIR" && ./start.sh 2>&1 >> "$ALERT_LOG"
     sleep 3
-    if systemctl is-active --quiet "$service"; then
+    if pgrep -f "$service" > /dev/null; then
         log_alert "[成功] $service 重启成功"
         return 0
     else

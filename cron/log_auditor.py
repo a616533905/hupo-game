@@ -91,13 +91,15 @@ SERVICE_CONFIG = {
         'name': 'AI Bridge 服务',
         'port': 80,
         'check_url': '/health',
-        'restart_cmd': 'systemctl restart nanobot',
+        'restart_script': '/root/hupo-game/stop.sh',
+        'start_script': '/root/hupo-game/start.sh',
     },
     'voice_proxy': {
         'name': '语音代理服务',
         'port': 85,
         'check_url': '/voice/config',
-        'restart_cmd': 'systemctl restart voice-proxy',
+        'restart_script': '/root/hupo-game/stop.sh',
+        'start_script': '/root/hupo-game/start.sh',
     },
 }
 
@@ -499,12 +501,19 @@ class ServiceHealthChecker:
     
     def restart_service(self, service_id):
         config = SERVICE_CONFIG.get(service_id, {})
-        restart_cmd = config.get('restart_cmd')
+        stop_script = config.get('restart_script')
+        start_script = config.get('start_script')
         
-        if not restart_cmd:
-            return False, "未配置重启命令"
+        if not stop_script or not start_script:
+            return False, "未配置重启脚本"
         
-        success, stdout, stderr = self._run_cmd(restart_cmd)
+        success, stdout, stderr = self._run_cmd(f"{stop_script} --wait --max-wait=15")
+        if not success:
+            log(f"  警告: 停止脚本执行失败: {stderr[:100] if stderr else '未知错误'}")
+        
+        time.sleep(2)
+        
+        success, stdout, stderr = self._run_cmd(start_script)
         if success:
             self.alert_manager.resolve_alert('service', f"服务异常: {config.get('name', service_id)}")
             return True, "重启成功"

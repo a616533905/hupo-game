@@ -22,8 +22,12 @@ fi
 
 echo ""
 echo "[1/6] 停止服务..."
-systemctl stop hupo-bridge 2>/dev/null || true
-systemctl stop hupo-voice 2>/dev/null || true
+if [ -f "$INSTALL_DIR/stop.sh" ]; then
+    cd "$INSTALL_DIR" && ./stop.sh --force --wait --max-wait=10 2>/dev/null || true
+else
+    systemctl stop hupo-bridge 2>/dev/null || true
+    systemctl stop hupo-voice 2>/dev/null || true
+fi
 
 echo "[2/6] 禁用服务..."
 systemctl disable hupo-bridge 2>/dev/null || true

@@ -87,23 +87,43 @@ echo   Voice Port: %VOICE_PORT%
 echo   Mode: %SELECTED_MODE%
 echo.
 
-echo [2/6] Checking ports...
-if "%USE_HTTPS%"=="1" (
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":80 " ^| findstr "LISTENING"') do (
-        echo   Closing port 80 PID: %%a
+echo [2/6] Stopping existing services...
+if exist "stop.bat" (
+    call stop.bat >nul 2>&1
+) else (
+    echo   Checking ports...
+    if "%USE_HTTPS%"=="1" (
+        for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":80 " ^| findstr "LISTENING"') do (
+            echo   Closing port 80 PID: %%a
+            taskkill /F /PID %%a >nul 2>&1
+        )
+    )
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%API_PORT% " ^| findstr "LISTENING"') do (
+        echo   Closing port %API_PORT% PID: %%a
+        taskkill /F /PID %%a >nul 2>&1
+    )
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%VOICE_PORT% " ^| findstr "LISTENING"') do (
+        echo   Closing port %VOICE_PORT% PID: %%a
         taskkill /F /PID %%a >nul 2>&1
     )
 )
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%API_PORT% " ^| findstr "LISTENING"') do (
-    echo   Closing port %API_PORT% PID: %%a
-    taskkill /F /PID %%a >nul 2>&1
+
+echo   Waiting for ports to release...
+set WAIT_COUNT=0
+:wait_ports_start
+set PORTS_IN_USE=0
+netstat -ano | findstr ":%API_PORT% " | findstr "LISTENING" >nul
+if %ERRORLEVEL% equ 0 set PORTS_IN_USE=1
+netstat -ano | findstr ":%VOICE_PORT% " | findstr "LISTENING" >nul
+if %ERRORLEVEL% equ 0 set PORTS_IN_USE=1
+if %PORTS_IN_USE% equ 1 (
+    set /a WAIT_COUNT+=1
+    if !WAIT_COUNT! lss 10 (
+        timeout /t 1 /nobreak >nul
+        goto :wait_ports_start
+    )
 )
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%VOICE_PORT% " ^| findstr "LISTENING"') do (
-    echo   Closing port %VOICE_PORT% PID: %%a
-    taskkill /F /PID %%a >nul 2>&1
-)
-timeout /t 1 /nobreak >nul
-echo   Ports cleared
+echo   Ports ready
 echo.
 
 echo [3/6] Checking SSL certificates...

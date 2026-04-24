@@ -77,6 +77,51 @@ else
     echo "  logrotate.conf 不存在，跳过"
 fi
 
+echo ""
+echo "  生成 systemd 环境变量文件..."
+CONFIG_FILE="$INSTALL_DIR/config.json"
+ENV_FILE="$INSTALL_DIR/config.env"
+
+if [ -f "$CONFIG_FILE" ]; then
+    HTTP_PORT=$(grep -o '"http_port"[[:space:]]*:[[:space:]]*[0-9]*' "$CONFIG_FILE" | grep -o '[0-9]*$' | head -1 || echo "80")
+    HTTPS_PORT=$(grep -o '"https_port"[[:space:]]*:[[:space:]]*[0-9]*' "$CONFIG_FILE" | grep -o '[0-9]*$' | head -1 || echo "443")
+    VOICE_PORT=$(grep -o '"voice_port"[[:space:]]*:[[:space:]]*[0-9]*' "$CONFIG_FILE" | grep -o '[0-9]*$' | head -1 || echo "85")
+    SSL_CERT=$(grep -o '"ssl_cert_file"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" | sed 's/.*:.*"\([^"]*\)"/\1/' | head -1)
+    SSL_KEY=$(grep -o '"ssl_key_file"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" | sed 's/.*:.*"\([^"]*\)"/\1/' | head -1)
+    
+    cat > "$ENV_FILE" << EOF
+# Hupo Game systemd 环境变量
+# 由 install.sh 自动生成
+
+HTTP_PORT=${HTTP_PORT}
+HTTPS_PORT=${HTTPS_PORT}
+VOICE_PORT=${VOICE_PORT}
+API_PORT=${HTTPS_PORT}
+EOF
+
+    if [ -n "$SSL_CERT" ] && [ -n "$SSL_KEY" ] && [ -f "$SSL_CERT" ] && [ -f "$SSL_KEY" ]; then
+        cat >> "$ENV_FILE" << EOF
+USE_HTTPS=1
+SSL_CERT_FILE=$SSL_CERT
+SSL_KEY_FILE=$SSL_KEY
+EOF
+        echo "  已生成 config.env (HTTPS 已启用)"
+    else
+        echo "USE_HTTPS=0" >> "$ENV_FILE"
+        echo "  已生成 config.env (HTTP 模式)"
+    fi
+else
+    cat > "$ENV_FILE" << EOF
+# Hupo Game systemd 环境变量 (默认配置)
+HTTP_PORT=80
+HTTPS_PORT=443
+VOICE_PORT=85
+API_PORT=443
+USE_HTTPS=0
+EOF
+    echo "  已生成 config.env (默认配置)"
+fi
+
 echo "[7/10] 初始化 SOAR 数据文件..."
 if [ ! -f "$INSTALL_DIR/data/blacklist.json" ]; then
     python3 -c "import json; json.dump({'permanent':[]}, open('$INSTALL_DIR/data/blacklist.json','w'))"
