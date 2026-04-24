@@ -1470,11 +1470,15 @@ class WAFRuleLearner:
         learned = self.load_learned_patterns()
         already_learned = {p['pattern'] for p in learned.get('patterns', [])}
         
+        learn_whitelist = set(waf_rules.get('learn_whitelist', []))
+        
         new_patterns = []
         for pattern, count in patterns.most_common(100):
             if count >= min_occurrences:
                 pattern_lower = pattern.lower()
                 if pattern_lower not in existing_patterns and pattern_lower not in already_learned:
+                    if pattern_lower in learn_whitelist:
+                        continue
                     if len(pattern) > 2 and not pattern.isdigit():
                         category = self.categorize_pattern(pattern)
                         new_patterns.append({
