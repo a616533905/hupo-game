@@ -1,98 +1,133 @@
 #!/bin/bash
-set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+FORCE_STOP=0
+WAIT_PORTS=0
+MAX_WAIT=15
+
+for arg in "$@"; do
+    case $arg in
+        --force|-f)
+            FORCE_STOP=1
+            ;;
+        --wait|-w)
+            WAIT_PORTS=1
+            ;;
+        --max-wait=*)
+            MAX_WAIT="${arg#*=}"
+            ;;
+    esac
+done
 
 echo "========================================"
 echo "  琥珀冒险 - 停止服务"
 echo "========================================"
 echo ""
 
-FORCE_STOP=0
-if [[ "$1" == "--force" ]]; then
-    FORCE_STOP=1
-    echo "[模式] 强制停止已启用"
+if [ $FORCE_STOP -eq 1 ]; then
+    echo "[模式] 强制停止"
+fi
+echo ""
+
+stop_process() {
+    local proc_pattern=$1
+    local display_name=$2
+    echo "[停止] $display_name..."
+    
+    local pids=$(pgrep -f "$proc_pattern" 2>/dev/null)
+    if [ -z "$pids" ]; then
+        echo "  未运行"
+        return 0
+    fi
+    
+    for pid in $pids; do
+        echo "  发现进程 PID: $pid"
+        if [ $FORCE_STOP -eq 1 ]; then
+            kill -9 $pid 2>/dev/null
+        else
+            kill $pid 2>/dev/null
+        fi
+    done
+    
+    sleep 1
+    
+    local remaining=$(pgrep -f "$proc_pattern" 2>/dev/null)
+    if [ -n "$remaining" ]; then
+        echo "  进程未响应，强制终止..."
+        for pid in $remaining; do
+            kill -9 $pid 2>/dev/null
+        done
+        sleep 1
+    fi
+    
+    remaining=$(pgrep -f "$proc_pattern" 2>/dev/null)
+    if [ -z "$remaining" ]; then
+        echo "  已停止"
+        return 0
+    else
+        echo "  警告: 可能仍在运行"
+        return 1
+    fi
+}
+
+wait_port_release() {
+    local port=$1
+    local count=0
+    
+    while [ $count -lt $MAX_WAIT ]; do
+        if ! ss -tlnp 2>/dev/null | grep -q ":$port "; then
+            return 0
+        fi
+        count=$((count + 1))
+        sleep 1
+    done
+    return 1
+}
+
+stop_process "nanobot_bridge.py" "AI Bridge"
+stop_process "voice-proxy.js" "Voice Proxy"
+
+if [ $WAIT_PORTS -eq 1 ]; then
     echo ""
-fi
-
-echo "[1/3] 停止 AI Bridge (Python)..."
-
-BRIDGE_PIDS=$(pgrep -f "nanobot_bridge.py" 2>/dev/null)
-if [ -n "$BRIDGE_PIDS" ]; then
-    for PID in $BRIDGE_PIDS; do
-        if [ $FORCE_STOP -eq 1 ]; then
-            kill -9 $PID 2>/dev/null
+    echo "[等待] 端口释放..."
+    
+    HTTP_PORT=${HTTP_PORT:-80}
+    HTTPS_PORT=${HTTPS_PORT:-443}
+    VOICE_PORT=${VOICE_PORT:-85}
+    
+    if [ -f "config.json" ]; then
+        HTTP_PORT=$(grep -o '"http_port"[[:space:]]*:[[:space:]]*[0-9]*' config.json 2>/dev/null | grep -o '[0-9]*$' || echo "80")
+        HTTPS_PORT=$(grep -o '"https_port"[[:space:]]*:[[:space:]]*[0-9]*' config.json 2>/dev/null | grep -o '[0-9]*$' || echo "443")
+        VOICE_PORT=$(grep -o '"voice_port"[[:space:]]*:[[:space:]]*[0-9]*' config.json 2>/dev/null | grep -o '[0-9]*$' || echo "85")
+    fi
+    
+    for port in $HTTP_PORT $HTTPS_PORT $VOICE_PORT; do
+        echo -n "  端口 $port: "
+        if ss -tlnp 2>/dev/null | grep -q ":$port "; then
+            echo -n "等待中..."
+            if wait_port_release $port; then
+                echo " 已释放"
+            else
+                echo " 超时"
+            fi
         else
-            kill $PID 2>/dev/null
+            echo "空闲"
         fi
-        echo "  已终止进程: $PID"
     done
-    sleep 1
-    REMAINING=$(pgrep -f "nanobot_bridge.py" 2>/dev/null)
-    if [ -n "$REMAINING" ]; then
-        echo "  AI Bridge 停止失败"
-    else
-        echo "  AI Bridge 已停止"
-    fi
-else
-    echo "  AI Bridge 未运行"
 fi
 
 echo ""
-
-echo "[2/3] 停止 Voice Proxy (Node.js)..."
-
-VOICE_PIDS=$(pgrep -f "voice-proxy.js" 2>/dev/null)
-if [ -n "$VOICE_PIDS" ]; then
-    for PID in $VOICE_PIDS; do
-        if [ $FORCE_STOP -eq 1 ]; then
-            kill -9 $PID 2>/dev/null
-        else
-            kill $PID 2>/dev/null
-        fi
-        echo "  已终止进程: $PID"
-    done
-    sleep 1
-    REMAINING=$(pgrep -f "voice-proxy.js" 2>/dev/null)
-    if [ -n "$REMAINING" ]; then
-        echo "  Voice Proxy 停止失败"
-    else
-        echo "  Voice Proxy 已停止"
-    fi
-else
-    echo "  Voice Proxy 未运行"
-fi
-
-echo ""
-
-echo "[3/3] 检查端口..."
-
-if command -v netstat &> /dev/null; then
-    if netstat -tlnp 2>/dev/null | grep -E ":(80|443|85)\s" > /dev/null; then
-        echo "  警告: 仍有服务占用端口"
-        netstat -tlnp 2>/dev/null | grep -E ":(80|443|85)" | while read line; do
-            echo "    $line"
-        done
-    else
-        echo "  所有端口已释放"
-    fi
-elif command -v ss &> /dev/null; then
-    if ss -tlnp 2>/dev/null | grep -E ":(80|443|85)\s" > /dev/null; then
-        echo "  警告: 仍有服务占用端口"
-        ss -tlnp 2>/dev/null | grep -E ":(80|443|85)" | while read line; do
-            echo "    $line"
-        done
-    else
-        echo "  所有端口已释放"
-    fi
-else
-    echo "  无法检查端口（netstat/ss 均不可用）"
-fi
-
-echo ""
-
 echo "========================================"
-echo "  服务停止完成"
+echo "  停止完成"
 echo "========================================"
-echo ""
-echo "如果服务仍在运行，尝试:"
-echo "  ./stop.sh --force"
+
+if [ $WAIT_PORTS -eq 0 ]; then
+    echo ""
+    echo "用法: $0 [--force|-f] [--wait|-w] [--max-wait=N]"
+    echo "  --force     强制终止进程"
+    echo "  --wait      等待端口释放"
+    echo "  --max-wait  最大等待秒数 (默认15)"
+fi
 echo ""

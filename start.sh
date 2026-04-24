@@ -1,6 +1,7 @@
 #!/bin/bash
 
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 
 RUN_DAEMON=1
 
@@ -71,64 +72,15 @@ echo "  语音端口: $VOICE_PORT"
 echo "  HTTPS: $([ $USE_HTTPS -eq 1 ] && echo '已启用' || echo '已禁用')"
 echo ""
 
-cleanup_port() {
-    local port=$1
-    local service=$2
-    echo "  检查端口 $port ($service)..."
-
-    pid=$(lsof -t -i:$port 2>/dev/null)
-    if [ -n "$pid" ]; then
-        echo "    发现端口 $port 被占用, PID: $pid"
-        proc_name=$(ps -p $pid -o comm= 2>/dev/null || echo "未知")
-        echo "    进程: $proc_name"
-        echo "    正在关闭..."
-        kill $pid 2>/dev/null
-        sleep 2
-        if lsof -t -i:$port 2>/dev/null > /dev/null; then
-            echo "    进程未响应，强制终止..."
-            kill -9 $pid 2>/dev/null
-            sleep 1
-        fi
-        if lsof -t -i:$port 2>/dev/null > /dev/null; then
-            echo "    警告: 端口 $port 仍被占用"
-        else
-            echo "    已关闭"
-        fi
-    else
-        echo "    端口 $port 空闲"
-    fi
-}
-
-cleanup_process() {
-    local proc_name=$1
-    local display_name=$2
-    echo "  检查 $display_name 进程..."
-
-    pids=$(pgrep -f "$proc_name" 2>/dev/null)
-    if [ -n "$pids" ]; then
-        for pid in $pids; do
-            echo "    发现 $display_name, PID: $pid"
-            echo "    正在停止..."
-            kill $pid 2>/dev/null
-            sleep 2
-            if ps -p $pid > /dev/null 2>&1; then
-                echo "    进程未响应，强制终止..."
-                kill -9 $pid 2>/dev/null
-                sleep 1
-            fi
-            echo "    已停止 PID: $pid"
-        done
-        sleep 2
-        REMAINING=$(pgrep -f "$proc_name" 2>/dev/null)
-        if [ -n "$REMAINING" ]; then
-            echo "    警告: $display_name 可能仍在运行"
-        else
-            echo "    $display_name 已停止"
-        fi
-    else
-        echo "    $display_name 未运行"
-    fi
-}
+echo "[2/6] 停止现有服务..."
+if [ -f "./stop.sh" ]; then
+    ./stop.sh --wait --max-wait=10
+else
+    echo "  警告: stop.sh 不存在，手动停止..."
+    pkill -f "nanobot_bridge.py" 2>/dev/null
+    pkill -f "voice-proxy.js" 2>/dev/null
+    sleep 2
+fi
 
 wait_port_release() {
     local port=$1
@@ -148,10 +100,6 @@ wait_port_release() {
         sleep 1
     done
 }
-
-echo "[2/6] 停止现有服务..."
-cleanup_process "nanobot_bridge.py" "AI Bridge"
-cleanup_process "voice-proxy.js" "Voice Proxy"
 
 echo "[3/6] 等待端口释放..."
 if [ $USE_HTTPS -eq 1 ]; then
@@ -239,7 +187,7 @@ if [ $RUN_DAEMON -eq 1 ]; then
     echo "  日志: logs/bridge.log, logs/voice.log"
     echo ""
     echo "  停止服务:"
-    echo "    kill $API_PID $VOICE_PID"
+    echo "    ./stop.sh"
     echo ""
     echo "========================================"
     echo ""
