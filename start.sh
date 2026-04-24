@@ -115,10 +115,11 @@ cleanup_process() {
             if ps -p $pid > /dev/null 2>&1; then
                 echo "    进程未响应，强制终止..."
                 kill -9 $pid 2>/dev/null
+                sleep 1
             fi
             echo "    已停止 PID: $pid"
         done
-        sleep 1
+        sleep 2
         REMAINING=$(pgrep -f "$proc_name" 2>/dev/null)
         if [ -n "$REMAINING" ]; then
             echo "    警告: $display_name 可能仍在运行"
@@ -130,16 +131,33 @@ cleanup_process() {
     fi
 }
 
+wait_port_release() {
+    local port=$1
+    local max_wait=$2
+    local count=0
+    echo "    等待端口 $port 释放..."
+    while ss -tlnp 2>/dev/null | grep -q ":$port "; do
+        count=$((count + 1))
+        if [ $count -ge $max_wait ]; then
+            echo "    警告: 端口 $port 等待超时"
+            return 1
+        fi
+        sleep 1
+    done
+    echo "    端口 $port 已释放"
+    return 0
+}
+
 echo "[2/6] 停止现有服务..."
 cleanup_process "nanobot_bridge.py" "AI Bridge"
 cleanup_process "voice-proxy.js" "Voice Proxy"
 
-echo "[3/6] 清理端口..."
+echo "[3/6] 等待端口释放..."
 if [ $USE_HTTPS -eq 1 ]; then
-    cleanup_port 80 "HTTP重定向"
+    wait_port_release 80 10
 fi
-cleanup_port $API_PORT "AI Bridge"
-cleanup_port $VOICE_PORT "Voice Proxy"
+wait_port_release $API_PORT 10
+wait_port_release $VOICE_PORT 10
 
 generate_ssl_certs() {
     local cert_file="$1"
