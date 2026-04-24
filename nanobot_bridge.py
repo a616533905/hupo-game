@@ -1605,10 +1605,6 @@ if __name__ == "__main__":
         allow_reuse_address = True
         def server_bind(self):
             self.socket.setsockopt(__import__('socket').SOL_SOCKET, __import__('socket').SO_REUSEADDR, 1)
-            try:
-                self.socket.setsockopt(__import__('socket').SOL_SOCKET, __import__('socket').SO_REUSEPORT, 1)
-            except (AttributeError, OSError):
-                pass
             super().server_bind()
 
     server = ReuseAddrHTTPServer(("0.0.0.0", PORT), NanobotHandler)
