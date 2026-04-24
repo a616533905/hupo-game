@@ -442,3 +442,29 @@ server.listen(PORT, '0.0.0.0', () => {
     logInfo('语音代理服务器运行在 ' + protocol + '://0.0.0.0:' + PORT);
     logInfo('局域网访问: ' + protocol + '://<你的IP>:' + PORT);
 });
+
+let isShuttingDown = false;
+
+function gracefulShutdown(signal) {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    
+    logInfo('收到 ' + signal + ' 信号，正在关闭服务器...');
+    
+    server.close(() => {
+        logInfo('服务器已关闭');
+        process.exit(0);
+    });
+    
+    setTimeout(() => {
+        logError('强制退出');
+        process.exit(1);
+    }, 5000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+process.on('exit', (code) => {
+    logInfo('进程退出，代码: ' + code);
+});
