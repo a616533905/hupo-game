@@ -136,16 +136,18 @@ wait_port_release() {
     local max_wait=$2
     local count=0
     echo "    等待端口 $port 释放..."
-    while ss -tlnp 2>/dev/null | grep -q ":$port "; do
+    while true; do
+        if ! ss -tlnp 2>/dev/null | grep -q ":$port "; then
+            echo "    端口 $port 已释放"
+            return 0
+        fi
         count=$((count + 1))
         if [ $count -ge $max_wait ]; then
-            echo "    警告: 端口 $port 等待超时"
-            return 1
+            echo "    警告: 端口 $port 等待超时，继续启动..."
+            return 0
         fi
         sleep 1
     done
-    echo "    端口 $port 已释放"
-    return 0
 }
 
 echo "[2/6] 停止现有服务..."
