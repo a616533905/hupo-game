@@ -26,7 +26,7 @@ echo.
 echo Deploying files...
 echo.
 
-for %%f in (nanobot_bridge.py voice-proxy.js start.sh status.sh stop.sh install.sh uninstall.sh config.example.json waf_rules.example.json error_codes.json requirements.txt hupo-bridge.service hupo-voice.service logrotate.conf index.html favicon.ico styles.css game.js enhancements.css enhancements.js) do (
+for %%f in (nanobot_bridge.py voice-proxy.js start.sh status.sh stop.sh install.sh uninstall.sh config.example.json waf_rules.example.json error_codes.json requirements.txt hupo-bridge.service hupo-voice.service logrotate.conf index.html favicon.ico enhancements.css enhancements.js) do (
     if exist "%%f" (
         echo [Copying] %%f
         scp -P %SERVER_PORT% "%%f" %SERVER_USER%@%SERVER_IP%:%SERVER_DIR%/
