@@ -8,7 +8,9 @@ server_account.txt
 *.secret
 *_secret.*
 *password*
-*_key.pem
+# SSL 证书和私钥
+*.pem
+!cert.example.pem
 secrets/
 
 # 临时文件
