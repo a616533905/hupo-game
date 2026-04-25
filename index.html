@@ -7808,7 +7808,15 @@ musicSystem={
     },
     init(){
         if(this.ctx)return;
-        if(!audioCtx||!audioInitialized)return;
+        if(!audioCtx){
+            try{
+                audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+            }catch(e){
+                console.error('Failed to create AudioContext:',e);
+                return;
+            }
+        }
+        if(!audioInitialized)audioInitialized=true;
         this.ctx=audioCtx;
         this.masterGain=this.ctx.createGain();
         this.masterGain.gain.value=this.volume;
@@ -7818,17 +7826,15 @@ musicSystem={
         if(this.isPlaying)return;
         if(!audioInitialized){
             initAudio();
-            if(!audioInitialized)return;
         }
         this.init();
         if(!this.ctx){
-            if(!audioCtx)return;
-            this.ctx=audioCtx;
-            this.masterGain=this.ctx.createGain();
-            this.masterGain.gain.value=this.volume;
-            this.masterGain.connect(this.ctx.destination);
+            console.error('MusicSystem: AudioContext not initialized');
+            return;
         }
-        if(this.ctx.state==='suspended')this.ctx.resume();
+        if(this.ctx.state==='suspended'){
+            this.ctx.resume().catch(e=>console.error('AudioContext resume failed:',e));
+        }
         this.isPlaying=true;
         this.updateMusic();
         document.querySelector('.music-btn')?.classList.add('playing');
