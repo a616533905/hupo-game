@@ -1,16 +1,16 @@
 @echo off
 setlocal enabledelayedexpansion
 
-if not exist "secrets\server.ini" (
-    echo Error: secrets\server.ini not found
+if not exist "server.ini" (
+    echo Error: server.ini not found
     pause
     exit /b 1
 )
 
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "host" secrets\server.ini ^| findstr /v "\["') do set "SERVER_IP=%%b"
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "user" secrets\server.ini ^| findstr /v "\["') do set "SERVER_USER=%%b"
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "port" secrets\server.ini ^| findstr /v "\["') do set "SERVER_PORT=%%b"
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "dir" secrets\server.ini ^| findstr /v "\["') do set "SERVER_DIR=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "host" server.ini ^| findstr /v "\["') do set "SERVER_IP=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "user" server.ini ^| findstr /v "\["') do set "SERVER_USER=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "port" server.ini ^| findstr /v "\["') do set "SERVER_PORT=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "dir" server.ini ^| findstr /v "\["') do set "SERVER_DIR=%%b"
 
 if not defined SERVER_PORT set SERVER_PORT=22
 if not defined SERVER_DIR set SERVER_DIR=/root/hupo-game
@@ -54,13 +54,16 @@ if exist "screenshots" (
 )
 
 echo.
-echo Deploying secrets to server...
-if exist "secrets\config.json" (
+echo Deploying config files...
+if exist "config.json" (
     echo [Copying] config.json
-    scp -P %SERVER_PORT% "secrets\config.json" %SERVER_USER%@%SERVER_IP%:%SERVER_DIR%/config.json
+    scp -P %SERVER_PORT% "config.json" %SERVER_USER%@%SERVER_IP%:%SERVER_DIR%/config.json
 ) else (
     echo [Skip] config.json not found
 )
+
+echo.
+echo Deploying SSL certificates...
 if exist "secrets\key.pem" (
     echo [Copying] key.pem
     scp -P %SERVER_PORT% "secrets\key.pem" %SERVER_USER%@%SERVER_IP%:%SERVER_DIR%/key.pem

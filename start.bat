@@ -45,7 +45,7 @@ echo.
 cd /d "%~dp0"
 
 echo [1/6] Loading configuration...
-for /f "tokens=*" %%a in ('powershell -Command "Get-Content secrets\config.json | ConvertFrom-Json | Select-Object -ExpandProperty runtime_mode"') do set RUNTIME_MODE=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty runtime_mode"') do set RUNTIME_MODE=%%a
 
 if "%RUNTIME_MODE%"=="server" (
     set ENV_PATH=environments.server
@@ -53,12 +53,12 @@ if "%RUNTIME_MODE%"=="server" (
     set ENV_PATH=environments.local
 )
 
-for /f "tokens=*" %%a in ('powershell -Command "Get-Content secrets\config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty server | Select-Object -ExpandProperty http_port"') do set HTTP_PORT=%%a
-for /f "tokens=*" %%a in ('powershell -Command "Get-Content secrets\config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty server | Select-Object -ExpandProperty https_port"') do set HTTPS_PORT=%%a
-for /f "tokens=*" %%a in ('powershell -Command "Get-Content secrets\config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty server | Select-Object -ExpandProperty voice_port"') do set VOICE_PORT=%%a
-for /f "tokens=*" %%a in ('powershell -Command "Get-Content secrets\config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty access_token"') do set ACCESS_TOKEN=%%a
-for /f "tokens=*" %%a in ('powershell -Command "Get-Content secrets\config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty server | Select-Object -ExpandProperty ssl_cert_file"') do set SSL_CERT=%%a
-for /f "tokens=*" %%a in ('powershell -Command "Get-Content secrets\config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty server | Select-Object -ExpandProperty ssl_key_file"') do set SSL_KEY=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty server | Select-Object -ExpandProperty http_port"') do set HTTP_PORT=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty server | Select-Object -ExpandProperty https_port"') do set HTTPS_PORT=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty server | Select-Object -ExpandProperty voice_port"') do set VOICE_PORT=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty access_token"') do set ACCESS_TOKEN=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty server | Select-Object -ExpandProperty ssl_cert_file"') do set SSL_CERT=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty server | Select-Object -ExpandProperty ssl_key_file"') do set SSL_KEY=%%a
 
 if "%HTTP_PORT%"=="" set HTTP_PORT=80
 if "%HTTPS_PORT%"=="" set HTTPS_PORT=443
