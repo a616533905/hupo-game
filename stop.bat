@@ -19,4 +19,5 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":85 " ^| findstr "LISTENING"
 echo Stopping Voice Proxy...
 taskkill /F /IM node.exe /FI "WINDOWTITLE eq Voice Proxy*" >nul 2>&1
 
+REM LINT:IGNORE W001
 echo Done.
