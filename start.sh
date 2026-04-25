@@ -5,14 +5,7 @@ cd "$SCRIPT_DIR"
 
 RUN_DAEMON=1
 
-SSL_CERT=$(grep -o '"ssl_cert_file"[[:space:]]*:[[:space:]]*"[^"]*"' config.json 2>/dev/null | sed 's/.*:.*"\([^"]*\)"/\1/')
-SSL_KEY=$(grep -o '"ssl_key_file"[[:space:]]*:[[:space:]]*"[^"]*"' config.json 2>/dev/null | sed 's/.*:.*"\([^"]*\)"/\1/')
-
-if [ -n "$SSL_CERT" ] && [ -n "$SSL_KEY" ] && [ -f "$SSL_CERT" ] && [ -f "$SSL_KEY" ]; then
-    USE_HTTPS=1
-else
-    USE_HTTPS=0
-fi
+USE_HTTPS=0
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -49,17 +42,29 @@ echo "========================================"
 echo ""
 
 echo "[1/6] 加载配置..."
-if [ -f "config.json" ]; then
-    HTTP_PORT=$(grep -o '"http_port"[[:space:]]*:[[:space:]]*[0-9]*' config.json | grep -o '[0-9]*$')
-    HTTPS_PORT=$(grep -o '"https_port"[[:space:]]*:[[:space:]]*[0-9]*' config.json | grep -o '[0-9]*$')
-    VOICE_PORT=$(grep -o '"voice_port"[[:space:]]*:[[:space:]]*[0-9]*' config.json | grep -o '[0-9]*$')
-    ACCESS_TOKEN=$(grep -o '"access_token"[[:space:]]*:[[:space:]]*"[^"]*"' config.json | sed 's/.*:.*"\([^"]*\)"/\1/')
-fi
+RUNTIME_MODE=$(grep -o '"runtime_mode"[[:space:]]*:[[:space:]]*"[^"]*"' config.json 2>/dev/null | sed 's/.*:.*"\([^"]*\)"/\1/')
+if [ -z "$RUNTIME_MODE" ]; then RUNTIME_MODE="local"; fi
+
+get_env_config() {
+    local key=$1
+    python3 -c "import json; c=json.load(open('config.json')); env=c.get('runtime_mode','local'); print(c.get('environments',{}).get(env,{}).get('server',{}).get('$key',''))" 2>/dev/null
+}
+
+HTTP_PORT=$(get_env_config "http_port")
+HTTPS_PORT=$(get_env_config "https_port")
+VOICE_PORT=$(get_env_config "voice_port")
+ACCESS_TOKEN=$(python3 -c "import json; c=json.load(open('config.json')); env=c.get('runtime_mode','local'); print(c.get('environments',{}).get(env,{}).get('access_token',''))" 2>/dev/null)
+SSL_CERT=$(get_env_config "ssl_cert_file")
+SSL_KEY=$(get_env_config "ssl_key_file")
 
 HTTP_PORT=${HTTP_PORT:-80}
 HTTPS_PORT=${HTTPS_PORT:-443}
 VOICE_PORT=${VOICE_PORT:-85}
 ACCESS_TOKEN=${ACCESS_TOKEN:-hupo_secret_token_2024}
+
+if [ -n "$SSL_CERT" ] && [ -n "$SSL_KEY" ] && [ -f "$SSL_CERT" ] && [ -f "$SSL_KEY" ]; then
+    USE_HTTPS=1
+fi
 
 if [ $USE_HTTPS -eq 1 ]; then
     API_PORT=${API_PORT:-$HTTPS_PORT}

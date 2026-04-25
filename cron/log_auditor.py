@@ -166,7 +166,14 @@ def log(msg):
 
 def load_config():
     with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-        return json.load(f)
+        cfg = json.load(f)
+    if 'environments' in cfg:
+        runtime_mode = cfg.get('runtime_mode', 'local')
+        env_cfg = cfg.get('environments', {}).get(runtime_mode, {})
+        for key in ['server', 'access_token', 'token_required', 'active_provider', 'audit', 'voice']:
+            if key in env_cfg and key not in cfg:
+                cfg[key] = env_cfg[key]
+    return cfg
 
 def ensure_data_dir():
     os.makedirs(DATA_DIR, exist_ok=True)

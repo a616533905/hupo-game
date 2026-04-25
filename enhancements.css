@@ -1,0 +1,803 @@
+/* ========================================
+   琥珀猫冒险 - 视觉增强样式
+   enhancements.css
+   ======================================== */
+
+/* ---- 1. 角色渲染增强 ---- */
+
+.cat-svg {
+    transition: transform 0.3s ease;
+}
+
+.cat-sprite:hover .cat-svg {
+    filter: drop-shadow(0 0 20px rgba(255,107,157,0.4));
+}
+
+@keyframes catBreath {
+    0%, 100% { transform: scale(1) translateY(0); }
+    50% { transform: scale(1.02) translateY(-2px); }
+}
+
+@keyframes catBlink {
+    0%, 90%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.1); }
+}
+
+@keyframes tailWag {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(8deg); }
+    75% { transform: rotate(-8deg); }
+}
+
+@keyframes earTwitch {
+    0%, 95%, 100% { transform: rotate(0deg); }
+    97% { transform: rotate(-5deg); }
+}
+
+.cat-sprite.breathing .cat-svg #catBody {
+    animation: catBreath 3s ease-in-out infinite;
+    transform-origin: center bottom;
+}
+
+.cat-sprite.blinking #leftEye,
+.cat-sprite.blinking #rightEye {
+    animation: catBlink 4s ease-in-out infinite;
+    transform-origin: center;
+}
+
+.cat-sprite.wagging #tail {
+    animation: tailWag 1.5s ease-in-out infinite;
+    transform-origin: 145px 140px;
+}
+
+.cat-sprite.happy #mouth {
+    d: path("M92,100 Q100,115 108,100");
+    fill: none;
+    stroke: #2d3436;
+    stroke-width: 2;
+}
+
+.cat-sprite.sad #mouth {
+    d: path("M94,105 Q100,98 106,105");
+    fill: none;
+    stroke: #2d3436;
+    stroke-width: 2;
+}
+
+.cat-sprite.tired #leftEye,
+.cat-sprite.tired #rightEye {
+    ry: 8 !important;
+}
+
+.cat-sprite.excited .cat-svg {
+    animation: catExcited 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes catExcited {
+    0% { transform: translateY(0) rotate(-2deg); }
+    100% { transform: translateY(-5px) rotate(2deg); }
+}
+
+.cat-sprite.clicked .cat-svg {
+    animation: catClickBounce 0.4s ease-out;
+}
+
+@keyframes catClickBounce {
+    0% { transform: scale(1); }
+    30% { transform: scale(0.9); }
+    60% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+.click-heart {
+    position: absolute;
+    font-size: 24px;
+    pointer-events: none;
+    animation: heartFloat 1s ease-out forwards;
+    z-index: 10;
+}
+
+@keyframes heartFloat {
+    0% { opacity: 1; transform: translateY(0) scale(0.5); }
+    50% { opacity: 1; transform: translateY(-30px) scale(1.2); }
+    100% { opacity: 0; transform: translateY(-60px) scale(0.8); }
+}
+
+.equipment-badge {
+    position: absolute;
+    font-size: 18px;
+    animation: equipPopIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.equipment-badge.hat { top: -5px; left: 50%; transform: translateX(-50%); }
+.equipment-badge.collar { top: 55px; left: 50%; transform: translateX(-50%); }
+
+@keyframes equipPopIn {
+    0% { opacity: 0; transform: translateX(-50%) scale(0) rotate(-20deg); }
+    100% { opacity: 1; transform: translateX(-50%) scale(1) rotate(0deg); }
+}
+
+.evolution-glow {
+    position: absolute;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,217,61,0.6) 0%, transparent 70%);
+    animation: evolutionPulse 2s ease-in-out infinite;
+    pointer-events: none;
+    z-index: -1;
+}
+
+@keyframes evolutionPulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.2); }
+}
+
+/* ---- 2. 场景深度感 ---- */
+
+.parallax-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: -1;
+    overflow: hidden;
+}
+
+.parallax-layer {
+    position: absolute;
+    width: 200%;
+    height: 100%;
+    left: -50%;
+    will-change: transform;
+}
+
+.parallax-layer.bg-far {
+    background: radial-gradient(ellipse at 30% 40%, rgba(255,255,255,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 60%, rgba(255,107,157,0.04) 0%, transparent 40%);
+    opacity: 0.8;
+}
+
+.parallax-layer.bg-mid {
+    background: 
+        radial-gradient(circle at 15% 30%, rgba(255,255,255,0.08) 0%, transparent 25%),
+        radial-gradient(circle at 85% 70%, rgba(116,185,255,0.05) 0%, transparent 20%),
+        radial-gradient(circle at 50% 80%, rgba(255,217,61,0.04) 0%, transparent 30%);
+}
+
+.parallax-layer.bg-near {
+    background:
+        radial-gradient(circle at 20% 85%, rgba(255,255,255,0.03) 0%, transparent 15%),
+        radial-gradient(circle at 80% 20%, rgba(255,107,157,0.03) 0%, transparent 12%);
+}
+
+.cloud-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 40%;
+    pointer-events: none;
+    z-index: -1;
+    overflow: hidden;
+}
+
+.cloud {
+    position: absolute;
+    background: rgba(255,255,255,0.04);
+    border-radius: 50%;
+    filter: blur(30px);
+    animation: cloudDrift linear infinite;
+}
+
+.cloud-1 { width: 200px; height: 60px; top: 5%; animation-duration: 60s; }
+.cloud-2 { width: 300px; height: 80px; top: 15%; animation-duration: 80s; animation-delay: -20s; }
+.cloud-3 { width: 150px; height: 45px; top: 25%; animation-duration: 50s; animation-delay: -35s; }
+.cloud-4 { width: 250px; height: 70px; top: 8%; animation-duration: 70s; animation-delay: -10s; }
+
+@keyframes cloudDrift {
+    from { transform: translateX(-300px); }
+    to { transform: translateX(calc(100vw + 300px)); }
+}
+
+.glow-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    transition: opacity 2s ease;
+}
+
+.glow-overlay::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 50% 0%, rgba(255,217,61,0.08) 0%, transparent 50%);
+    animation: glowShift 20s ease-in-out infinite alternate;
+}
+
+body.sunny .glow-overlay::before {
+    background: radial-gradient(ellipse at 50% 0%, rgba(255,217,61,0.12) 0%, transparent 50%);
+}
+
+body.rainy .glow-overlay::before {
+    background: radial-gradient(ellipse at 50% 30%, rgba(116,185,255,0.1) 0%, transparent 50%);
+}
+
+body.night .glow-overlay::before {
+    background: radial-gradient(ellipse at 30% 20%, rgba(138,180,248,0.08) 0%, transparent 40%),
+                radial-gradient(ellipse at 80% 80%, rgba(255,107,157,0.04) 0%, transparent 30%);
+}
+
+body.snow .glow-overlay::before {
+    background: radial-gradient(ellipse at 50% 0%, rgba(182,251,255,0.1) 0%, transparent 50%);
+}
+
+@keyframes glowShift {
+    0% { transform: translateX(-5%) translateY(-3%); }
+    100% { transform: translateX(5%) translateY(3%); }
+}
+
+.fog-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 3s ease;
+    background:
+        linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.02) 20%, transparent 40%,
+                        transparent 60%, rgba(255,255,255,0.015) 80%, transparent 100%);
+    background-size: 200% 100%;
+    animation: fogMove 30s linear infinite;
+}
+
+body.rainy .fog-layer,
+body.night .fog-layer {
+    opacity: 1;
+}
+
+@keyframes fogMove {
+    from { background-position: 0% 0%; }
+    to { background-position: 200% 0%; }
+}
+
+.day-night-indicator {
+    position: fixed;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 20px;
+    z-index: calc(var(--z-top) - 1);
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
+    animation: dayNightFloat 4s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes dayNightFloat {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-5px); }
+}
+
+/* ---- 3. 战斗画面增强 ---- */
+
+.battle-screen.enhanced {
+    perspective: 1000px;
+}
+
+.battle-screen.enhanced .battle-arena {
+    position: relative;
+    overflow: visible;
+}
+
+.battle-bg-scene {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 20px;
+    overflow: hidden;
+    z-index: -1;
+    opacity: 0.3;
+}
+
+.battle-bg-scene.forest {
+    background: 
+        linear-gradient(to bottom, #1a472a 0%, #2d5a27 50%, #1e3d1e 100%);
+}
+
+.battle-bg-scene.cave {
+    background:
+        linear-gradient(to bottom, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+}
+
+.battle-bg-scene.castle {
+    background:
+        linear-gradient(to bottom, #2c1810 0%, #4a2c1a 50%, #1a0f0a 100%);
+}
+
+.battle-bg-scene::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 30%;
+    background: linear-gradient(to top, rgba(0,0,0,0.4), transparent);
+}
+
+.battle-cat-sprite.enhanced-attack {
+    animation: battleCatAttack 0.5s ease-out;
+}
+
+@keyframes battleCatAttack {
+    0% { transform: translateX(0) scale(1); }
+    30% { transform: translateX(40px) scale(1.1); }
+    60% { transform: translateX(-10px) scale(0.95); }
+    100% { transform: translateX(0) scale(1); }
+}
+
+.battle-enemy.hit-shake {
+    animation: enemyHitShake 0.4s ease-out;
+}
+
+@keyframes enemyHitShake {
+    0%, 100% { transform: translateX(0); }
+    15% { transform: translateX(-15px) rotate(-3deg); }
+    30% { transform: translateX(10px) rotate(2deg); }
+    45% { transform: translateX(-8px) rotate(-1deg); }
+    60% { transform: translateX(5px); }
+    75% { transform: translateX(-3px); }
+}
+
+.battle-enemy .sprite.hit-flash {
+    animation: enemyFlash 0.3s ease-out 2;
+}
+
+@keyframes enemyFlash {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(3) saturate(0); }
+}
+
+.skill-particle {
+    position: absolute;
+    pointer-events: none;
+    z-index: 50;
+}
+
+.skill-particle.fire {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0%, #ff6b35 40%, transparent 70%);
+    box-shadow: 0 0 10px #ff6b35, 0 0 20px rgba(255,107,53,0.5);
+}
+
+.skill-particle.ice {
+    width: 10px;
+    height: 10px;
+    background: radial-gradient(circle, #fff 0%, #74b9ff 50%, transparent 70%);
+    box-shadow: 0 0 8px #74b9ff;
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+.skill-particle.lightning {
+    width: 3px;
+    height: 20px;
+    background: linear-gradient(to bottom, #ffd93d, #fff, #ffd93d);
+    box-shadow: 0 0 15px #ffd93d, 0 0 30px rgba(255,217,61,0.5);
+    clip-path: polygon(50% 0%, 62% 38%, 100% 38%, 68% 58%, 82% 100%, 50% 72%, 18% 100%, 32% 58%, 0% 38%, 38% 38%);
+}
+
+.skill-particle.heal {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0%, #6bcb77 50%, transparent 70%);
+    box-shadow: 0 0 10px #6bcb77;
+}
+
+.skill-particle.dark {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(99,110,114,0.8) 0%, transparent 70%);
+    box-shadow: 0 0 15px rgba(99,110,114,0.5);
+}
+
+.skill-particle.holy {
+    width: 16px;
+    height: 16px;
+    background: radial-gradient(circle, #fff 0%, #ffeaa7 40%, transparent 70%);
+    box-shadow: 0 0 15px #ffeaa7, 0 0 30px rgba(255,234,167,0.4);
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+.damage-popup {
+    position: absolute;
+    font-family: 'Segoe UI', sans-serif;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 100;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5), 0 0 10px currentColor;
+    animation: damagePopup 1.2s ease-out forwards;
+}
+
+.damage-popup.normal {
+    font-size: 22px;
+    color: #ff6b6b;
+}
+
+.damage-popup.critical {
+    font-size: 32px;
+    color: #ffd93d;
+    animation: damagePopupCritical 1.2s ease-out forwards;
+}
+
+.damage-popup.heal {
+    font-size: 22px;
+    color: #6bcb77;
+}
+
+.damage-popup.miss {
+    font-size: 18px;
+    color: #a0a0a0;
+    font-style: italic;
+}
+
+@keyframes damagePopup {
+    0% { opacity: 0; transform: translateY(0) scale(0.5); }
+    15% { opacity: 1; transform: translateY(-15px) scale(1.2); }
+    30% { transform: translateY(-25px) scale(1); }
+    100% { opacity: 0; transform: translateY(-70px) scale(0.8); }
+}
+
+@keyframes damagePopupCritical {
+    0% { opacity: 0; transform: translateY(0) scale(0.3) rotate(-10deg); }
+    20% { opacity: 1; transform: translateY(-20px) scale(1.5) rotate(5deg); }
+    40% { transform: translateY(-30px) scale(1.1) rotate(-3deg); }
+    100% { opacity: 0; transform: translateY(-80px) scale(0.7) rotate(0deg); }
+}
+
+.skill-name-toast {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 24px;
+    border-radius: 20px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    pointer-events: none;
+    z-index: 100;
+    animation: skillToast 1.5s ease-out forwards;
+}
+
+.skill-name-toast.fire { background: linear-gradient(135deg, #ff6b35, #d63031); }
+.skill-name-toast.ice { background: linear-gradient(135deg, #74b9ff, #0984e3); }
+.skill-name-toast.lightning { background: linear-gradient(135deg, #ffd93d, #f39c12); }
+.skill-name-toast.heal { background: linear-gradient(135deg, #6bcb77, #27ae60); }
+.skill-name-toast.dark { background: linear-gradient(135deg, #636e72, #2d3436); }
+.skill-name-toast.holy { background: linear-gradient(135deg, #ffeaa7, #fdcb6e); color: #333; text-shadow: none; }
+
+@keyframes skillToast {
+    0% { opacity: 0; transform: translateX(-50%) translateY(20px) scale(0.8); }
+    20% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.05); }
+    30% { transform: translateX(-50%) scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-20px) scale(0.9); }
+}
+
+.battle-intro-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    animation: battleIntroFade 0.8s ease-out forwards;
+    pointer-events: none;
+}
+
+.battle-intro-text {
+    font-size: 36px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 0 20px var(--primary), 0 0 40px rgba(255,107,157,0.5);
+    animation: battleIntroText 0.8s ease-out forwards;
+}
+
+@keyframes battleIntroFade {
+    0% { opacity: 1; }
+    70% { opacity: 1; }
+    100% { opacity: 0; visibility: hidden; }
+}
+
+@keyframes battleIntroText {
+    0% { transform: scale(3); opacity: 0; letter-spacing: 20px; }
+    50% { transform: scale(0.9); opacity: 1; letter-spacing: 5px; }
+    100% { transform: scale(1); letter-spacing: 2px; }
+}
+
+/* ---- 4. UI 微交互 ---- */
+
+.action-btn,
+.battle-skill-btn,
+.shop-item {
+    position: relative;
+    overflow: hidden;
+}
+
+.ripple-effect {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.35);
+    transform: scale(0);
+    animation: rippleExpand 0.6s linear;
+    pointer-events: none;
+}
+
+@keyframes rippleExpand {
+    to { transform: scale(4); opacity: 0; }
+}
+
+.number-pop {
+    display: inline-block;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s;
+}
+
+.number-pop.bump {
+    transform: scale(1.3);
+    color: var(--accent);
+}
+
+.coin-fly {
+    position: fixed;
+    font-size: 18px;
+    pointer-events: none;
+    z-index: 500;
+    animation: coinFlyToTarget 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes coinFlyToTarget {
+    0% { opacity: 1; transform: scale(1); }
+    60% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0; transform: scale(0.5) translateY(-30px); }
+}
+
+.card-flip {
+    perspective: 800px;
+}
+
+.card-flip-inner {
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+}
+
+.card-flip.flipped .card-flip-inner {
+    transform: rotateY(180deg);
+}
+
+.shop-item:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3), 0 0 15px rgba(255,107,157,0.1);
+}
+
+.achievement-unlock {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    padding: 20px 40px;
+    background: linear-gradient(145deg, #1e2235, #151829);
+    border: 2px solid var(--accent);
+    border-radius: 16px;
+    z-index: var(--z-top);
+    text-align: center;
+    animation: achievementUnlock 2.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    pointer-events: none;
+}
+
+.achievement-unlock h3 {
+    color: var(--accent);
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.achievement-unlock p {
+    color: var(--text);
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.achievement-sparkle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: sparkleBurst 1s ease-out forwards;
+}
+
+@keyframes achievementUnlock {
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    15% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+    25% { transform: translate(-50%, -50%) scale(1); }
+    80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+}
+
+@keyframes sparkleBurst {
+    0% { opacity: 1; transform: scale(0) translate(0, 0); }
+    100% { opacity: 0; transform: scale(1) translate(var(--sx), var(--sy)); }
+}
+
+.level-up-burst {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 120px;
+    height: 120px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 20;
+}
+
+.level-up-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border: 3px solid var(--accent);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: levelUpRingExpand 0.8s ease-out forwards;
+}
+
+@keyframes levelUpRingExpand {
+    0% { width: 0; height: 0; opacity: 1; }
+    100% { width: 150px; height: 150px; opacity: 0; }
+}
+
+.level-up-star {
+    position: absolute;
+    font-size: 24px;
+    animation: levelUpStarBurst 1s ease-out forwards;
+}
+
+@keyframes levelUpStarBurst {
+    0% { opacity: 1; transform: translate(-50%, -50%) scale(0) rotate(0deg); }
+    50% { opacity: 1; transform: translate(var(--tx), var(--ty)) scale(1.2) rotate(var(--rot)); }
+    100% { opacity: 0; transform: translate(var(--tx2), var(--ty2)) scale(0) rotate(var(--rot2)); }
+}
+
+/* ---- 5. Canvas 粒子容器 ---- */
+
+#particleCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.scene-particles {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 3;
+    overflow: hidden;
+}
+
+.scene-particle {
+    position: absolute;
+    pointer-events: none;
+    will-change: transform, opacity;
+}
+
+.scene-particle.leaf {
+    width: 12px;
+    height: 12px;
+    background: linear-gradient(135deg, #6bcb77, #27ae60);
+    border-radius: 0 50% 50% 50%;
+    opacity: 0.7;
+    animation: leafFall linear infinite;
+}
+
+.scene-particle.firefly {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #ffd93d;
+    box-shadow: 0 0 6px #ffd93d, 0 0 12px rgba(255,217,61,0.5);
+    animation: fireflyGlow 3s ease-in-out infinite alternate;
+}
+
+.scene-particle.magic-orb {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0%, var(--primary) 50%, transparent 70%);
+    box-shadow: 0 0 10px var(--primary);
+    animation: magicOrbFloat 4s ease-in-out infinite;
+}
+
+.scene-particle.snowflake {
+    color: #fff;
+    font-size: 12px;
+    text-shadow: 0 0 5px rgba(255,255,255,0.8);
+    animation: snowflakeFall linear infinite;
+}
+
+@keyframes leafFall {
+    0% { transform: translateY(-20px) rotate(0deg) translateX(0); opacity: 0; }
+    10% { opacity: 0.7; }
+    90% { opacity: 0.7; }
+    100% { transform: translateY(100vh) rotate(720deg) translateX(100px); opacity: 0; }
+}
+
+@keyframes fireflyGlow {
+    0% { opacity: 0.2; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1.3); }
+}
+
+@keyframes magicOrbFloat {
+    0%, 100% { transform: translateY(0) translateX(0); opacity: 0.6; }
+    25% { transform: translateY(-20px) translateX(15px); opacity: 1; }
+    50% { transform: translateY(-5px) translateX(-10px); opacity: 0.8; }
+    75% { transform: translateY(-30px) translateX(20px); opacity: 1; }
+}
+
+@keyframes snowflakeFall {
+    0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
+    10% { opacity: 1; }
+    100% { transform: translateY(100vh) rotate(360deg); opacity: 0.3; }
+}
+
+.mouse-trail {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 4;
+    mix-blend-mode: screen;
+    transition: opacity 0.3s;
+}
+
+/* ---- 响应式适配 ---- */
+
+@media (max-width: 768px) {
+    .damage-popup.normal { font-size: 18px; }
+    .damage-popup.critical { font-size: 26px; }
+    .skill-name-toast { font-size: 13px; padding: 6px 16px; }
+    .battle-intro-text { font-size: 26px; }
+    
+    .scene-particle.leaf { width: 8px; height: 8px; }
+    .scene-particle.firefly { width: 3px; height: 3px; }
+}

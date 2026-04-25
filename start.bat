@@ -45,12 +45,20 @@ echo.
 cd /d "%~dp0"
 
 echo [1/6] Loading configuration...
-for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty server | Select-Object -ExpandProperty http_port"') do set HTTP_PORT=%%a
-for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty server | Select-Object -ExpandProperty https_port"') do set HTTPS_PORT=%%a
-for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty server | Select-Object -ExpandProperty voice_port"') do set VOICE_PORT=%%a
-for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty access_token"') do set ACCESS_TOKEN=%%a
-for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty server | Select-Object -ExpandProperty ssl_cert_file"') do set SSL_CERT=%%a
-for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty server | Select-Object -ExpandProperty ssl_key_file"') do set SSL_KEY=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty runtime_mode"') do set RUNTIME_MODE=%%a
+
+if "%RUNTIME_MODE%"=="server" (
+    set ENV_PATH=environments.server
+) else (
+    set ENV_PATH=environments.local
+)
+
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty server | Select-Object -ExpandProperty http_port"') do set HTTP_PORT=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty server | Select-Object -ExpandProperty https_port"') do set HTTPS_PORT=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty server | Select-Object -ExpandProperty voice_port"') do set VOICE_PORT=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty access_token"') do set ACCESS_TOKEN=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty server | Select-Object -ExpandProperty ssl_cert_file"') do set SSL_CERT=%%a
+for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty environments | Select-Object -ExpandProperty %RUNTIME_MODE% | Select-Object -ExpandProperty server | Select-Object -ExpandProperty ssl_key_file"') do set SSL_KEY=%%a
 
 if "%HTTP_PORT%"=="" set HTTP_PORT=80
 if "%HTTPS_PORT%"=="" set HTTPS_PORT=443
@@ -90,43 +98,20 @@ echo.
 echo [2/6] Stopping existing services...
 if exist "stop.bat" (
     call stop.bat >nul 2>&1
-) else (
-    echo   Checking ports...
-    if "%USE_HTTPS%"=="1" (
-        for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":80 " ^| findstr "LISTENING"') do (
-            echo   Closing port 80 PID: %%a
-            taskkill /F /PID %%a >nul 2>&1
-        )
-    )
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%API_PORT% " ^| findstr "LISTENING"') do (
-        echo   Closing port %API_PORT% PID: %%a
-        taskkill /F /PID %%a >nul 2>&1
-    )
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%VOICE_PORT% " ^| findstr "LISTENING"') do (
-        echo   Closing port %VOICE_PORT% PID: %%a
-        taskkill /F /PID %%a >nul 2>&1
-    )
 )
-
-echo   Waiting for ports to release...
-set WAIT_COUNT=0
-:wait_ports_start
-set PORTS_IN_USE=0
-netstat -ano | findstr ":%API_PORT% " | findstr "LISTENING" >nul
-if %ERRORLEVEL% equ 0 set PORTS_IN_USE=1
-netstat -ano | findstr ":%VOICE_PORT% " | findstr "LISTENING" >nul
-if %ERRORLEVEL% equ 0 set PORTS_IN_USE=1
-if %PORTS_IN_USE% equ 1 (
-    set /a WAIT_COUNT+=1
-    if !WAIT_COUNT! lss 10 (
-        timeout /t 1 /nobreak >nul
-        goto :wait_ports_start
-    )
-)
-echo   Ports ready
+echo   Done
 echo.
 
-echo [3/6] Checking SSL certificates...
+echo [3/6] Checking ports...
+netstat -ano | findstr ":%API_PORT% " | findstr "LISTENING" >nul
+if %ERRORLEVEL% equ 0 (
+    echo   Warning: Port %API_PORT% is in use
+) else (
+    echo   Port %API_PORT% is available
+)
+echo.
+
+echo [4/6] Checking SSL certificates...
 if "%USE_HTTPS%"=="1" (
     if exist "%SSL_CERT%" (
         echo   Certificate exists: %SSL_CERT%
@@ -161,14 +146,14 @@ if "%USE_HTTPS%"=="1" (
 )
 echo.
 
-echo [4/6] Starting AI Bridge (port %API_PORT%)...
+echo [5/6] Starting AI Bridge (port %API_PORT%)...
 if "%USE_HTTPS%"=="1" (
     start "AI Bridge" cmd /k "set SSL_CERT_FILE=%SSL_CERT%&& set SSL_KEY_FILE=%SSL_KEY%&& set USE_HTTPS=1&& set API_PORT=%API_PORT%&& set VOICE_PORT=%VOICE_PORT%&& python nanobot_bridge.py"
 ) else (
     start "AI Bridge" cmd /k "set USE_HTTPS=0&& set API_PORT=%API_PORT%&& set VOICE_PORT=%VOICE_PORT%&& python nanobot_bridge.py"
 )
 
-echo [5/6] Starting voice proxy (port %VOICE_PORT%)...
+echo [6/6] Starting voice proxy (port %VOICE_PORT%)...
 start "Voice Proxy" cmd /k "set VOICE_PORT=%VOICE_PORT%&& node voice-proxy.js"
 
 timeout /t 3 /nobreak >nul

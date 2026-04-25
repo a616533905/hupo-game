@@ -428,7 +428,6 @@ document.getElementById('tokenInput').addEventListener('keypress',function(e){
 </html>'''
 
 REQUIRED_CONFIG_FIELDS = {
-    'access_token': str,
     'active_provider': str,
 }
 
@@ -486,6 +485,14 @@ def load_config():
         with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
             cfg = json.load(f)
         logger.info(f"配置文件加载成功: {CONFIG_FILE}")
+        
+        if 'environments' in cfg:
+            runtime_mode = cfg.get('runtime_mode', 'local')
+            env_cfg = cfg.get('environments', {}).get(runtime_mode, {})
+            for key in ['server', 'access_token', 'token_required', 'active_provider', 'audit']:
+                if key in env_cfg and key not in cfg:
+                    cfg[key] = env_cfg[key]
+            logger.info(f"使用环境配置: {runtime_mode}")
         
         errors, warnings = validate_config(cfg)
         

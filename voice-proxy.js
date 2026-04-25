@@ -76,7 +76,17 @@ function loadConfig() {
     try {
         if (fs.existsSync(CONFIG_FILE)) {
             const data = fs.readFileSync(CONFIG_FILE, 'utf-8');
-            return JSON.parse(data);
+            const cfg = JSON.parse(data);
+            if (cfg.environments) {
+                const runtimeMode = cfg.runtime_mode || 'local';
+                const envCfg = cfg.environments[runtimeMode] || {};
+                ['server', 'access_token', 'token_required', 'active_provider', 'audit', 'voice'].forEach(key => {
+                    if (key in envCfg && !(key in cfg)) {
+                        cfg[key] = envCfg[key];
+                    }
+                });
+            }
+            return cfg;
         }
     } catch (e) {
         logError('配置文件加载失败: ' + e.message);
