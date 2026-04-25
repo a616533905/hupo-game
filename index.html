@@ -43,13 +43,15 @@ body.snow .snowfall{display:block}
 .weather-display{font-size:11px;margin-bottom:8px;z-index:1}
 .weather-display span{cursor:pointer;padding:2px 6px;border-radius:8px;background:rgba(255,255,255,0.1);margin:0 1px;transition:all 0.2s}
 .weather-display span:hover{background:rgba(255,255,255,0.2)}
-.cat-sprite{width:160px;height:160px;position:relative;z-index:1;cursor:pointer;perspective:800px;transform-style:preserve-3d;transition:transform 0.15s ease-out}
-.cat-sprite::before{content:'';position:absolute;top:50%;left:50%;width:140%;height:140%;transform:translate(-50%,-50%) translateZ(-40px);background:radial-gradient(ellipse at center,rgba(255,107,157,0.5) 0%,transparent 60%);filter:blur(20px);pointer-events:none;z-index:-1}
-.cat-sprite::after{content:'';position:absolute;bottom:-25px;left:50%;width:120px;height:35px;transform:translateX(-50%);background:radial-gradient(ellipse at center,rgba(0,0,0,0.6) 0%,transparent 70%);filter:blur(10px);pointer-events:none;transition:all 0.3s;z-index:-2}
-.cat-sprite:hover{transform:scale(1.08) rotateX(8deg) rotateY(-8deg)}
-.cat-sprite:hover::after{width:140px;height:45px;opacity:0.8}
-.cat-svg{width:100%;height:100%;filter:drop-shadow(0 15px 25px rgba(0,0,0,0.4)) drop-shadow(0 0 15px rgba(255,107,157,0.2));transition:all 0.3s}
-.cat-sprite:hover .cat-svg{filter:drop-shadow(0 25px 40px rgba(0,0,0,0.5)) drop-shadow(0 0 30px rgba(255,107,157,0.4))}
+.cat-sprite{width:160px;height:160px;position:relative;z-index:1;cursor:pointer;transform-style:preserve-3d}
+.cat-sprite::before{content:'';position:absolute;top:50%;left:50%;width:140%;height:140%;transform:translate(-50%,-50%);background:radial-gradient(ellipse at center,rgba(255,107,157,0.4) 0%,transparent 60%);filter:blur(25px);pointer-events:none;z-index:-1}
+.cat-sprite::after{content:'';position:absolute;bottom:-30px;left:50%;width:130px;height:40px;transform:translateX(-50%);background:radial-gradient(ellipse at center,rgba(0,0,0,0.7) 0%,transparent 70%);filter:blur(12px);pointer-events:none;z-index:-2}
+.cat-sprite:hover{animation:cat3DTilt 0.4s ease forwards}
+@keyframes cat3DTilt{
+    0%{transform:scale(1) rotateX(0) rotateY(0)}
+    100%{transform:scale(1.1) rotateX(10deg) rotateY(-10deg)}
+}
+.cat-svg{width:100%;height:100%;filter:drop-shadow(0 20px 35px rgba(0,0,0,0.5)) drop-shadow(0 0 20px rgba(255,107,157,0.3));transition:all 0.3s}
 @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-15px)}}
 @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
@@ -2694,39 +2696,6 @@ function getMoodModifier(type){
     if(type==='exp')return m.expMod||1;
     return 1;
 }
-(function initCat3DEffect(){
-    const catSprite=document.getElementById('catSprite');
-    if(!catSprite)return;
-    let isAnimating=false;
-    let currentRotateX=0,currentRotateY=0,currentScale=1;
-    let targetRotateX=0,targetRotateY=0,targetScale=1.05;
-    function animate(){
-        currentRotateX+=(targetRotateX-currentRotateX)*0.15;
-        currentRotateY+=(targetRotateY-currentRotateY)*0.15;
-        currentScale+=(targetScale-currentScale)*0.15;
-        catSprite.style.transform=`scale(${currentScale}) rotateX(${currentRotateX}deg) rotateY(${currentRotateY}deg)`;
-        if(isAnimating)requestAnimationFrame(animate);
-    }
-    catSprite.addEventListener('mousemove',function(e){
-        const rect=catSprite.getBoundingClientRect();
-        const x=e.clientX-rect.left-rect.width/2;
-        const y=e.clientY-rect.top-rect.height/2;
-        targetRotateY=(x/rect.width)*30;
-        targetRotateX=-(y/rect.height)*25;
-        targetScale=1.12;
-        if(!isAnimating){
-            isAnimating=true;
-            animate();
-        }
-    });
-    catSprite.addEventListener('mouseleave',function(){
-        isAnimating=false;
-        targetRotateX=0;
-        targetRotateY=0;
-        targetScale=1;
-        catSprite.style.transform='';
-    });
-})();
 function catClick(){
     playSound('meow');
     const moodInfo=moods[cat.mood]||moods.happy;
