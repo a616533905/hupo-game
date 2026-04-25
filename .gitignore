@@ -2,6 +2,14 @@
 config.json
 server.ini
 server_account.txt
+.env
+.env.local
+.env.*.local
+*.secret
+*_secret.*
+*password*
+*_key.pem
+secrets/
 
 # 临时文件
 *.tmp
