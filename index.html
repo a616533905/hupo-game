@@ -1151,6 +1151,41 @@ function sanitizeInput(input,maxLength=1000){
     sanitized=escapeHTML(sanitized);
     return sanitized;
 }
+
+const RateLimiter={
+    requests:new Map(),
+    limits:{
+        chat:{maxRequests:10,windowMs:60000},
+        api:{maxRequests:30,windowMs:60000},
+        voice:{maxRequests:5,windowMs:60000}
+    },
+    check(type){
+        const now=Date.now();
+        const limit=this.limits[type];
+        if(!limit)return true;
+        
+        const key=`${type}_${Math.floor(now/limit.windowMs)}`;
+        const count=this.requests.get(key)||0;
+        
+        if(count>=limit.maxRequests){
+            GameLogger.warn('RATE_LIMIT',`${type} rate limit exceeded`);
+            return false;
+        }
+        
+        this.requests.set(key,count+1);
+        this.cleanup(now);
+        return true;
+    },
+    cleanup(now){
+        for(const[key]of this.requests){
+            const timestamp=parseInt(key.split('_')[1])*60000;
+            if(now-timestamp>300000){
+                this.requests.delete(key);
+            }
+        }
+    }
+};
+
 let audioCtx=null;
 let audioInitialized=false;
 function initAudio(){
@@ -5231,6 +5266,10 @@ async function executeGameCommand(cmd,msg){
     return true;
 }
 async function sendMessage(){
+    if(!RateLimiter.check('chat')){
+        addMessage('⚠️ 发送太频繁了，请稍后再试。','bot');
+        return;
+    }
     const m=document.getElementById('messageInput').value.trim();
     if(!m)return;
     if(m.length>500){

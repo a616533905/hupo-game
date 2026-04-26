@@ -244,7 +244,8 @@ def is_connection_valid(conn):
         if hasattr(conn, 'sock') and conn.sock is None:
             return False
         return True
-    except:
+    except Exception as e:
+        logger.debug(f"Connection check failed: {str(e)}")
         return False
 
 def cleanup_connection_pools():
@@ -259,8 +260,8 @@ def cleanup_connection_pools():
                     try:
                         if conn:
                             conn.close()
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Connection close failed: {str(e)}")
             pool.clear()
             pool.extend(valid)
         http_pool_last_cleanup = time.time()
@@ -288,16 +289,17 @@ def return_http_connection(conn, pool_list):
             if len(pool_list) < HTTP_POOL_SIZE:
                 try:
                     pool_list.append(conn)
-                except:
+                except Exception as e:
+                    logger.debug(f"Failed to return connection to pool: {str(e)}")
                     try:
                         conn.close()
-                    except:
-                        pass
+                    except Exception as e2:
+                        logger.debug(f"Connection close failed: {str(e2)}")
             else:
                 try:
                     conn.close()
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Connection close failed: {str(e)}")
 
 prometheus_metrics = {
     'requests_total': 0,
@@ -719,8 +721,8 @@ def call_minimax_chat(message, model_override=None):
             if conn and not conn_returned:
                 try:
                     conn.close()
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Connection close failed: {str(e)}")
     return "网络连接不稳定，请稍后重试"
 
 def call_minimax_tts(text, voice_id="female-tianmei"):
@@ -858,7 +860,8 @@ def check_ollama_running(host="localhost", port=11434):
         response = conn.getresponse()
         conn.close()
         return True
-    except:
+    except Exception as e:
+        logger.debug(f"Ollama service check failed: {str(e)}")
         return False
 
 def start_ollama_service():
@@ -1119,8 +1122,8 @@ def call_openrouter_api(message, model_override=None):
             if conn and not conn_returned:
                 try:
                     conn.close()
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Connection close failed: {str(e)}")
     return "网络连接不稳定，请稍后重试"
 
 def call_api(message, provider=None, model=None, ollama_host=None):
@@ -1621,16 +1624,16 @@ class NanobotHandler(BaseHTTPRequestHandler):
                         self.send_response(500)
                         self.end_headers()
                         self.wfile.write(f'Internal Server Error: {str(e)}'.encode('utf-8'))
-                    except:
-                        pass
+                    except Exception as e2:
+                        logger.debug(f"Failed to send error response: {str(e2)}")
             else:
                 logger.warning(f"[{client_ip}] GET {self.path} - 文件不存在")
                 try:
                     self.send_response(404)
                     self.end_headers()
                     self.wfile.write(b'Not Found')
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Failed to send 404 response: {str(e)}")
         except BrokenPipeError:
             pass
         except ConnectionResetError:

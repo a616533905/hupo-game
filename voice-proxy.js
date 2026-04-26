@@ -8,6 +8,7 @@ const path = require('path');
 
 const MAX_BODY_SIZE = 10 * 1024 * 1024;
 const ALLOWED_FORMATS = ['webm', 'mp3', 'wav', 'ogg', 'm4a', 'aac'];
+const TEMP_FILE_MAX_AGE = 3600000;
 
 const CONFIG_FILE = path.join(__dirname, 'config.json');
 const LOG_DIR = path.join(__dirname, 'logs');
@@ -19,6 +20,46 @@ const activeConnections = new Set();
 if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR, { recursive: true });
 }
+
+function cleanupOldTempFiles() {
+    try {
+        const files = fs.readdirSync(TEMP_DIR);
+        const now = Date.now();
+        let cleaned = 0;
+        
+        files.forEach(file => {
+            if (file.startsWith('hupo_voice_')) {
+                const filePath = path.join(TEMP_DIR, file);
+                try {
+                    const stats = fs.statSync(filePath);
+                    if (now - stats.mtimeMs > TEMP_FILE_MAX_AGE) {
+                        fs.unlinkSync(filePath);
+                        cleaned++;
+                    }
+                } catch (e) {
+                    // File might be in use or already deleted
+                }
+            }
+        });
+        
+        if (cleaned > 0) {
+            log(`[Cleanup] Removed ${cleaned} old temp files`);
+        }
+    } catch (e) {
+        log(`[Cleanup] Error: ${e.message}`);
+    }
+}
+
+setInterval(cleanupOldTempFiles, 300000);
+cleanupOldTempFiles();
+
+process.on('exit', () => {
+    activeProcesses.forEach(proc => {
+        try {
+            proc.kill('SIGTERM');
+        } catch (e) {}
+    });
+});
 
 function getLogFileName() {
     const now = new Date();
