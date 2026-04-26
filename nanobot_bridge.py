@@ -46,6 +46,48 @@ debug_handler = logging.FileHandler(DEBUG_LOG_FILE, encoding='utf-8')
 debug_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
 debug_logger.addHandler(debug_handler)
 
+SENSITIVE_PATTERNS = [
+    'api_key', 'apikey', 'access_token', 'token', 'password', 'secret', 
+    'credential', 'auth', 'private_key', 'session_id'
+]
+
+def sanitize_log_message(message):
+    if not isinstance(message, str):
+        message = str(message)
+    
+    import re
+    
+    for pattern in SENSITIVE_PATTERNS:
+        regex = rf'({pattern}["\s:=]+)(["\']?)([^"\'\s,}}\]]+)(["\']?)'
+        message = re.sub(regex, r'\1\2***REDACTED***\4', message, flags=re.IGNORECASE)
+    
+    message = re.sub(r'Bearer\s+[A-Za-z0-9\-._~+/]+=*', 'Bearer ***REDACTED***', message)
+    message = re.sub(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '***EMAIL***', message)
+    message = re.sub(r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', '***IP***', message)
+    
+    return message
+
+class SanitizingLogger:
+    def __init__(self, logger):
+        self.logger = logger
+    
+    def info(self, msg, *args, **kwargs):
+        self.logger.info(sanitize_log_message(msg), *args, **kwargs)
+    
+    def warning(self, msg, *args, **kwargs):
+        self.logger.warning(sanitize_log_message(msg), *args, **kwargs)
+    
+    def error(self, msg, *args, **kwargs):
+        self.logger.error(sanitize_log_message(msg), *args, **kwargs)
+    
+    def debug(self, msg, *args, **kwargs):
+        self.logger.debug(sanitize_log_message(msg), *args, **kwargs)
+    
+    def __getattr__(self, name):
+        return getattr(self.logger, name)
+
+logger = SanitizingLogger(logger)
+
 CONFIG_FILE = "config.json"
 WAF_RULES_FILE = "waf_rules.json"
 WAF_RULES_EXAMPLE = "waf_rules.example.json"
@@ -1533,7 +1575,15 @@ class NanobotHandler(BaseHTTPRequestHandler):
             if path == '/':
                 path = '/index.html'
             
-            file_path = os.path.normpath(os.path.join(WEB_ROOT, path.lstrip('/')))
+            path = path.lstrip('/')
+            if '..' in path or path.startswith('/') or '\\' in path:
+                logger.warning(f"[{client_ip}] GET {self.path} - 路径遍历攻击尝试")
+                self.send_response(403)
+                self.end_headers()
+                self.wfile.write(b'Forbidden')
+                return
+            
+            file_path = os.path.normpath(os.path.join(WEB_ROOT, path))
             
             if not file_path.startswith(WEB_ROOT):
                 logger.warning(f"[{client_ip}] GET {self.path} - 路径遍历攻击尝试")
@@ -1555,6 +1605,10 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     self.send_response(200)
                     self.send_header("Content-Type", mime_type)
                     self.send_header("Content-Length", len(content))
+                    self.send_header("X-Content-Type-Options", "nosniff")
+                    self.send_header("X-Frame-Options", "DENY")
+                    self.send_header("X-XSS-Protection", "1; mode=block")
+                    self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
                     self.end_headers()
                     self.wfile.write(content)
                 except BrokenPipeError:

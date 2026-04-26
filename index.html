@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://aip.baidubce.com https://tts.wangwangit.com; img-src 'self' data:; connect-src 'self' https://aip.baidubce.com https://tts.wangwangit.com">
 <title>🐱 猫咪冒险者 - 终极版</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--primary:#ff6b9d;--secondary:#c44569;--accent:#ffd93d;--bg-dark:#1a1a2e;--bg-card:#16213e;--text:#eaeaea;--text-dim:#a0a0a0;--fire:#ff6b35;--ice:#74b9ff;--nature:#6bcb77;--light:#ffeaa7;--dark:#636e72;--z-overlay:99;--z-popup:100;--z-dialog:150;--z-battle:200;--z-evolution:300;--z-top:1000}
@@ -1119,6 +1122,35 @@ const ENV_CONFIG={
 RUNTIME_CONFIG.load();
 const SAVE_KEY='hupo_cat_adventure_v2';
 const CHAT_HISTORY_KEY='hupo_chat_history_v2';
+
+function safeHTML(element,html,allowTags=[]){
+    if(!element)return;
+    if(typeof DOMPurify!=='undefined'){
+        const config={
+            ALLOWED_TAGS:allowTags.length>0?allowTags:['b','i','em','strong','span','div','p','br','h1','h2','h3','h4','h5','h6','ul','ol','li','a','img'],
+            ALLOWED_ATTR:['class','style','href','src','alt','title'],
+            ALLOW_DATA_ATTR:false
+        };
+        element.innerHTML=DOMPurify.sanitize(html,config);
+    }else{
+        element.textContent=html;
+    }
+}
+
+function escapeHTML(str){
+    if(typeof str!=='string')return str;
+    return str.replace(/[&<>"']/g,function(match){
+        const escape={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'};
+        return escape[match];
+    });
+}
+
+function sanitizeInput(input,maxLength=1000){
+    if(typeof input!=='string')return '';
+    let sanitized=input.trim().substring(0,maxLength);
+    sanitized=escapeHTML(sanitized);
+    return sanitized;
+}
 let audioCtx=null;
 let audioInitialized=false;
 function initAudio(){
@@ -2952,9 +2984,10 @@ function startBattle(enemyId){
     document.getElementById('battleCatMp').textContent=tempMp;
     document.getElementById('battleCatMpMax').textContent=tempMpMax;
     document.getElementById('battleCatMpBar').style.width=(tempMp/tempMpMax*100)+'%';
-    document.getElementById('battleLog').innerHTML='<p>战斗开始！</p>';
+    safeHTML(document.getElementById('battleLog'),'<p>战斗开始！</p>');
     if(buffApplied.length>0){
-        document.getElementById('battleLog').innerHTML+=`<p style="color:#ffd700">🎭 特效生效: ${buffApplied.join(' ')}</p>`;
+        const buffText=escapeHTML(buffApplied.join(' '));
+        safeHTML(document.getElementById('battleLog'),'<p style="color:#ffd700">🎭 特效生效: '+buffText+'</p>');
     }
     triggerPartnerSkill('battle_start');
     renderBattleSkills();
@@ -5375,9 +5408,11 @@ function saveChatHistory(){
 function updateChatHistory(){
     let h='<div class="chat-history-title">📜 对话历史 (最近20条)</div>';
     chatHistoryList.slice(-20).forEach(e=>{
-        h+=`<div class="entry ${e.role}"><div class="label">${e.role==='user'?'👤 你':'🐱 琥珀'}</div>${escapeHtml(e.content)}</div>`;
+        const role=e.role==='user'?'👤 你':'🐱 琥珀';
+        const content=escapeHTML(e.content);
+        h+=`<div class="entry ${escapeHTML(e.role)}"><div class="label">${role}</div>${content}</div>`;
     });
-    document.getElementById('chatHistory').innerHTML=h;
+    safeHTML(document.getElementById('chatHistory'),h);
     document.getElementById('chatHistory').scrollTop=document.getElementById('chatHistory').scrollHeight;
 }
 let speechSynthesis=window.speechSynthesis;
@@ -6656,9 +6691,10 @@ function startStoryBattle(){
     document.getElementById('battleCatMp').textContent=tempMp;
     document.getElementById('battleCatMpMax').textContent=tempMpMax;
     document.getElementById('battleCatMpBar').style.width=(tempMp/tempMpMax*100)+'%';
-    document.getElementById('battleLog').innerHTML='<p>剧情战斗开始！</p>';
+    safeHTML(document.getElementById('battleLog'),'<p>剧情战斗开始！</p>');
     if(buffApplied.length>0){
-        document.getElementById('battleLog').innerHTML+=`<p style="color:#ffd700">🎭 特效生效: ${buffApplied.join(' ')}</p>`;
+        const buffText=escapeHTML(buffApplied.join(' '));
+        safeHTML(document.getElementById('battleLog'),'<p style="color:#ffd700">🎭 特效生效: '+buffText+'</p>');
     }
     renderBattleSkills();
     document.getElementById('battleScreen').classList.add('show');
@@ -6754,9 +6790,12 @@ function startNextMultiBattle(){
     document.getElementById('battleCatMp').textContent=tempMp;
     document.getElementById('battleCatMpMax').textContent=tempMpMax;
     document.getElementById('battleCatMpBar').style.width=(tempMp/tempMpMax*100)+'%';
-    document.getElementById('battleLog').innerHTML=`<p>第 ${currentStoryState.multiBattleIndex} 场战斗开始！${remaining>0?`还剩 ${remaining} 场`:'最后一场！'}</p>`;
+    const battleNum=escapeHTML(currentStoryState.multiBattleIndex);
+    const remainingText=remaining>0?`还剩 ${escapeHTML(remaining)} 场`:'最后一场！';
+    safeHTML(document.getElementById('battleLog'),`<p>第 ${battleNum} 场战斗开始！${remainingText}</p>`);
     if(buffApplied.length>0){
-        document.getElementById('battleLog').innerHTML+=`<p style="color:#ffd700">🎭 特效生效: ${buffApplied.join(' ')}</p>`;
+        const buffText=escapeHTML(buffApplied.join(' '));
+        safeHTML(document.getElementById('battleLog'),'<p style="color:#ffd700">🎭 特效生效: '+buffText+'</p>');
     }
     renderBattleSkills();
     document.getElementById('battleScreen').classList.add('show');
@@ -7044,9 +7083,10 @@ function startArenaBattleNew(opponentIdx){
     document.getElementById('battleCatMp').textContent=tempMp;
     document.getElementById('battleCatMpMax').textContent=tempMpMax;
     document.getElementById('battleCatMpBar').style.width=(tempMp/tempMpMax*100)+'%';
-    document.getElementById('battleLog').innerHTML='<p>竞技场战斗开始！</p>';
+    safeHTML(document.getElementById('battleLog'),'<p>竞技场战斗开始！</p>');
     if(buffApplied.length>0){
-        document.getElementById('battleLog').innerHTML+=`<p style="color:#ffd700">🎭 特效生效: ${buffApplied.join(' ')}</p>`;
+        const buffText=escapeHTML(buffApplied.join(' '));
+        safeHTML(document.getElementById('battleLog'),'<p style="color:#ffd700">🎭 特效生效: '+buffText+'</p>');
     }
     renderBattleSkills();
     document.getElementById('battleScreen').classList.add('show');

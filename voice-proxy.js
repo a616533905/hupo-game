@@ -103,15 +103,52 @@ const baidu = config.baidu || {};
 const BAIDU_API_KEY = baidu.api_key || '';
 const BAIDU_SECRET_KEY = baidu.secret_key || '';
 
+const MAX_AUDIO_SIZE = 10 * 1024 * 1024;
+const AUDIO_MAGIC_NUMBERS = {
+    webm: [0x1a, 0x45, 0xdf, 0xa3],
+    mp4: [0x00, 0x00, 0x00, null, 0x66, 0x74, 0x79, 0x70],
+    ogg: [0x4f, 0x67, 0x67, 0x53],
+    wav: [0x52, 0x49, 0x46, 0x46]
+};
+
+function validateAudioFormat(buffer, format) {
+    const magic = AUDIO_MAGIC_NUMBERS[format];
+    if (!magic) return true;
+    for (let i = 0; i < magic.length; i++) {
+        if (magic[i] !== null && buffer[i] !== magic[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 function audioToPcm(audioBase64, format) {
     return new Promise((resolve, reject) => {
-        const ext = ALLOWED_FORMATS.includes(format) ? format : 'webm';
+        if (!ALLOWED_FORMATS.includes(format)) {
+            return reject(new Error('Invalid audio format'));
+        }
+        
+        const ext = format;
         const timestamp = Date.now();
         const randomSuffix = Math.random().toString(36).substring(7);
         const tempAudio = path.join(TEMP_DIR, `hupo_voice_${timestamp}_${randomSuffix}.${ext}`);
         const tempPcm = path.join(TEMP_DIR, `hupo_voice_${timestamp}_${randomSuffix}.pcm`);
 
-        const audioBuffer = Buffer.from(audioBase64, 'base64');
+        let audioBuffer;
+        try {
+            audioBuffer = Buffer.from(audioBase64, 'base64');
+        } catch (e) {
+            return reject(new Error('Invalid base64 audio data'));
+        }
+        
+        if (audioBuffer.length > MAX_AUDIO_SIZE) {
+            return reject(new Error('Audio file too large (max 10MB)'));
+        }
+        
+        if (!validateAudioFormat(audioBuffer, format)) {
+            return reject(new Error('Audio format verification failed'));
+        }
+
         fs.writeFileSync(tempAudio, audioBuffer);
 
         const cleanup = () => {
@@ -123,7 +160,10 @@ function audioToPcm(audioBase64, format) {
             '-y', '-i', tempAudio,
             '-f', 's16le', '-acodec', 'pcm_s16le',
             '-ar', '16000', '-ac', '1', tempPcm
-        ], { timeout: 30000 });
+        ], { 
+            timeout: 30000,
+            maxBuffer: MAX_AUDIO_SIZE
+        });
 
         activeProcesses.add(ffmpeg);
         
