@@ -1126,6 +1126,170 @@ def call_openrouter_api(message, model_override=None):
                     logger.debug(f"Connection close failed: {str(e)}")
     return "网络连接不稳定，请稍后重试"
 
+GAME_STATE = {
+    'cat': {
+        'name': '琥珀',
+        'level': 1,
+        'hp': 100,
+        'hpMax': 100,
+        'mp': 50,
+        'mpMax': 50,
+        'hunger': 80,
+        'happiness': 80,
+        'exp': 0,
+        'expMax': 100,
+        'coins': 500,
+        'gems': 10,
+        'attack': 10,
+        'defense': 5,
+        'speed': 10,
+        'mood': 'happy'
+    },
+    'fatigue': 0,
+    'intimacyLevel': 1,
+    'intimacyPoints': 0
+}
+
+def execute_game_command_api(command, params=None):
+    """执行游戏命令并返回结果"""
+    if params is None:
+        params = {}
+    
+    result = {"success": True, "command": command, "message": "", "state": {}}
+    cat = GAME_STATE['cat']
+    
+    if command == "feed":
+        if cat['hunger'] >= 100:
+            result["message"] = "琥珀已经很饱了！"
+        else:
+            cat['hunger'] = min(100, cat['hunger'] + 20)
+            cat['happiness'] = min(100, cat['happiness'] + 5)
+            result["message"] = f"🍖 喂食成功！琥珀饱腹度+20，当前：{cat['hunger']}/100"
+    
+    elif command == "play":
+        if GAME_STATE['fatigue'] >= 100:
+            result["message"] = "琥珀太累了，需要休息！"
+        else:
+            cat['happiness'] = min(100, cat['happiness'] + 15)
+            cat['hunger'] = max(0, cat['hunger'] - 10)
+            GAME_STATE['fatigue'] = min(100, GAME_STATE['fatigue'] + 10)
+            result["message"] = f"🎾 玩耍成功！琥珀快乐度+15，疲劳+10"
+    
+    elif command == "pet":
+        cat['happiness'] = min(100, cat['happiness'] + 10)
+        GAME_STATE['intimacyPoints'] += 2
+        result["message"] = f"✋ 抚摸成功！琥珀快乐度+10，亲密度+2"
+    
+    elif command == "rest":
+        GAME_STATE['fatigue'] = max(0, GAME_STATE['fatigue'] - 30)
+        cat['hp'] = min(cat['hpMax'], cat['hp'] + 20)
+        result["message"] = f"😴 休息成功！疲劳-30，HP+20"
+    
+    elif command == "heal":
+        cat['hp'] = cat['hpMax']
+        result["message"] = f"🏥 治疗成功！HP已恢复满"
+    
+    elif command == "status":
+        result["message"] = f"""📊 当前状态：
+等级: Lv.{cat['level']}
+HP: {cat['hp']}/{cat['hpMax']}
+MP: {cat['mp']}/{cat['mpMax']}
+饱腹: {cat['hunger']}/100
+快乐: {cat['happiness']}/100
+金币: {cat['coins']}
+宝石: {cat['gems']}
+攻击: {cat['attack']} | 防御: {cat['defense']} | 速度: {cat['speed']}
+疲劳: {GAME_STATE['fatigue']}%
+亲密度: Lv.{GAME_STATE['intimacyLevel']} ({GAME_STATE['intimacyPoints']}点)"""
+    
+    elif command == "shop":
+        result["message"] = "🏪 商店已打开！可用物品：\n- 面包 (50金币) 恢复30饱腹\n- 药水 (100金币) 恢复50HP\n- 宝石箱 (500金币) 获得10宝石"
+    
+    elif command == "tower":
+        result["message"] = "🏰 无尽之塔已打开！当前第1层，剩余挑战次数：3"
+    
+    elif command == "arena":
+        result["message"] = "⚔️ 竞技场已打开！当前段位：青铜"
+    
+    elif command == "adventure":
+        result["message"] = "⛏️ 冒险地图已打开！可用区域：\n- 新手草原 (Lv.1+)\n- 幽暗森林 (Lv.5+)\n- 火焰山脉 (Lv.10+)"
+    
+    elif command == "sign":
+        cat['coins'] += 100
+        cat['gems'] += 5
+        result["message"] = "🎁 签到成功！获得100金币+5宝石"
+    
+    elif command == "wheel":
+        import random
+        rewards = ["100金币", "50金币", "10宝石", "5宝石", "药水x1", "面包x2"]
+        reward = random.choice(rewards)
+        result["message"] = f"🎰 转盘结果：{reward}！"
+    
+    elif command == "save":
+        result["message"] = "💾 游戏已保存！"
+    
+    elif command == "battle":
+        enemy = params.get("enemy", "史莱姆")
+        cat['exp'] += 30
+        cat['coins'] += 50
+        if cat['exp'] >= cat['expMax']:
+            cat['level'] += 1
+            cat['exp'] = 0
+            cat['hpMax'] += 10
+            cat['attack'] += 2
+            cat['defense'] += 1
+            result["message"] = f"⚔️ 战斗胜利！击败了{enemy}！升级到Lv.{cat['level']}！"
+        else:
+            result["message"] = f"⚔️ 战斗胜利！击败了{enemy}！获得30经验+50金币"
+    
+    elif command == "buy":
+        item = params.get("item", "面包")
+        count = params.get("count", 1)
+        prices = {"面包": 50, "药水": 100, "宝石箱": 500}
+        price = prices.get(item, 50) * count
+        if cat['coins'] >= price:
+            cat['coins'] -= price
+            result["message"] = f"🛒 购买成功！{item}x{count}，花费{price}金币"
+        else:
+            result["message"] = f"❌ 金币不足！需要{price}金币"
+    
+    elif command == "use":
+        item = params.get("item", "面包")
+        if item == "面包":
+            cat['hunger'] = min(100, cat['hunger'] + 30)
+            result["message"] = f"🍞 使用{item}！饱腹+30"
+        elif item == "药水":
+            cat['hp'] = min(cat['hpMax'], cat['hp'] + 50)
+            result["message"] = f"💊 使用{item}！HP+50"
+        else:
+            result["message"] = f"📦 使用{item}！"
+    
+    elif command == "equip":
+        item = params.get("item", "铁剑")
+        cat['attack'] += 5
+        result["message"] = f"⚔️ 装备了{item}！攻击+5"
+    
+    elif command == "learn_skill":
+        skill = params.get("skill", "火球术")
+        result["message"] = f"⚡ 学会了技能：{skill}！"
+    
+    elif command == "chat":
+        message = params.get("message", "")
+        result["message"] = f'💬 琥珀听到了你说："{message}"\n琥珀：喵~'
+    
+    else:
+        result["success"] = False
+        result["message"] = f"❌ 未知命令：{command}"
+    
+    result["state"] = {
+        "cat": cat,
+        "fatigue": GAME_STATE['fatigue'],
+        "intimacyLevel": GAME_STATE['intimacyLevel'],
+        "intimacyPoints": GAME_STATE['intimacyPoints']
+    }
+    
+    return result
+
 def call_api(message, provider=None, model=None, ollama_host=None):
     """根据配置调用对应的API"""
     active_provider = provider or config.get('active_provider', 'minimax')
@@ -1441,6 +1605,76 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     self.send_header('Access-Control-Allow-Origin', '*')
                     self.end_headers()
                     self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+            elif self.path == "/api/game":
+                debug_enabled = config.get('debug', {}).get('api_enabled', False)
+                if not debug_enabled:
+                    self.send_response(403)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Debug mode disabled. Set debug.api_enabled=true in config.json"}).encode('utf-8'))
+                    return
+                
+                content_length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_length).decode("utf-8")
+                
+                try:
+                    data = json.loads(body)
+                    command = data.get("command", "")
+                    params = data.get("params", {})
+                    
+                    if not command:
+                        self.send_response(400)
+                        self.send_header("Content-Type", "application/json; charset=utf-8")
+                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"error": "No command provided"}).encode('utf-8'))
+                        return
+                    
+                    logger.info(f"[{client_ip}] POST /api/game - command={command}, params={params}")
+                    
+                    result = execute_game_command_api(command, params)
+                    
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
+                    
+                except Exception as e:
+                    logger.error(f"[{client_ip}] POST /api/game 错误: {str(e)}")
+                    self.send_response(500)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+            elif self.path == "/api/commands":
+                commands = [
+                    {"command": "feed", "desc": "喂食", "params": {}},
+                    {"command": "play", "desc": "玩耍", "params": {}},
+                    {"command": "pet", "desc": "抚摸", "params": {}},
+                    {"command": "rest", "desc": "休息", "params": {}},
+                    {"command": "heal", "desc": "治疗", "params": {}},
+                    {"command": "status", "desc": "查看状态", "params": {}},
+                    {"command": "shop", "desc": "打开商店", "params": {}},
+                    {"command": "tower", "desc": "打开塔楼", "params": {}},
+                    {"command": "arena", "desc": "打开竞技场", "params": {}},
+                    {"command": "adventure", "desc": "打开冒险", "params": {}},
+                    {"command": "sign", "desc": "签到", "params": {}},
+                    {"command": "wheel", "desc": "转盘", "params": {}},
+                    {"command": "save", "desc": "保存游戏", "params": {}},
+                    {"command": "battle", "desc": "战斗", "params": {"enemy": "敌人名称(可选)"}},
+                    {"command": "buy", "desc": "购买物品", "params": {"item": "物品ID", "count": "数量"}},
+                    {"command": "use", "desc": "使用物品", "params": {"item": "物品ID"}},
+                    {"command": "equip", "desc": "装备物品", "params": {"item": "装备ID"}},
+                    {"command": "learn_skill", "desc": "学习技能", "params": {"skill": "技能ID"}},
+                    {"command": "chat", "desc": "聊天", "params": {"message": "消息内容"}}
+                ]
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"commands": commands}, ensure_ascii=False, indent=2).encode('utf-8'))
             else:
                 self.send_response(404)
                 self.end_headers()
@@ -1527,6 +1761,72 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"model": f"{active_provider}/{model}"}, ensure_ascii=False).encode('utf-8'))
+                return
+
+            if self.path == "/debug/api":
+                debug_enabled = config.get('debug', {}).get('api_enabled', False)
+                if not debug_enabled:
+                    self.send_response(403)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Debug mode disabled"}).encode('utf-8'))
+                    return
+                debug_data = {
+                    "config": {
+                        "active_provider": config.get('active_provider', 'minimax'),
+                        "token_required": config.get('token_required', 'no'),
+                        "debug_enabled": debug_enabled
+                    },
+                    "providers": {}
+                }
+                for provider in ['minimax', 'openrouter', 'ollama']:
+                    provider_cfg = get_provider_config(provider)
+                    if provider_cfg:
+                        debug_data["providers"][provider] = {
+                            "model": provider_cfg.get('model', 'unknown'),
+                            "api_base": provider_cfg.get('api_base', 'unknown') if provider != 'minimax' else 'api.minimax.chat'
+                        }
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(debug_data, ensure_ascii=False, indent=2).encode('utf-8'))
+                return
+
+            if self.path == "/debug/toggle":
+                if client_ip not in ('127.0.0.1', '::1'):
+                    self.send_response(403)
+                    self.end_headers()
+                    return
+                current = config.get('debug', {}).get('api_enabled', False)
+                if 'debug' not in config:
+                    config['debug'] = {}
+                config['debug']['api_enabled'] = not current
+                try:
+                    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+                        json.dump(config, f, indent=2, ensure_ascii=False)
+                except Exception as e:
+                    logger.error(f"保存配置失败: {e}")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"debug_enabled": config['debug']['api_enabled']}).encode('utf-8'))
+                return
+
+            if self.path == "/debug/logs":
+                if client_ip not in ('127.0.0.1', '::1'):
+                    self.send_response(403)
+                    self.end_headers()
+                    return
+                log_lines = []
+                try:
+                    with open(DEBUG_LOG_FILE, 'r', encoding='utf-8') as f:
+                        log_lines = f.readlines()[-100]
+                except:
+                    pass
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(''.join(log_lines).encode('utf-8'))
                 return
 
             if self.path == "/config.json":

@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 const MAX_BODY_SIZE = 10 * 1024 * 1024;
-const ALLOWED_FORMATS = ['webm', 'mp3', 'wav', 'ogg', 'm4a', 'aac'];
+const ALLOWED_FORMATS = ['webm', 'mp3', 'wav', 'ogg', 'm4a', 'aac', 'mp4'];
 const TEMP_FILE_MAX_AGE = 3600000;
 
 const CONFIG_FILE = path.join(__dirname, 'config.json');
@@ -148,6 +148,8 @@ const MAX_AUDIO_SIZE = 10 * 1024 * 1024;
 const AUDIO_MAGIC_NUMBERS = {
     webm: [0x1a, 0x45, 0xdf, 0xa3],
     mp4: [0x00, 0x00, 0x00, null, 0x66, 0x74, 0x79, 0x70],
+    m4a: [0x00, 0x00, 0x00, null, 0x66, 0x74, 0x79, 0x70],
+    aac: [0xff, 0xf1],
     ogg: [0x4f, 0x67, 0x67, 0x53],
     wav: [0x52, 0x49, 0x46, 0x46]
 };
@@ -403,7 +405,7 @@ const requestHandler = async (req, res) => {
                 method: 'POST'
             });
             const data = await tokenRes.json();
-            logInfo('Token响应: ' + JSON.stringify(data));
+            logInfo('Token获取: ' + (data.access_token ? '成功' : '失败'));
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(data));
         } catch (e) {

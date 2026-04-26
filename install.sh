@@ -180,7 +180,6 @@ CRON_AUDIT="0 3 * * * cd $INSTALL_DIR && /usr/bin/python3 $CRON_DIR/log_auditor.
 CRON_SOAR="*/5 * * * * /usr/bin/python3 $CRON_DIR/log_auditor.py soar >> $INSTALL_DIR/logs/soar.log 2>&1"
 CRON_RECOVER="*/10 * * * * /usr/bin/python3 $CRON_DIR/log_auditor.py recover >> $INSTALL_DIR/logs/recover.log 2>&1"
 CRON_HEALTH_FULL="0 */6 * * * /usr/bin/python3 $CRON_DIR/log_auditor.py health >> $INSTALL_DIR/logs/health_full.log 2>&1"
-CRON_RESTART="0 3 * * * $INSTALL_DIR/start.sh >> $INSTALL_DIR/logs/restart.log 2>&1"
 
 if ! crontab -l 2>/dev/null | grep -q "health_check.sh"; then
     (crontab -l 2>/dev/null; echo "$CRON_HEALTH") | crontab -
