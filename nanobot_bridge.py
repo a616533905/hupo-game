@@ -1966,9 +1966,26 @@ if __name__ == "__main__":
 
     class ReuseAddrHTTPServer(ThreadingHTTPServer):
         allow_reuse_address = True
+        daemon_threads = True
+        timeout = 60
+        
         def server_bind(self):
-            self.socket.setsockopt(__import__('socket').SOL_SOCKET, __import__('socket').SO_REUSEADDR, 1)
+            import socket
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            self.socket.settimeout(120)
             super().server_bind()
+        
+        def process_request(self, request, client_address):
+            try:
+                request.settimeout(60)
+                super().process_request(request, client_address)
+            except Exception as e:
+                logger.debug(f"Request processing error: {e}")
+                try:
+                    request.close()
+                except:
+                    pass
 
     server = ReuseAddrHTTPServer(("0.0.0.0", PORT), NanobotHandler)
     redirect_server = None
