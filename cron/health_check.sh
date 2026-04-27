@@ -54,6 +54,42 @@ check_process() {
     return 0
 }
 
+check_http_alive() {
+    local port=$1
+    local service=$2
+    local url="http://localhost:$port/health"
+    
+    if [ "$port" = "443" ]; then
+        url="https://localhost:$port/health"
+    fi
+    
+    local response=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 -k "$url" 2>/dev/null)
+    
+    if [ -z "$response" ] || [ "$response" = "000" ]; then
+        log_alert "[假死] $service (端口 $port) 无响应，可能假死"
+        return 1
+    fi
+    
+    if [ "$response" = "200" ] || [ "$response" = "301" ] || [ "$response" = "302" ]; then
+        return 0
+    fi
+    
+    log_alert "[警告] $service (端口 $port) HTTP响应异常: $response"
+    return 0
+}
+
+check_port_recvq() {
+    local port=$1
+    local service=$2
+    local recvq=$(netstat -tlnp 2>/dev/null | grep ":$port " | awk '{print $2}' | head -1)
+    
+    if [ -n "$recvq" ] && [ "$recvq" -gt 10 ]; then
+        log_alert "[假死] $service (端口 $port) Recv-Q堆积: $recvq，可能假死"
+        return 1
+    fi
+    return 0
+}
+
 check_disk_space() {
     local usage=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
     if [ "$usage" -gt 90 ]; then
@@ -194,6 +230,27 @@ fi
 
 if ! check_process "voice-proxy.js"; then
     VOICE_OK=false
+fi
+
+if [ "$BRIDGE_OK" = true ]; then
+    if ! check_http_alive 443 "AI Bridge"; then
+        BRIDGE_OK=false
+    fi
+    if ! check_port_recvq 443 "AI Bridge"; then
+        BRIDGE_OK=false
+    fi
+    if ! check_port_recvq 80 "AI Bridge HTTP"; then
+        BRIDGE_OK=false
+    fi
+fi
+
+if [ "$VOICE_OK" = true ]; then
+    if ! check_http_alive 85 "Voice Proxy"; then
+        VOICE_OK=false
+    fi
+    if ! check_port_recvq 85 "Voice Proxy"; then
+        VOICE_OK=false
+    fi
 fi
 
 if [ "$BRIDGE_OK" = false ]; then
