@@ -684,14 +684,17 @@ def call_minimax_chat(message, model_override=None):
             result_json = json.loads(result)
 
             if "choices" in result_json and len(result_json["choices"]) > 0:
-                assistant_message = result_json["choices"][0]["message"]["content"]
+                assistant_message = result_json["choices"][0]["message"].get("content", "")
+                if assistant_message is None:
+                    assistant_message = ""
                 with conversation_lock:
                     conversation_history.append({"role": "assistant", "content": assistant_message})
                 logger.info(f"MiniMax API调用成功, response_length={len(assistant_message)}")
-                debug_logger.debug(f"[MiniMax] 返回内容: {assistant_message[:500]}{'...' if len(assistant_message) > 500 else ''}")
+                if assistant_message:
+                    debug_logger.debug(f"[MiniMax] 返回内容: {assistant_message[:500]}{'...' if len(assistant_message) > 500 else ''}")
                 return_http_connection(conn, http_pool_minimax)
                 conn_returned = True
-                return assistant_message
+                return assistant_message if assistant_message else "AI返回了空响应"
             else:
                 base_resp = result_json.get('base_resp', {})
                 status_code_resp = base_resp.get('status_code', 'N/A')
@@ -1085,14 +1088,17 @@ def call_openrouter_api(message, model_override=None):
             result_json = json.loads(result)
 
             if "choices" in result_json and len(result_json["choices"]) > 0:
-                assistant_message = result_json["choices"][0]["message"]["content"]
+                assistant_message = result_json["choices"][0]["message"].get("content", "")
+                if assistant_message is None:
+                    assistant_message = ""
                 with conversation_lock:
                     conversation_history.append({"role": "assistant", "content": assistant_message})
                 logger.info(f"OpenRouter API调用成功, response_length={len(assistant_message)}")
-                debug_logger.debug(f"[OpenRouter] 返回内容: {assistant_message[:500]}{'...' if len(assistant_message) > 500 else ''}")
+                if assistant_message:
+                    debug_logger.debug(f"[OpenRouter] 返回内容: {assistant_message[:500]}{'...' if len(assistant_message) > 500 else ''}")
                 return_http_connection(conn, http_pool_openrouter)
                 conn_returned = True
-                return assistant_message
+                return assistant_message if assistant_message else "AI返回了空响应"
             else:
                 error_info = result_json.get('error', {})
                 error_msg = error_info.get('message', '未知错误')

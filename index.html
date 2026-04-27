@@ -2261,8 +2261,26 @@ function loadGame(){
                         if(d.skillMastery)skillMastery=d.skillMastery;
                         if(d.sleepState){
                             sleepState=d.sleepState;
-                            if(sleepState.isSleeping&&!sleepState.sleepDuration){
-                                sleepState.sleepDuration=60;
+                            if(sleepState.isSleeping){
+                                if(!sleepState.sleepDuration){
+                                    const elapsed=Date.now()-sleepState.sleepStartTime;
+                                    const minutes=elapsed/1000/60;
+                                    if(minutes>=180){
+                                        setTimeout(()=>wakeUp(),1000);
+                                    }else if(minutes>=60){
+                                        sleepState.sleepDuration=180;
+                                    }else if(minutes>=30){
+                                        sleepState.sleepDuration=60;
+                                    }else{
+                                        sleepState.sleepDuration=30;
+                                    }
+                                }else{
+                                    const elapsed=Date.now()-sleepState.sleepStartTime;
+                                    const minutes=elapsed/1000/60;
+                                    if(minutes>=sleepState.sleepDuration){
+                                        setTimeout(()=>wakeUp(),1000);
+                                    }
+                                }
                             }
                         }
                         if(d.hospitalState)hospitalState=d.hospitalState;
@@ -7287,7 +7305,30 @@ function loadFromSlot(){
         if(d.diaryEntries)diaryEntries=d.diaryEntries;
         if(d.currentSkin)currentSkin=d.currentSkin;
         if(d.skillMastery)skillMastery=d.skillMastery;
-        if(d.sleepState)sleepState=d.sleepState;
+        if(d.sleepState){
+            sleepState=d.sleepState;
+            if(sleepState.isSleeping){
+                if(!sleepState.sleepDuration){
+                    const elapsed=Date.now()-sleepState.sleepStartTime;
+                    const minutes=elapsed/1000/60;
+                    if(minutes>=180){
+                        setTimeout(()=>wakeUp(),1000);
+                    }else if(minutes>=60){
+                        sleepState.sleepDuration=180;
+                    }else if(minutes>=30){
+                        sleepState.sleepDuration=60;
+                    }else{
+                        sleepState.sleepDuration=30;
+                    }
+                }else{
+                    const elapsed=Date.now()-sleepState.sleepStartTime;
+                    const minutes=elapsed/1000/60;
+                    if(minutes>=sleepState.sleepDuration){
+                        setTimeout(()=>wakeUp(),1000);
+                    }
+                }
+            }
+        }
         if(d.hospitalState)hospitalState=d.hospitalState;
         if(d.storyProgress){
             storyProgress=d.storyProgress;
