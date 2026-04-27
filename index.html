@@ -2259,7 +2259,12 @@ function loadGame(){
                             setTimeout(()=>applySkin(currentSkin),100);
                         }
                         if(d.skillMastery)skillMastery=d.skillMastery;
-                        if(d.sleepState)sleepState=d.sleepState;
+                        if(d.sleepState){
+                            sleepState=d.sleepState;
+                            if(sleepState.isSleeping&&!sleepState.sleepDuration){
+                                sleepState.sleepDuration=60;
+                            }
+                        }
                         if(d.hospitalState)hospitalState=d.hospitalState;
                         if(d.storyProgress){
                             storyProgress=d.storyProgress;
