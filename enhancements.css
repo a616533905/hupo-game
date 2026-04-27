@@ -801,3 +801,607 @@ body.night .fog-layer {
     .scene-particle.leaf { width: 8px; height: 8px; }
     .scene-particle.firefly { width: 3px; height: 3px; }
 }
+
+/* ---- 6. 玻璃拟态设计 (Glassmorphism) ---- */
+
+.glass-panel {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.cat-panel.glass-enhanced,
+.main-panel.glass-enhanced,
+.right-panel.glass-enhanced {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.glass-button {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: all 0.3s ease;
+}
+
+.glass-button:hover {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    transform: translateY(-2px);
+}
+
+.glass-card {
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0.05) 100%
+    );
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    box-shadow: 
+        0 4px 24px rgba(0, 0, 0, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.glass-input {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.glass-input:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(102, 126, 234, 0.5);
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.2);
+}
+
+/* ---- 7. 背景粒子系统 ---- */
+
+#bgParticles {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.particle-star {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: #fff;
+    border-radius: 50%;
+    animation: starTwinkle var(--duration, 3s) ease-in-out infinite;
+    animation-delay: var(--delay, 0s);
+}
+
+@keyframes starTwinkle {
+    0%, 100% { opacity: 0.2; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+}
+
+.particle-bubble {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), transparent);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: bubbleFloat var(--duration, 8s) ease-in-out infinite;
+    animation-delay: var(--delay, 0s);
+}
+
+@keyframes bubbleFloat {
+    0% { 
+        transform: translateY(100vh) translateX(0) scale(0.5); 
+        opacity: 0; 
+    }
+    10% { opacity: 0.6; }
+    90% { opacity: 0.4; }
+    100% { 
+        transform: translateY(-20px) translateX(var(--drift, 50px)) scale(1); 
+        opacity: 0; 
+    }
+}
+
+.particle-sparkle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--accent);
+    animation: sparkleFloat var(--duration, 6s) linear infinite;
+    animation-delay: var(--delay, 0s);
+}
+
+@keyframes sparkleFloat {
+    0% { 
+        transform: translateY(100vh) rotate(0deg); 
+        opacity: 0; 
+    }
+    10% { opacity: 0.8; }
+    90% { opacity: 0.3; }
+    100% { 
+        transform: translateY(-20px) rotate(360deg); 
+        opacity: 0; 
+    }
+}
+
+/* ---- 8. 战斗界面增强 ---- */
+
+/* 伤害数字飘动 */
+.damage-number {
+    position: absolute;
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+    font-weight: 900;
+    font-size: 28px;
+    pointer-events: none;
+    z-index: 1000;
+    text-shadow: 
+        0 0 10px currentColor,
+        0 2px 4px rgba(0,0,0,0.5),
+        -1px -1px 0 rgba(0,0,0,0.3),
+        1px -1px 0 rgba(0,0,0,0.3);
+    animation: damageFloat 1.5s ease-out forwards;
+}
+
+.damage-number.physical { color: #ff6b6b; }
+.damage-number.magic { color: #a29bfe; }
+.damage-number.critical { 
+    color: #ffd93d; 
+    font-size: 36px;
+    animation: criticalFloat 1.5s ease-out forwards;
+}
+.damage-number.heal { color: #6bcb77; }
+.damage-number.miss { 
+    color: #636e72; 
+    font-size: 20px;
+    font-style: italic;
+}
+
+@keyframes damageFloat {
+    0% { 
+        opacity: 0; 
+        transform: translateY(0) scale(0.5); 
+    }
+    15% { 
+        opacity: 1; 
+        transform: translateY(-20px) scale(1.2); 
+    }
+    30% { 
+        transform: translateY(-35px) scale(1); 
+    }
+    100% { 
+        opacity: 0; 
+        transform: translateY(-80px) scale(0.8); 
+    }
+}
+
+@keyframes criticalFloat {
+    0% { 
+        opacity: 0; 
+        transform: translateY(0) scale(0.3) rotate(-15deg); 
+    }
+    20% { 
+        opacity: 1; 
+        transform: translateY(-25px) scale(1.5) rotate(5deg); 
+    }
+    40% { 
+        transform: translateY(-40px) scale(1.1) rotate(-3deg); 
+    }
+    100% { 
+        opacity: 0; 
+        transform: translateY(-100px) scale(0.6) rotate(0deg); 
+    }
+}
+
+/* 技能释放特效 */
+.skill-effect-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 50;
+    overflow: hidden;
+}
+
+.skill-effect {
+    position: absolute;
+    pointer-events: none;
+}
+
+.skill-effect.fireball {
+    width: 60px;
+    height: 60px;
+    background: radial-gradient(circle, #fff 0%, #ffd93d 20%, #ff6b35 50%, transparent 70%);
+    border-radius: 50%;
+    box-shadow: 
+        0 0 30px #ff6b35,
+        0 0 60px rgba(255, 107, 53, 0.5);
+    animation: fireballShoot 0.6s ease-out forwards;
+}
+
+@keyframes fireballShoot {
+    0% { 
+        transform: translateX(-100px) scale(0.5); 
+        opacity: 0; 
+    }
+    20% { 
+        opacity: 1; 
+        transform: translateX(0) scale(1); 
+    }
+    100% { 
+        transform: translateX(300px) scale(1.5); 
+        opacity: 0; 
+    }
+}
+
+.skill-effect.icebolt {
+    width: 40px;
+    height: 20px;
+    background: linear-gradient(90deg, transparent, #74b9ff, #fff, #74b9ff, transparent);
+    border-radius: 50%;
+    box-shadow: 0 0 20px #74b9ff;
+    animation: iceboltShoot 0.4s ease-out forwards;
+}
+
+@keyframes iceboltShoot {
+    0% { 
+        transform: translateX(-50px) scaleX(0.5); 
+        opacity: 0; 
+    }
+    30% { 
+        opacity: 1; 
+    }
+    100% { 
+        transform: translateX(350px) scaleX(2); 
+        opacity: 0; 
+    }
+}
+
+.skill-effect.lightning {
+    width: 4px;
+    height: 200px;
+    background: linear-gradient(to bottom, transparent, #ffd93d, #fff, #ffd93d, transparent);
+    box-shadow: 
+        0 0 20px #ffd93d,
+        0 0 40px rgba(255, 217, 61, 0.5);
+    animation: lightningStrike 0.3s ease-out forwards;
+}
+
+@keyframes lightningStrike {
+    0% { 
+        opacity: 0; 
+        transform: scaleY(0); 
+    }
+    20% { 
+        opacity: 1; 
+        transform: scaleY(1); 
+    }
+    100% { 
+        opacity: 0; 
+        transform: scaleY(1.2); 
+    }
+}
+
+.skill-effect.heal {
+    width: 80px;
+    height: 80px;
+    border: 3px solid #6bcb77;
+    border-radius: 50%;
+    box-shadow: 
+        0 0 20px #6bcb77,
+        inset 0 0 20px rgba(107, 203, 119, 0.3);
+    animation: healPulse 0.8s ease-out forwards;
+}
+
+@keyframes healPulse {
+    0% { 
+        transform: scale(0.5); 
+        opacity: 0; 
+    }
+    50% { 
+        transform: scale(1.2); 
+        opacity: 1; 
+    }
+    100% { 
+        transform: scale(1.5); 
+        opacity: 0; 
+    }
+}
+
+.skill-effect.meteor {
+    width: 100px;
+    height: 100px;
+    background: radial-gradient(circle, #fff 0%, #ff6b35 30%, #d63031 60%, transparent 70%);
+    border-radius: 50%;
+    box-shadow: 
+        0 0 50px #ff6b35,
+        0 0 100px rgba(255, 107, 53, 0.5);
+    animation: meteorFall 0.8s ease-in forwards;
+}
+
+@keyframes meteorFall {
+    0% { 
+        transform: translateY(-200px) scale(0.3); 
+        opacity: 0; 
+    }
+    50% { 
+        opacity: 1; 
+    }
+    100% { 
+        transform: translateY(100px) scale(1.5); 
+        opacity: 0; 
+    }
+}
+
+/* 胜利/失败烟花效果 */
+.firework-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2000;
+    overflow: hidden;
+}
+
+.firework {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    animation: fireworkExplode 1.2s ease-out forwards;
+}
+
+@keyframes fireworkExplode {
+    0% { 
+        transform: translate(0, 0) scale(1); 
+        opacity: 1; 
+    }
+    100% { 
+        transform: translate(var(--tx), var(--ty)) scale(0); 
+        opacity: 0; 
+    }
+}
+
+.victory-effect {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 2001;
+    pointer-events: none;
+}
+
+.victory-text {
+    font-size: 48px;
+    font-weight: 900;
+    color: #ffd93d;
+    text-shadow: 
+        0 0 20px #ffd93d,
+        0 0 40px rgba(255, 217, 61, 0.5),
+        0 4px 8px rgba(0, 0, 0, 0.5);
+    animation: victoryPop 1s ease-out forwards;
+}
+
+@keyframes victoryPop {
+    0% { 
+        transform: scale(0) rotate(-10deg); 
+        opacity: 0; 
+    }
+    50% { 
+        transform: scale(1.2) rotate(5deg); 
+    }
+    100% { 
+        transform: scale(1) rotate(0deg); 
+        opacity: 1; 
+    }
+}
+
+.defeat-effect {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 2001;
+    pointer-events: none;
+}
+
+.defeat-text {
+    font-size: 48px;
+    font-weight: 900;
+    color: #ff6b6b;
+    text-shadow: 
+        0 0 20px #ff6b6b,
+        0 0 40px rgba(255, 107, 107, 0.5),
+        0 4px 8px rgba(0, 0, 0, 0.5);
+    animation: defeatDrop 1s ease-out forwards;
+}
+
+@keyframes defeatDrop {
+    0% { 
+        transform: translateY(-100px); 
+        opacity: 0; 
+    }
+    60% { 
+        transform: translateY(20px); 
+    }
+    100% { 
+        transform: translateY(0); 
+        opacity: 1; 
+    }
+}
+
+/* 屏幕闪烁效果 */
+.screen-flash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1999;
+    animation: screenFlash 0.3s ease-out forwards;
+}
+
+.screen-flash.damage {
+    background: rgba(255, 0, 0, 0.3);
+}
+
+.screen-flash.heal {
+    background: rgba(0, 255, 100, 0.2);
+}
+
+.screen-flash.victory {
+    background: rgba(255, 217, 61, 0.3);
+}
+
+@keyframes screenFlash {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* 连击计数器 */
+.combo-counter {
+    position: absolute;
+    top: 20%;
+    right: 10%;
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffd93d;
+    text-shadow: 0 0 10px #ffd93d;
+    animation: comboPulse 0.3s ease-out;
+    pointer-events: none;
+}
+
+@keyframes comboPulse {
+    0% { transform: scale(1.5); }
+    100% { transform: scale(1); }
+}
+
+/* ---- 9. 按钮发光效果 ---- */
+
+.btn-glow {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-glow::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.4s, height 0.4s;
+}
+
+.btn-glow:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+.btn-glow::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.btn-glow:hover::after {
+    opacity: 1;
+    animation: btnShine 1.5s linear infinite;
+}
+
+@keyframes btnShine {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* ---- 10. 进度条美化 ---- */
+
+.bar-enhanced {
+    position: relative;
+    overflow: hidden;
+}
+
+.bar-enhanced::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.2) 50%,
+        transparent 100%
+    );
+    animation: barShimmer 2s linear infinite;
+}
+
+@keyframes barShimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.bar-rainbow {
+    background: linear-gradient(
+        90deg,
+        #ff6b6b 0%,
+        #ffd93d 25%,
+        #6bcb77 50%,
+        #74b9ff 75%,
+        #a29bfe 100%
+    );
+    background-size: 200% 100%;
+    animation: rainbowShift 3s linear infinite;
+}
+
+@keyframes rainbowShift {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+
+/* ---- 响应式适配补充 ---- */
+
+@media (max-width: 768px) {
+    .victory-text, .defeat-text { font-size: 32px; }
+    .damage-number { font-size: 22px; }
+    .damage-number.critical { font-size: 28px; }
+}

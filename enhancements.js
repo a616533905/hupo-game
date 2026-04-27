@@ -312,12 +312,19 @@
                 };
             }
 
-            var origClose = window.closeBattle;
-            if (origClose) {
-                window.closeBattle = function() {
+            var origEnd = window.endBattle;
+            if (origEnd) {
+                window.endBattle = function(victory) {
                     self.active = false;
                     self.clearEffects();
-                    origClose.apply(null, arguments);
+                    if (typeof BattleResultEffects !== 'undefined') {
+                        if (victory) {
+                            BattleResultEffects.showVictoryEffect();
+                        } else {
+                            BattleResultEffects.showDefeatEffect();
+                        }
+                    }
+                    origEnd.apply(null, arguments);
                 };
             }
         },
@@ -985,9 +992,9 @@
         },
 
         hookLevelUp: function() {
-            var origCheck = window.checkLevelUp;
+            var origCheck = window.checkLevel;
             if (origCheck) {
-                window.checkLevelUp = function() {
+                window.checkLevel = function() {
                     var prevLevel = typeof cat !== 'undefined' ? cat.level : 0;
                     origCheck.apply(null, arguments);
                     if (typeof cat !== 'undefined' && cat.level > prevLevel) {
@@ -1001,14 +1008,16 @@
         },
 
         hookAchievements: function() {
-            if (typeof unlockAchievement === 'function') {
-                var orig = window.unlockAchievement;
-                window.unlockAchievement = function(id) {
+            if (typeof checkAch === 'function') {
+                var orig = window.checkAch;
+                window.checkAch = function(id) {
                     if (orig) orig.apply(null, arguments);
                     var achNames = {
                         firstWin: '初次胜利', winStreak3: '三连胜', winStreak10: '十连胜',
                         level5: '成长之路', level10: '冒险新星', level20: '资深战士',
-                        richCat: '小富翁', collector: '收藏家', explorer: '探险家'
+                        richCat: '小富翁', collector: '收藏家', explorer: '探险家',
+                        shopper: '购物达人', first_evo: '初次进化', tower5: '塔楼先锋',
+                        tower10: '塔楼勇士', tower20: '塔楼大师', perfect_battle: '无伤战斗'
                     };
                     UIEffects.showAchievementUnlock(achNames[id] || id, '');
                     ParticleEngine.addExplosion(window.innerWidth / 2, window.innerHeight * 0.3, '#ffd93d', 30);
@@ -1019,22 +1028,19 @@
         hookShopBuy: function() {
             if (typeof buyItem === 'function') {
                 var orig = window.buyItem;
-                window.buyItem = function(item, price) {
+                window.buyItem = function(ty, id) {
                     if (orig) {
-                        var result = orig.apply(null, arguments);
-                        if (result !== false) {
-                            var btn = document.querySelector('[onclick*="buyItem(\'' + item + '\'"]');
-                            if (btn) {
-                                var rect = btn.getBoundingClientRect();
-                                UIEffects.flyCoins(rect.left + rect.width / 2, rect.top, 3);
-                            }
+                        orig.apply(null, arguments);
+                        var btn = document.querySelector('.shop-item[onclick*="buyItem"]');
+                        if (btn) {
+                            var rect = btn.getBoundingClientRect();
+                            UIEffects.flyCoins(rect.left + rect.width / 2, rect.top, 3);
                             ParticleEngine.addExplosion(
-                                rect ? rect.left + rect.width / 2 : window.innerWidth / 2,
-                                rect ? rect.top : window.innerHeight / 2,
+                                rect.left + rect.width / 2,
+                                rect.top,
                                 '#ffd93d', 8
                             );
                         }
-                        return result;
                     }
                 };
             }
@@ -1062,6 +1068,125 @@
     };
 
     /* ============================================
+       战斗结果特效系统
+       ============================================ */
+    var BattleResultEffects = {
+        fireworkColors: ['#ff6b6b', '#ffd93d', '#6bcb77', '#74b9ff', '#a29bfe', '#ff6b9d', '#ffeaa7', '#55efc4'],
+
+        init: function() {
+            console.log('[BattleResultEffects] 战斗结果特效系统已启动');
+        },
+
+        showVictoryEffect: function() {
+            var self = this;
+            this.showScreenFlash('victory');
+            this.showVictoryText();
+            
+            for (var i = 0; i < 5; i++) {
+                (function(delay) {
+                    setTimeout(function() {
+                        self.spawnFirework(
+                            Utils.rand(15, 85),
+                            Utils.rand(20, 60)
+                        );
+                    }, delay * 200);
+                })(i);
+            }
+
+            for (var j = 0; j < 30; j++) {
+                (function(delay) {
+                    setTimeout(function() {
+                        ParticleEngine.addExplosion(
+                            Utils.rand(100, window.innerWidth - 100),
+                            Utils.rand(100, window.innerHeight - 200),
+                            self.fireworkColors[Utils.randInt(0, self.fireworkColors.length - 1)],
+                            Utils.randInt(15, 30)
+                        );
+                    }, delay * 100);
+                })(j);
+            }
+        },
+
+        showDefeatEffect: function() {
+            this.showScreenFlash('damage');
+            this.showDefeatText();
+            
+            for (var i = 0; i < 15; i++) {
+                (function(delay) {
+                    setTimeout(function() {
+                        ParticleEngine.addExplosion(
+                            Utils.rand(100, window.innerWidth - 100),
+                            Utils.rand(150, window.innerHeight - 150),
+                            '#ff6b6b',
+                            Utils.randInt(5, 12)
+                        );
+                    }, delay * 150);
+                })(i);
+            }
+        },
+
+        spawnFirework: function(xPercent, yPercent) {
+            var container = document.createElement('div');
+            container.className = 'firework-container';
+            document.body.appendChild(container);
+
+            var centerX = window.innerWidth * (xPercent / 100);
+            var centerY = window.innerHeight * (yPercent / 100);
+            var color = this.fireworkColors[Utils.randInt(0, this.fireworkColors.length - 1)];
+            var particleCount = Utils.randInt(30, 50);
+
+            for (var i = 0; i < particleCount; i++) {
+                var particle = document.createElement('div');
+                particle.className = 'firework';
+                particle.style.left = centerX + 'px';
+                particle.style.top = centerY + 'px';
+                particle.style.background = color;
+                particle.style.boxShadow = '0 0 6px ' + color;
+
+                var angle = (Math.PI * 2 / particleCount) * i;
+                var distance = Utils.rand(80, 180);
+                particle.style.setProperty('--tx', (Math.cos(angle) * distance) + 'px');
+                particle.style.setProperty('--ty', (Math.sin(angle) * distance) + 'px');
+
+                container.appendChild(particle);
+            }
+
+            setTimeout(function() {
+                if (container.parentNode) container.remove();
+            }, 1500);
+        },
+
+        showVictoryText: function() {
+            var effect = document.createElement('div');
+            effect.className = 'victory-effect';
+            effect.innerHTML = '<div class="victory-text">🎉 胜利! 🎉</div>';
+            document.body.appendChild(effect);
+            setTimeout(function() {
+                if (effect.parentNode) effect.remove();
+            }, 2000);
+        },
+
+        showDefeatText: function() {
+            var effect = document.createElement('div');
+            effect.className = 'defeat-effect';
+            effect.innerHTML = '<div class="defeat-text">💀 失败 💀</div>';
+            document.body.appendChild(effect);
+            setTimeout(function() {
+                if (effect.parentNode) effect.remove();
+            }, 2000);
+        },
+
+        showScreenFlash: function(type) {
+            var flash = document.createElement('div');
+            flash.className = 'screen-flash ' + (type || '');
+            document.body.appendChild(flash);
+            setTimeout(function() {
+                if (flash.parentNode) flash.remove();
+            }, 350);
+        }
+    };
+
+    /* ============================================
        启动入口
        ============================================ */
     function boot() {
@@ -1073,6 +1198,7 @@
             BattleEnhance.init();
             UIEffects.init();
             EventBridge.init();
+            BattleResultEffects.init();
             console.log('[Enhancements v' + VERSION + '] 所有增强模块加载完成 ✓');
         } catch(err) {
             console.error('[Enhancements] 初始化错误:', err);
@@ -1092,7 +1218,8 @@
         BattleEnhance: BattleEnhance,
         UIEffects: UIEffects,
         ParticleEngine: ParticleEngine,
-        SceneParticles: SceneParticles
+        SceneParticles: SceneParticles,
+        BattleResultEffects: BattleResultEffects
     };
 
 })();

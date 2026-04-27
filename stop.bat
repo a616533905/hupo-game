@@ -2,6 +2,7 @@
 setlocal enabledelayedexpansion
 chcp 65001 >nul
 
+REM LINT:IGNORE W028
 set FORCE_STOP=0
 if /i "%~1"=="--force" set FORCE_STOP=1
 
