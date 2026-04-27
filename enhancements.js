@@ -398,13 +398,13 @@
             var rect = container.getBoundingClientRect();
             var cx = rect.width / 2;
             var cy = rect.height * 0.35;
+            var particleCount = 12;
 
-            for (var i = 0; i < 20; i++) {
+            for (var i = 0; i < particleCount; i++) {
                 var p = document.createElement('div');
                 p.className = 'skill-particle ' + type;
-                var angle = (Math.PI * 2 / 20) * i + Utils.rand(-0.3, 0.3);
-                var speed = Utils.rand(3, 8);
-                var dist = Utils.rand(40, 120);
+                var angle = (Math.PI * 2 / particleCount) * i + Utils.rand(-0.3, 0.3);
+                var dist = Utils.rand(40, 100);
                 p.style.left = cx + 'px';
                 p.style.top = cy + 'px';
                 p.style.setProperty('--tx', (Math.cos(angle) * dist) + 'px');
@@ -414,10 +414,10 @@
                     { transform: 'translate(-50%, -50%) scale(0)', opacity: 1 },
                     { transform: 'translate(calc(-50% + ' + (Math.cos(angle) * dist) + 'px), calc(-50% + ' + (Math.sin(angle) * dist) + 'px)) scale(1)', opacity: 1, offset: 0.4 },
                     { transform: 'translate(calc(-50% + ' + (Math.cos(angle) * dist * 1.5) + 'px), calc(-50% + ' + (Math.sin(angle) * dist * 1.5) + 'px)) scale(0)', opacity: 0 }
-                ], { duration: Utils.rand(600, 1000), easing: 'ease-out' });
+                ], { duration: Utils.rand(500, 800), easing: 'ease-out' });
 
                 container.appendChild(p);
-                setTimeout(function() { if (p.parentNode) p.remove(); }, 1100);
+                setTimeout(function(p) { if (p.parentNode) p.remove(); }, 900, p);
             }
         },
 
@@ -623,9 +623,13 @@
         mouseParticles: [],
         sceneParticles: [],
         running: false,
-        maxParticles: 150,
+        maxParticles: 40,
+        maxMouseParticles: 8,
         mouseX: -1000,
         mouseY: -1000,
+        lastMouseTrailTime: 0,
+        lastRenderTime: 0,
+        frameInterval: 50,
 
         init: function() {
             this.createCanvas();
@@ -655,7 +659,11 @@
             document.addEventListener('mousemove', function(e) {
                 self.mouseX = e.clientX;
                 self.mouseY = e.clientY;
-                if (Utils.randInt(1, 3) > 1) self.addMouseTrail(e.clientX, e.clientY);
+                var now = Date.now();
+                if (now - self.lastMouseTrailTime > 80 && self.mouseParticles.length < self.maxMouseParticles) {
+                    self.lastMouseTrailTime = now;
+                    self.addMouseTrail(e.clientX, e.clientY);
+                }
             });
             document.addEventListener('mouseleave', function() {
                 self.mouseX = -1000;
@@ -667,8 +675,14 @@
             var self = this;
             function run() {
                 if (!self.running) return;
-                self.update();
-                self.render();
+                if (!document.hidden) {
+                    var now = Date.now();
+                    if (now - self.lastRenderTime >= self.frameInterval) {
+                        self.lastRenderTime = now;
+                        self.update();
+                        self.render();
+                    }
+                }
                 requestAnimationFrame(run);
             }
             run();
@@ -766,19 +780,19 @@
         },
 
         addExplosion: function(x, y, color, count) {
-            count = count || 25;
+            count = Math.min(count || 12, 15);
             for (var i = 0; i < count; i++) {
                 var angle = (Math.PI * 2 / count) * i + Math.random() * 0.3;
-                var speed = Math.random() * 6 + 2;
+                var speed = Math.random() * 4 + 1.5;
                 this.addParticle(x, y, {
                     vx: Math.cos(angle) * speed,
                     vy: Math.sin(angle) * speed,
                     color: color,
-                    size: Math.random() * 6 + 2,
+                    size: Math.random() * 4 + 1.5,
                     life: 1,
-                    decay: 0.02 + Math.random() * 0.01,
-                    gravity: 0.08,
-                    glow: 8,
+                    decay: 0.025 + Math.random() * 0.01,
+                    gravity: 0.06,
+                    glow: 4,
                     shape: Math.random() > 0.5 ? 'circle' : 'star',
                     points: Math.floor(Math.random() * 3) + 4
                 });
@@ -786,19 +800,19 @@
         },
 
         addMouseTrail: function(x, y) {
-            if (this.mouseParticles.length > 20) return;
+            if (this.mouseParticles.length > this.maxMouseParticles) return;
             var hue = Date.now() % 360;
             this.mouseParticles.push({
                 x: x, y: y,
                 vx: (Math.random() - 0.5) * 1.5,
                 vy: (Math.random() - 0.5) * 1.5 - 0.5,
-                size: Math.random() * 4 + 2,
+                size: Math.random() * 3 + 1,
                 color: 'hsla(' + hue + ', 80%, 65%, ',
-                life: 0.8,
-                decay: 0.03,
-                gravity: -0.03,
-                shrink: 0.96,
-                glow: 6
+                life: 0.6,
+                decay: 0.04,
+                gravity: -0.02,
+                shrink: 0.95,
+                glow: 0
             });
         },
 
@@ -809,26 +823,28 @@
                 var bodyClass = document.body.className;
 
                 if (bodyClass.indexOf('snow') !== -1) {
-                    self.addParticle(
-                        Math.random() * self.canvas.width,
-                        -10,
-                        { vy: Utils.rand(1, 3), vx: Utils.rand(-0.5, 0.5),
-                          size: Utils.rand(2, 5), color: 'rgba(255,255,255,',
-                          life: 1, decay: 0.004, gravity: 0.02, shrink: 0.995,
-                          shape: 'rect', rotation: Math.random() * Math.PI, rotSpeed: 0.02 }
-                    );
+                    if (self.particles.length < self.maxParticles * 0.5) {
+                        self.addParticle(
+                            Math.random() * self.canvas.width,
+                            -10,
+                            { vy: Utils.rand(1, 3), vx: Utils.rand(-0.5, 0.5),
+                              size: Utils.rand(2, 5), color: 'rgba(255,255,255,',
+                              life: 1, decay: 0.004, gravity: 0.02, shrink: 0.995,
+                              shape: 'rect', rotation: Math.random() * Math.PI, rotSpeed: 0.02 }
+                        );
+                    }
                 } else if (bodyClass.indexOf('night') !== -1) {
-                    if (Math.random() > 0.85) {
+                    if (Math.random() > 0.92 && self.particles.length < self.maxParticles * 0.5) {
                         self.addParticle(
                             Math.random() * self.canvas.width,
                             Math.random() * self.canvas.height * 0.7,
                             { vx: Utils.rand(-0.3, 0.3), vy: Utils.rand(-0.5, 0.1),
                               size: Utils.rand(2, 4), color: 'rgba(255,217,61,',
-                              life: 1, decay: 0.008, gravity: -0.02, glow: 10 }
+                              life: 1, decay: 0.008, gravity: -0.02, glow: 6 }
                         );
                     }
                 } else if (bodyClass.indexOf('sunny') !== -1) {
-                    if (Math.random() > 0.9) {
+                    if (Math.random() > 0.95 && self.particles.length < self.maxParticles * 0.5) {
                         self.addParticle(
                             Math.random() * self.canvas.width,
                             self.canvas.height + 10,
@@ -838,7 +854,7 @@
                         );
                     }
                 }
-            }, 200);
+            }, 400);
         },
 
         clear: function() {
@@ -892,6 +908,7 @@
         },
 
         spawnLeaves: function(count) {
+            count = Math.min(count || 5, 5);
             for (var i = 0; i < count; i++) {
                 var leaf = document.createElement('div');
                 leaf.className = 'scene-particle leaf';
@@ -905,6 +922,7 @@
         },
 
         spawnFireflies: function(count) {
+            count = Math.min(count || 6, 6);
             for (var i = 0; i < count; i++) {
                 var ff = document.createElement('div');
                 ff.className = 'scene-particle firefly';
@@ -924,6 +942,7 @@
         },
 
         spawnSnowflakes: function(count) {
+            count = Math.min(count || 10, 10);
             var flakes = ['❄', '❅', '❆', '•'];
             for (var i = 0; i < count; i++) {
                 var sf = document.createElement('div');
@@ -966,12 +985,14 @@
                             setTimeout(function() {
                                 BattleEnhance.showDamagePopup(dmg, type === 'critical', false, false);
                                 BattleEnhance.playEnemyHit();
-                                ParticleEngine.addExplosion(
-                                    (window.innerWidth / 2) + Utils.rand(-30, 30),
-                                    (window.innerHeight * 0.35) + Utils.rand(-20, 20),
-                                    type === 'critical' ? '#ffd93d' : '#ff6b6b',
-                                    type === 'critical' ? 15 : 8
-                                );
+                                if (ParticleEngine.particles.length < ParticleEngine.maxParticles * 0.7) {
+                                    ParticleEngine.addExplosion(
+                                        (window.innerWidth / 2) + Utils.rand(-15, 15),
+                                        (window.innerHeight * 0.35) + Utils.rand(-8, 8),
+                                        type === 'critical' ? '#ffd93d' : '#ff6b6b',
+                                        type === 'critical' ? 5 : 3
+                                    );
+                                }
                             }, 200);
                         }
                     } else if (type === 'heal') {
@@ -979,11 +1000,13 @@
                         if (healMatch) {
                             setTimeout(function() {
                                 BattleEnhance.showDamagePopup(parseInt(healMatch[1]), false, true, false);
-                                ParticleEngine.addExplosion(
-                                    (window.innerWidth / 2) + Utils.rand(-20, 20),
-                                    (window.innerHeight * 0.35) + Utils.rand(-10, 10),
-                                    '#6bcb77', 10
-                                );
+                                if (ParticleEngine.particles.length < ParticleEngine.maxParticles * 0.7) {
+                                    ParticleEngine.addExplosion(
+                                        (window.innerWidth / 2) + Utils.rand(-10, 10),
+                                        (window.innerHeight * 0.35) + Utils.rand(-6, 6),
+                                        '#6bcb77', 3
+                                    );
+                                }
                             }, 200);
                         }
                     }
@@ -1001,7 +1024,9 @@
                         UIEffects.showLevelUpBurst();
                         CharacterEnhance.setMood('excited', 4000);
                         CharacterEnhance.playEvolutionGlow();
-                        ParticleEngine.addExplosion(window.innerWidth / 2, window.innerHeight / 2, '#ffd93d', 40);
+                        if (ParticleEngine.particles.length < ParticleEngine.maxParticles * 0.7) {
+                            ParticleEngine.addExplosion(window.innerWidth / 2, window.innerHeight / 2, '#ffd93d', 10);
+                        }
                     }
                 };
             }
@@ -1020,7 +1045,7 @@
                         tower10: '塔楼勇士', tower20: '塔楼大师', perfect_battle: '无伤战斗'
                     };
                     UIEffects.showAchievementUnlock(achNames[id] || id, '');
-                    ParticleEngine.addExplosion(window.innerWidth / 2, window.innerHeight * 0.3, '#ffd93d', 30);
+                    ParticleEngine.addExplosion(window.innerWidth / 2, window.innerHeight * 0.3, '#ffd93d', 15);
                 };
             }
         },
@@ -1038,7 +1063,7 @@
                             ParticleEngine.addExplosion(
                                 rect.left + rect.width / 2,
                                 rect.top,
-                                '#ffd93d', 8
+                                '#ffd93d', 5
                             );
                         }
                     }
@@ -1081,28 +1106,28 @@
             var self = this;
             this.showScreenFlash('victory');
             this.showVictoryText();
-            
-            for (var i = 0; i < 5; i++) {
+
+            for (var i = 0; i < 2; i++) {
                 (function(delay) {
                     setTimeout(function() {
                         self.spawnFirework(
-                            Utils.rand(15, 85),
-                            Utils.rand(20, 60)
+                            Utils.rand(20, 80),
+                            Utils.rand(25, 55)
                         );
-                    }, delay * 200);
+                    }, delay * 400);
                 })(i);
             }
 
-            for (var j = 0; j < 30; j++) {
+            for (var j = 0; j < 3; j++) {
                 (function(delay) {
                     setTimeout(function() {
                         ParticleEngine.addExplosion(
-                            Utils.rand(100, window.innerWidth - 100),
-                            Utils.rand(100, window.innerHeight - 200),
+                            Utils.rand(150, window.innerWidth - 150),
+                            Utils.rand(150, window.innerHeight - 250),
                             self.fireworkColors[Utils.randInt(0, self.fireworkColors.length - 1)],
-                            Utils.randInt(15, 30)
+                            Utils.randInt(6, 10)
                         );
-                    }, delay * 100);
+                    }, delay * 300);
                 })(j);
             }
         },
@@ -1110,17 +1135,17 @@
         showDefeatEffect: function() {
             this.showScreenFlash('damage');
             this.showDefeatText();
-            
-            for (var i = 0; i < 15; i++) {
+
+            for (var i = 0; i < 4; i++) {
                 (function(delay) {
                     setTimeout(function() {
                         ParticleEngine.addExplosion(
-                            Utils.rand(100, window.innerWidth - 100),
-                            Utils.rand(150, window.innerHeight - 150),
+                            Utils.rand(150, window.innerWidth - 150),
+                            Utils.rand(200, window.innerHeight - 200),
                             '#ff6b6b',
-                            Utils.randInt(5, 12)
+                            Utils.randInt(4, 6)
                         );
-                    }, delay * 150);
+                    }, delay * 300);
                 })(i);
             }
         },
@@ -1133,7 +1158,7 @@
             var centerX = window.innerWidth * (xPercent / 100);
             var centerY = window.innerHeight * (yPercent / 100);
             var color = this.fireworkColors[Utils.randInt(0, this.fireworkColors.length - 1)];
-            var particleCount = Utils.randInt(30, 50);
+            var particleCount = Utils.randInt(12, 18);
 
             for (var i = 0; i < particleCount; i++) {
                 var particle = document.createElement('div');
@@ -1141,10 +1166,10 @@
                 particle.style.left = centerX + 'px';
                 particle.style.top = centerY + 'px';
                 particle.style.background = color;
-                particle.style.boxShadow = '0 0 6px ' + color;
+                particle.style.boxShadow = '0 0 3px ' + color;
 
                 var angle = (Math.PI * 2 / particleCount) * i;
-                var distance = Utils.rand(80, 180);
+                var distance = Utils.rand(40, 90);
                 particle.style.setProperty('--tx', (Math.cos(angle) * distance) + 'px');
                 particle.style.setProperty('--ty', (Math.sin(angle) * distance) + 'px');
 
@@ -1153,7 +1178,7 @@
 
             setTimeout(function() {
                 if (container.parentNode) container.remove();
-            }, 1500);
+            }, 1200);
         },
 
         showVictoryText: function() {
