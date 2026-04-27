@@ -838,7 +838,13 @@ body.snow .snowfall{display:block}
 </div>
 <div class="music-info">当前: 自动</div>
 <hr style="border-color:rgba(255,255,255,0.1);margin:15px 0">
-<h4>🐱 语音模式</h4>
+<h4>🔊 自动朗读</h4>
+<div class="speak-mode">
+<button class="speak-mode-btn active" id="autoSpeakOnBtn" onclick="setAutoSpeak(true)">🔊 开启</button>
+<button class="speak-mode-btn" id="autoSpeakOffBtn" onclick="setAutoSpeak(false)">🔇 关闭</button>
+</div>
+<hr style="border-color:rgba(255,255,255,0.1);margin:15px 0">
+<h4>🗣️ 语音模式</h4>
 <div class="speak-mode">
 <button class="speak-mode-btn" data-mode="tts" onclick="setSpeakMode('tts')">🗣️ 系统</button>
 <button class="speak-mode-btn active" data-mode="edge" onclick="setSpeakMode('edge')">🌐 Edge</button>
@@ -864,7 +870,6 @@ body.snow .snowfall{display:block}
 <input type="text" id="messageInput" placeholder="和琥珀聊天或下达指令..." autofocus aria-label="聊天输入框">
 <button class="voice-btn" id="voiceBtn" onclick="initAudio();playSound('click');toggleVoice()" aria-label="语音输入">🎤</button>
 <button class="voice-btn" id="continuousVoiceBtn" onclick="toggleContinuousVoice()" title="连续语音模式（适合小朋友）" style="background:linear-gradient(135deg,#3498db,#2980b9)" aria-label="连续语音模式">🎤 连续</button>
-<button class="voice-btn" id="autoSpeakBtn" onclick="toggleAutoSpeak()" title="自动朗读开关" aria-label="自动朗读开关">🔊</button>
 <button onclick="initAudio();sendMessage()" aria-label="发送消息">发送</button>
 </div>
 <div class="chat-history" id="chatHistory">
@@ -6059,13 +6064,18 @@ const edgeVoices={
 };
 function toggleAutoSpeak(){
     autoSpeak=!autoSpeak;
-    const btn=document.getElementById('autoSpeakBtn');
-    if(autoSpeak){
-        btn.innerHTML='🔊';
-        btn.title='自动朗读已开启';
-    }else{
-        btn.innerHTML='🔇';
-        btn.title='自动朗读已关闭';
+    updateAutoSpeakUI();
+}
+function setAutoSpeak(enabled){
+    autoSpeak=enabled;
+    updateAutoSpeakUI();
+}
+function updateAutoSpeakUI(){
+    const onBtn=document.getElementById('autoSpeakOnBtn');
+    const offBtn=document.getElementById('autoSpeakOffBtn');
+    if(onBtn&&offBtn){
+        onBtn.classList.toggle('active',autoSpeak);
+        offBtn.classList.toggle('active',!autoSpeak);
     }
 }
 function setSpeakMode(mode){
