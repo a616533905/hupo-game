@@ -44,6 +44,9 @@ echo.
 
 cd /d "%~dp0"
 
+echo Setting runtime mode to local...
+powershell -Command "$c = Get-Content config.json | ConvertFrom-Json; $c.runtime_mode = 'local'; $c | ConvertTo-Json -Depth 10 | Set-Content config.json" 2>nul
+
 echo [1/6] Loading configuration...
 for /f "tokens=*" %%a in ('powershell -Command "Get-Content config.json | ConvertFrom-Json | Select-Object -ExpandProperty runtime_mode"') do set RUNTIME_MODE=%%a
 

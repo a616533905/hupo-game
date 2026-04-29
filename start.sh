@@ -3,6 +3,10 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
+if [ -f "config.json" ]; then
+    python3 -c "import json; c=json.load(open('config.json')); c['runtime_mode']='server'; json.dump(c,open('config.json','w'),indent=4)" 2>/dev/null
+fi
+
 RUN_DAEMON=1
 
 USE_HTTPS=0
