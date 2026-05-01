@@ -3697,7 +3697,13 @@ function endBattle(victory){
             towerState.currentFloor=Math.max(1,towerState.currentFloor-1);
             addMessage(`💔 挑战失败！当前第${towerState.currentFloor}层，剩余${towerState.attempts}次挑战机会`,'bot');
         }
+        if(battleState.playerBuffs){
+            battleState.playerBuffs.forEach(b=>{
+                cat[b.stat]=Math.max(0,(cat[b.stat]||0)-b.value);
+            });
+        }
         battleState=null;
+        updateUI();
         saveGame();
         setTimeout(()=>openTower(),500);
         return;
@@ -3812,14 +3818,14 @@ function endBattle(victory){
         showEvent('💀 战败','战斗失败...琥珀需要休息一下');
         generateAIResponse('我在战斗中输了，有点难过',['呜呜...下次一定能赢！😿','喵...我输了...','好累...需要休息一下','下次我会更强的！']).then(msg=>addMessage(msg,'bot'));
     }
-    updateUI();
-    saveGame();
     if(battleState&&battleState.playerBuffs){
         battleState.playerBuffs.forEach(b=>{
             cat[b.stat]=Math.max(0,(cat[b.stat]||0)-b.value);
         });
     }
     battleState=null;
+    updateUI();
+    saveGame();
     if(musicSystem.isPlaying&&musicSystem.currentMode==='auto'){
         musicSystem.updateMusic();
     }
@@ -3867,9 +3873,14 @@ function endArenaBattleFromUI(victory){
         addMessage(`💔 竞技场被${op.name}击败...损失入场费${entryFee}💰！`,'bot');
         showEvent('💀 战败',`被${op.name}击败...\n损失入场费: ${entryFee}💰`);
     }
+    if(battleState.playerBuffs){
+        battleState.playerBuffs.forEach(b=>{
+            cat[b.stat]=Math.max(0,(cat[b.stat]||0)-b.value);
+        });
+    }
+    battleState=null;
     updateUI();
     saveGame();
-    battleState=null;
 }
 function endStoryBattleFromUI(victory){
     const bs=battleState;
@@ -3882,6 +3893,7 @@ function endStoryBattleFromUI(victory){
             setTimeout(()=>{
                 startNextMultiBattle();
             },1000);
+            return;
         }else{
             if(bs.isMultiBattle){
                 addMessage(`🎉 车轮战全部完成！太厉害了！`,'bot');
@@ -3896,6 +3908,12 @@ function endStoryBattleFromUI(victory){
                     addMessage(`🎁 获得额外奖励！`,'bot');
                 }
                 if(scene.ending){
+                    if(battleState.playerBuffs){
+                        battleState.playerBuffs.forEach(b=>{
+                            cat[b.stat]=Math.max(0,(cat[b.stat]||0)-b.value);
+                        });
+                    }
+                    battleState=null;
                     completeStoryEnding(scene.ending);
                     return;
                 }
@@ -3915,9 +3933,14 @@ function endStoryBattleFromUI(victory){
             addMessage(`💔 被击败了...再试一次！`,'bot');
             currentStoryState.sceneIndex--;
         }
-        battleState=null;
         setTimeout(()=>renderStoryScene(),500);
     }
+    if(battleState.playerBuffs){
+        battleState.playerBuffs.forEach(b=>{
+            cat[b.stat]=Math.max(0,(cat[b.stat]||0)-b.value);
+        });
+    }
+    battleState=null;
     updateUI();
     saveGame();
 }
@@ -4226,7 +4249,7 @@ function checkAch(id){
             playSound('victory');
         }
         showEvent('🏆 成就解锁！','解锁: '+ach?.n+(rewardText?`\n奖励: ${rewardText}`:''));
-        saveGame();
+        saveGame(true);
     }
 }
 function openSkillTree(){

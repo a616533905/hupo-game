@@ -274,23 +274,6 @@ body.night .fog-layer {
     to { background-position: 200% 0%; }
 }
 
-.day-night-indicator {
-    position: fixed;
-    top: 15px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 20px;
-    z-index: calc(var(--z-top) - 1);
-    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
-    animation: dayNightFloat 4s ease-in-out infinite;
-    pointer-events: none;
-}
-
-@keyframes dayNightFloat {
-    0%, 100% { transform: translateX(-50%) translateY(0); }
-    50% { transform: translateX(-50%) translateY(-5px); }
-}
-
 /* ---- 3. 战斗画面增强 ---- */
 
 .battle-screen.enhanced {

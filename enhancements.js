@@ -164,7 +164,6 @@
             this.createCloudLayer();
             this.createGlowOverlay();
             this.createFogLayer();
-            this.createDayNightIndicator();
             this.bindMouseEvents();
             console.log('[SceneDepth] 场景深度系统已启动');
         },
@@ -213,28 +212,6 @@
             var fog = document.createElement('div');
             fog.className = 'fog-layer';
             document.body.appendChild(fog);
-        },
-
-        createDayNightIndicator: function() {
-            var indicator = document.createElement('div');
-            indicator.className = 'day-night-indicator';
-            indicator.id = 'dayNightIndicator';
-            this.updateIndicator(indicator);
-            document.body.appendChild(indicator);
-            var self = this;
-            setInterval(function() { self.updateIndicator(indicator); }, 60000);
-        },
-
-        updateIndicator: function(el) {
-            if (!el) return;
-            var hour = new Date().getHours();
-            var icon, text;
-            if (hour >= 6 && hour < 12) { icon = '☀️'; text = '上午'; }
-            else if (hour >= 12 && hour < 18) { icon = '🌤️'; text = '下午'; }
-            else if (hour >= 18 && hour < 21) { icon = '🌅'; text = '傍晚'; }
-            else { icon = '🌙'; text = '夜晚'; }
-            el.textContent = icon + ' ' + text;
-            el.title = text;
         },
 
         bindMouseEvents: function() {
@@ -1220,6 +1197,7 @@
         starsContainer: null,
         currentPhase: '',
         checkInterval: null,
+        savedWeather: null,
 
         phases: {
             dawn: { start: 5, end: 7, label: '🌅 黎明', weather: 'sunny' },
@@ -1286,6 +1264,7 @@
         update: function() {
             var phase = this.getPhase();
             if (phase === this.currentPhase) return;
+            var prevPhase = this.currentPhase;
             this.currentPhase = phase;
 
             this.overlay.className = 'daynight-overlay ' + phase;
@@ -1301,7 +1280,14 @@
 
             if (typeof weather !== 'undefined' && typeof setWeather === 'function') {
                 if (phase === 'night' && weather !== 'night') {
+                    this.savedWeather = weather;
                     setWeather('night', 0);
+                } else if (phase !== 'night' && prevPhase === 'night') {
+                    var restore = this.savedWeather || 'sunny';
+                    if (weather === 'night') {
+                        setWeather(restore, 0);
+                    }
+                    this.savedWeather = null;
                 }
             }
 

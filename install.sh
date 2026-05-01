@@ -13,7 +13,7 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-echo "[1/10] 检查依赖..."
+echo "[1/13] 检查依赖..."
 if ! command -v python3 &> /dev/null; then
     echo "正在安装 Python3..."
     apt-get update
@@ -26,7 +26,7 @@ if ! command -v node &> /dev/null; then
     apt-get install -y nodejs
 fi
 
-echo "[2/10] 安装 Python 依赖..."
+echo "[2/13] 安装 Python 依赖..."
 if command -v pip3 &> /dev/null; then
     pip3 install psutil --break-system-packages 2>/dev/null || pip3 install psutil
 elif command -v pip &> /dev/null; then
@@ -36,12 +36,12 @@ else
     apt-get install -y python3-psutil
 fi
 
-echo "[3/10] 创建安装目录..."
+echo "[3/13] 创建安装目录..."
 mkdir -p $INSTALL_DIR
 mkdir -p $INSTALL_DIR/logs
 mkdir -p $INSTALL_DIR/data
 
-echo "[4/10] 复制文件..."
+echo "[4/13] 复制文件..."
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ "$SCRIPT_DIR" != "$INSTALL_DIR" ]; then
     cp -r $SCRIPT_DIR/* $INSTALL_DIR/
@@ -49,14 +49,14 @@ else
     echo "  已在安装目录，跳过复制"
 fi
 
-echo "[5/10] 安装 Systemd 服务..."
+echo "[5/13] 安装 Systemd 服务..."
 cp $INSTALL_DIR/hupo-bridge.service /etc/systemd/system/
 cp $INSTALL_DIR/hupo-voice.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable hupo-bridge
 systemctl enable hupo-voice
 
-echo "[6/10] 设置权限..."
+echo "[6/13] 设置权限..."
 chmod +x $INSTALL_DIR/start.sh
 chmod +x $INSTALL_DIR/stop.sh
 chmod +x $INSTALL_DIR/install.sh
@@ -122,7 +122,7 @@ EOF
     echo "  已生成 config.env (默认配置)"
 fi
 
-echo "[7/10] 初始化 SOAR 数据文件..."
+echo "[7/13] 初始化 SOAR 数据文件..."
 if [ ! -f "$INSTALL_DIR/data/blacklist.json" ]; then
     python3 -c "import json; json.dump({'permanent':[]}, open('$INSTALL_DIR/data/blacklist.json','w'))"
     echo "  已创建 blacklist.json"
@@ -172,7 +172,7 @@ echo "  初始化审计基线..."
 /usr/bin/python3 $INSTALL_DIR/cron/log_auditor.py init
 echo "  配置文件校验和已初始化"
 
-echo "[8/10] 配置定时任务 (Cron)..."
+echo "[8/13] 配置定时任务 (Cron)..."
 CRON_DIR="$INSTALL_DIR/cron"
 
 CRON_HEALTH="*/5 * * * * $CRON_DIR/health_check.sh >> $INSTALL_DIR/logs/health_check.log 2>&1"
@@ -371,7 +371,107 @@ SOAR_EOF
 chmod +x /usr/local/bin/soar
 
 echo ""
-echo "[10/10] 恢复防火墙规则..."
+echo "[10/13] 配置 Fail2ban..."
+if command -v fail2ban-server &> /dev/null || [ -f /etc/fail2ban/jail.conf ]; then
+    echo "  Fail2ban 已安装，配置规则..."
+else
+    echo "  正在安装 Fail2ban..."
+    apt-get install -y fail2ban
+fi
+
+mkdir -p /etc/fail2ban/jail.d
+cat > /etc/fail2ban/jail.d/hupo-game.conf << 'F2B_EOF'
+[hupo-game]
+enabled = true
+port = 80,443,85
+filter = hupo-game
+logpath = /root/hupo-game/logs/bridge.log
+maxretry = 5
+findtime = 600
+bantime = 3600
+action = iptables-multiport[name=hupo, port="80,443,85", protocol=tcp]
+F2B_EOF
+
+cat > /etc/fail2ban/filter.d/hupo-game.conf << 'F2B_FILTER_EOF'
+[Definition]
+failregex = ^.*Attack detected from <HOST>.*$
+            ^.*Rate limit exceeded for <HOST>.*$
+            ^.*Suspicious request from <HOST>.*$
+ignoreregex =
+F2B_FILTER_EOF
+
+systemctl enable fail2ban
+systemctl restart fail2ban
+echo "  Fail2ban 配置完成"
+
+echo ""
+echo "[11/13] Sysctl 内核加固..."
+SYSCTL_FILE="/etc/sysctl.d/99-hupo-game.conf"
+cat > "$SYSCTL_FILE" << 'SYSCTL_EOF'
+# 网络安全加固
+net.ipv4.tcp_syncookies = 1
+net.ipv4.tcp_max_syn_backlog = 2048
+net.ipv4.tcp_synack_retries = 2
+net.ipv4.tcp_keepalive_time = 600
+net.ipv4.tcp_keepalive_intvl = 30
+net.ipv4.tcp_keepalive_probes = 5
+net.ipv4.conf.default.rp_filter = 1
+net.ipv4.conf.all.rp_filter = 1
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+net.ipv4.icmp_ignore_bogus_error_responses = 1
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.default.accept_redirects = 0
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.default.send_redirects = 0
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv4.conf.default.accept_source_route = 0
+
+# 防止 IP 欺骗
+net.ipv4.conf.all.log_martians = 1
+net.ipv4.conf.default.log_martians = 1
+
+# 限制连接
+net.ipv4.tcp_fin_timeout = 15
+net.ipv4.tcp_max_tw_buckets = 1440000
+net.ipv4.tcp_tw_reuse = 1
+net.core.somaxconn = 65535
+net.core.netdev_max_backlog = 65535
+net.ipv4.tcp_max_orphans = 60000
+
+# 文件描述符
+fs.file-max = 1048576
+SYSCTL_EOF
+
+sysctl -p "$SYSCTL_FILE" 2>/dev/null
+echo "  Sysctl 内核参数已加固"
+
+echo ""
+echo "[12/13] 配置 UFW 防火墙..."
+if ! command -v ufw &> /dev/null; then
+    echo "  正在安装 UFW..."
+    apt-get install -y ufw
+fi
+
+# 设置默认策略
+ufw default deny incoming
+ufw default allow outgoing
+
+# 允许 SSH
+ufw allow 22/tcp
+
+# 允许游戏端口
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw allow 85/tcp
+
+# 启用 UFW (非交互模式)
+echo "y" | ufw enable
+
+echo "  UFW 防火墙已配置"
+ufw status
+
+echo ""
+echo "[13/13] 恢复防火墙规则..."
 /usr/bin/python3 $INSTALL_DIR/cron/log_auditor.py restore
 echo "  防火墙规则已恢复"
 

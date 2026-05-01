@@ -1,16 +1,16 @@
 @echo off
 setlocal enabledelayedexpansion
 
-if not exist "secrets\server.ini" (
-    echo Error: secrets\server.ini not found
+if not exist "secrets_no_upload\server.ini" (
+    echo Error: secrets_no_upload\server.ini not found
     pause
     exit /b 1
 )
 
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "host" secrets\server.ini ^| findstr /v "\["') do set "SERVER_IP=%%b"
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "user" secrets\server.ini ^| findstr /v "\["') do set "SERVER_USER=%%b"
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "port" secrets\server.ini ^| findstr /v "\["') do set "SERVER_PORT=%%b"
-for /f "tokens=1,2 delims== " %%a in ('findstr /i "dir" secrets\server.ini ^| findstr /v "\["') do set "SERVER_DIR=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "host" secrets_no_upload\server.ini ^| findstr /v "\["') do set "SERVER_IP=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "user" secrets_no_upload\server.ini ^| findstr /v "\["') do set "SERVER_USER=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "port" secrets_no_upload\server.ini ^| findstr /v "\["') do set "SERVER_PORT=%%b"
+for /f "tokens=1,2 delims== " %%a in ('findstr /i "dir" secrets_no_upload\server.ini ^| findstr /v "\["') do set "SERVER_DIR=%%b"
 
 if not defined SERVER_PORT set SERVER_PORT=22
 if not defined SERVER_DIR set SERVER_DIR=/root/hupo-game
@@ -64,15 +64,15 @@ if exist "config.json" (
 
 echo.
 echo Deploying SSL certificates...
-if exist "secrets\key.pem" (
+if exist "secrets_no_upload\key.pem" (
     echo [Copying] key.pem
-    scp -P %SERVER_PORT% "secrets\key.pem" %SERVER_USER%@%SERVER_IP%:%SERVER_DIR%/key.pem
+    scp -P %SERVER_PORT% "secrets_no_upload\key.pem" %SERVER_USER%@%SERVER_IP%:%SERVER_DIR%/key.pem
 ) else (
     echo [Skip] key.pem not found
 )
-if exist "secrets\cert.pem" (
+if exist "secrets_no_upload\cert.pem" (
     echo [Copying] cert.pem
-    scp -P %SERVER_PORT% "secrets\cert.pem" %SERVER_USER%@%SERVER_IP%:%SERVER_DIR%/cert.pem
+    scp -P %SERVER_PORT% "secrets_no_upload\cert.pem" %SERVER_USER%@%SERVER_IP%:%SERVER_DIR%/cert.pem
 ) else (
     echo [Skip] cert.pem not found
 )

@@ -11,7 +11,7 @@ server_account.txt
 # SSL 证书和私钥
 *.pem
 !cert.example.pem
-secrets/
+secrets_no_upload/
 
 # 临时文件
 *.tmp

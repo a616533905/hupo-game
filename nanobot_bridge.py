@@ -137,7 +137,19 @@ RATE_LIMIT_MAX_REQUESTS = 100
 RATE_LIMIT_CHAT_MAX = 30
 RATE_LIMIT_CHAT_WINDOW = 60
 MAX_CONTENT_LENGTH = 10 * 1024 * 1024
+MAX_CHAT_MESSAGE_LENGTH = 5000
+MAX_TTS_TEXT_LENGTH = 2000
+MAX_ASR_AUDIO_SIZE = 5 * 1024 * 1024
 HTTP_TIMEOUT = 30
+
+SECURITY_HEADERS = {
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(self), geolocation=()',
+}
+
 rate_limit_data = {}
 chat_rate_limit_data = {}
 rate_limit_lock = threading.Lock()
@@ -594,6 +606,44 @@ if USE_HTTPS:
     PORT = int(os.environ.get('API_PORT')) if os.environ.get('API_PORT') else server_config.get('https_port', 443)
 else:
     PORT = int(os.environ.get('API_PORT')) if os.environ.get('API_PORT') else server_config.get('http_port', 80)
+
+CORS_ALLOWED_ORIGINS = []
+_cors_origins_str = os.environ.get('CORS_ORIGINS', config.get('cors_origins', ''))
+if _cors_origins_str:
+    CORS_ALLOWED_ORIGINS = [o.strip().rstrip('/') for o in _cors_origins_str.split(',') if o.strip()]
+if not CORS_ALLOWED_ORIGINS:
+    _server_host = server_config.get('host', '')
+    _remote_host = server_config.get('remote_host', '')
+    if _server_host and _server_host != 'localhost' and _server_host != '0.0.0.0':
+        CORS_ALLOWED_ORIGINS.append(f'http://{_server_host}')
+        CORS_ALLOWED_ORIGINS.append(f'https://{_server_host}')
+    if _remote_host:
+        _rh = _remote_host.rstrip('/')
+        if _rh.startswith('http://') or _rh.startswith('https://'):
+            CORS_ALLOWED_ORIGINS.append(_rh)
+            if _rh.startswith('http://'):
+                CORS_ALLOWED_ORIGINS.append(_rh.replace('http://', 'https://'))
+        else:
+            CORS_ALLOWED_ORIGINS.append(f'http://{_rh}')
+            CORS_ALLOWED_ORIGINS.append(f'https://{_rh}')
+    if HTTPS_DOMAIN:
+        CORS_ALLOWED_ORIGINS.append(f'https://{HTTPS_DOMAIN}')
+    CORS_ALLOWED_ORIGINS.append('http://localhost')
+    CORS_ALLOWED_ORIGINS.append('http://127.0.0.1')
+    CORS_ALLOWED_ORIGINS = list(set(CORS_ALLOWED_ORIGINS))
+
+def get_cors_origin(request_headers):
+    origin = request_headers.get('Origin', '')
+    if not origin:
+        return ''
+    if not CORS_ALLOWED_ORIGINS:
+        return origin
+    if origin in CORS_ALLOWED_ORIGINS:
+        return origin
+    for allowed in CORS_ALLOWED_ORIGINS:
+        if allowed.endswith('*') and origin.startswith(allowed[:-1]):
+            return origin
+    return ''
 
 def get_provider_config(provider_name):
     """获取指定提供者的配置"""
@@ -1331,6 +1381,20 @@ class NanobotHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
+    def send_security_headers(self, content_type=None, cors=True):
+        if content_type:
+            self.send_header("Content-Type", content_type)
+        for header, value in SECURITY_HEADERS.items():
+            self.send_header(header, value)
+        if cors:
+            origin = get_cors_origin(self.headers)
+            if origin:
+                self.send_header('Access-Control-Allow-Origin', origin)
+                self.send_header('Access-Control-Allow-Credentials', 'true')
+            self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+            self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+            self.send_header('Vary', 'Origin')
+
     def check_token(self):
         token_required = config.get('token_required', 'no')
         if token_required != 'yes':
@@ -1363,15 +1427,13 @@ class NanobotHandler(BaseHTTPRequestHandler):
 
     def send_login_page(self):
         self.send_response(200)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_security_headers("text/html; charset=utf-8", cors=False)
         self.end_headers()
         self.wfile.write(LOGIN_PAGE.encode('utf-8'))
 
     def do_OPTIONS(self):
         self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_security_headers(cors=True)
         self.end_headers()
 
     def do_POST(self):
@@ -1380,7 +1442,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
         
         if waf_is_blacklisted(client_ip):
             self.send_response(403)
-            self.send_header('Content-Type', 'text/plain')
+            self.send_security_headers('text/plain', cors=False)
             self.end_headers()
             self.wfile.write(b'Forbidden')
             return
@@ -1388,7 +1450,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
         blocked, reason = waf_check_request(client_ip, self.path, self.headers)
         if blocked:
             self.send_response(403)
-            self.send_header('Content-Type', 'text/plain')
+            self.send_security_headers('text/plain', cors=False)
             self.end_headers()
             self.wfile.write(b'Forbidden')
             return
@@ -1397,8 +1459,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
             logger.warning(f"[{client_ip}] 请求频率超限")
             increment_metric('requests_error')
             self.send_response(429)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_security_headers("application/json; charset=utf-8")
             self.end_headers()
             self.wfile.write(json.dumps({"error": "Too Many Requests", "message": "请求频率超限，请稍后再试"}).encode('utf-8'))
             return
@@ -1412,8 +1473,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     logger.warning(f"[{client_ip}] POST /chat - 请求频率超限")
                     increment_metric('requests_error')
                     self.send_response(429)
-                    self.send_header("Content-Type", "application/json; charset=utf-8")
-                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_security_headers("application/json; charset=utf-8")
                     self.end_headers()
                     self.wfile.write(json.dumps({"error": "Too Many Requests", "message": "聊天请求过于频繁，请稍后再试"}).encode('utf-8'))
                     return
@@ -1424,8 +1484,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     logger.warning(f"[{client_ip}] POST /chat - 空请求体")
                     increment_metric('requests_error')
                     self.send_response(400)
-                    self.send_header("Content-Type", "application/json; charset=utf-8")
-                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_security_headers("application/json; charset=utf-8")
                     self.end_headers()
                     self.wfile.write(json.dumps({"error": "Bad Request", "message": "请求体不能为空"}).encode('utf-8'))
                     return
@@ -1433,8 +1492,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 if content_length > MAX_CONTENT_LENGTH:
                     logger.warning(f"[{client_ip}] POST / - 请求体过大: {content_length}")
                     self.send_response(413)
-                    self.send_header("Content-Type", "application/json; charset=utf-8")
-                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_security_headers("application/json; charset=utf-8")
                     self.end_headers()
                     self.wfile.write(b'{"error": "Request entity too large"}')
                     return
@@ -1452,8 +1510,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                             ban_status = record_login_failure(client_ip, "web_token")
                             increment_metric('requests_error')
                             self.send_response(401)
-                            self.send_header("Content-Type", "application/json; charset=utf-8")
-                            self.send_header('Access-Control-Allow-Origin', '*')
+                            self.send_security_headers("application/json; charset=utf-8")
                             self.end_headers()
                             error_msg = "Unauthorized: invalid token"
                             if ban_status == 'permanent':
@@ -1470,16 +1527,23 @@ class NanobotHandler(BaseHTTPRequestHandler):
 
                     if not message:
                         self.send_response(400)
+                        self.send_security_headers("application/json; charset=utf-8")
                         self.end_headers()
                         self.wfile.write(b'{"error": "No message provided"}')
+                        return
+
+                    if len(message) > MAX_CHAT_MESSAGE_LENGTH:
+                        self.send_response(413)
+                        self.send_security_headers("application/json; charset=utf-8")
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"error": "Message too long", "max_length": MAX_CHAT_MESSAGE_LENGTH}).encode('utf-8'))
                         return
 
                     logger.info(f"[{client_ip}] POST /chat - provider={provider or 'default'}, msg_len={len(message)}")
                     response = call_api(message, provider, model, ollama_host)
 
                     self.send_response(200)
-                    self.send_header("Content-Type", "application/json; charset=utf-8")
-                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_security_headers("application/json; charset=utf-8")
                     self.end_headers()
                     self.wfile.write(json.dumps({"response": response}, ensure_ascii=False).encode('utf-8'))
                     increment_metric('requests_success')
@@ -1488,7 +1552,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     logger.error(f"[{client_ip}] POST /chat 错误: {str(e)}")
                     increment_metric('requests_error')
                     self.send_response(500)
-                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_security_headers("application/json; charset=utf-8")
                     self.end_headers()
                     self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
             elif self.path == "/tts":
@@ -1497,8 +1561,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 if content_length > MAX_CONTENT_LENGTH:
                     logger.warning(f"[{client_ip}] POST /tts - 请求体过大: {content_length}")
                     self.send_response(413)
-                    self.send_header("Content-Type", "application/json; charset=utf-8")
-                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_security_headers("application/json; charset=utf-8")
                     self.end_headers()
                     self.wfile.write(b'{"error": "Request entity too large"}')
                     return
@@ -1515,8 +1578,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                             logger.warning(f"[{client_ip}] POST /tts - 认证失败")
                             increment_metric('requests_error')
                             self.send_response(401)
-                            self.send_header("Content-Type", "application/json; charset=utf-8")
-                            self.send_header('Access-Control-Allow-Origin', '*')
+                            self.send_security_headers("application/json; charset=utf-8")
                             self.end_headers()
                             self.wfile.write(b'{"error": "Unauthorized: invalid token"}')
                             return
@@ -1526,10 +1588,16 @@ class NanobotHandler(BaseHTTPRequestHandler):
 
                     if not text:
                         self.send_response(400)
-                        self.send_header("Content-Type", "application/json; charset=utf-8")
-                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.send_security_headers("application/json; charset=utf-8")
                         self.end_headers()
                         self.wfile.write(b'{"error": "No text provided"}')
+                        return
+
+                    if len(text) > MAX_TTS_TEXT_LENGTH:
+                        self.send_response(413)
+                        self.send_security_headers("application/json; charset=utf-8")
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"error": "Text too long", "max_length": MAX_TTS_TEXT_LENGTH}).encode('utf-8'))
                         return
 
                     logger.info(f"[{client_ip}] POST /tts - voice={voice_id}, text_len={len(text)}")
@@ -1539,15 +1607,13 @@ class NanobotHandler(BaseHTTPRequestHandler):
                         logger.error(f"[{client_ip}] POST /tts 错误: {error}")
                         increment_metric('requests_error')
                         self.send_response(500)
-                        self.send_header("Content-Type", "application/json; charset=utf-8")
-                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.send_security_headers("application/json; charset=utf-8")
                         self.end_headers()
                         self.wfile.write(json.dumps({"error": error}, ensure_ascii=False).encode('utf-8'))
                         return
 
                     self.send_response(200)
-                    self.send_header("Content-Type", "audio/mpeg")
-                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_security_headers("audio/mpeg")
                     self.send_header("Content-Length", len(audio_data))
                     self.end_headers()
                     self.wfile.write(audio_data)
@@ -1556,16 +1622,15 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 except Exception as e:
                     logger.error(f"[{client_ip}] POST /tts 异常: {str(e)}")
                     self.send_response(500)
-                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_security_headers("application/json; charset=utf-8")
                     self.end_headers()
                     self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
             elif self.path == "/asr":
                 content_length = int(self.headers.get("Content-Length", 0))
-                if content_length > MAX_CONTENT_LENGTH:
+                if content_length > MAX_ASR_AUDIO_SIZE:
                     logger.warning(f"[{client_ip}] POST /asr - 请求体过大: {content_length}")
                     self.send_response(413)
-                    self.send_header("Content-Type", "application/json; charset=utf-8")
-                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_security_headers("application/json; charset=utf-8")
                     self.end_headers()
                     self.wfile.write(b'{"error": "Request entity too large"}')
                     return
@@ -1582,8 +1647,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     if not expected_token or token != expected_token:
                         logger.warning(f"[{client_ip}] POST /asr - 认证失败")
                         self.send_response(401)
-                        self.send_header("Content-Type", "application/json; charset=utf-8")
-                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.send_security_headers("application/json; charset=utf-8")
                         self.end_headers()
                         self.wfile.write(b'{"error": "Unauthorized: invalid token"}')
                         return
@@ -1593,34 +1657,37 @@ class NanobotHandler(BaseHTTPRequestHandler):
 
                     if error:
                         self.send_response(500)
-                        self.send_header("Content-Type", "application/json; charset=utf-8")
-                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.send_security_headers("application/json; charset=utf-8")
                         self.end_headers()
                         self.wfile.write(json.dumps({"error": error}, ensure_ascii=False).encode('utf-8'))
                         return
 
                     self.send_response(200)
-                    self.send_header("Content-Type", "application/json; charset=utf-8")
-                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_security_headers("application/json; charset=utf-8")
                     self.end_headers()
                     self.wfile.write(json.dumps({"text": audio_data}, ensure_ascii=False).encode('utf-8'))
 
                 except Exception as e:
                     self.send_response(500)
-                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_security_headers("application/json; charset=utf-8")
                     self.end_headers()
                     self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
             elif self.path == "/api/game":
                 debug_enabled = config.get('debug', {}).get('api_enabled', False)
                 if not debug_enabled:
                     self.send_response(403)
-                    self.send_header("Content-Type", "application/json; charset=utf-8")
-                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_security_headers("application/json; charset=utf-8")
                     self.end_headers()
                     self.wfile.write(json.dumps({"error": "Debug mode disabled. Set debug.api_enabled=true in config.json"}).encode('utf-8'))
                     return
                 
                 content_length = int(self.headers.get("Content-Length", 0))
+                if content_length > MAX_CONTENT_LENGTH:
+                    self.send_response(413)
+                    self.send_security_headers("application/json; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(b'{"error": "Request entity too large"}')
+                    return
                 body = self.rfile.read(content_length).decode("utf-8")
                 
                 try:
@@ -1630,8 +1697,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     
                     if not command:
                         self.send_response(400)
-                        self.send_header("Content-Type", "application/json; charset=utf-8")
-                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.send_security_headers("application/json; charset=utf-8")
                         self.end_headers()
                         self.wfile.write(json.dumps({"error": "No command provided"}).encode('utf-8'))
                         return
@@ -1641,16 +1707,14 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     result = execute_game_command_api(command, params)
                     
                     self.send_response(200)
-                    self.send_header("Content-Type", "application/json; charset=utf-8")
-                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_security_headers("application/json; charset=utf-8")
                     self.end_headers()
                     self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
                     
                 except Exception as e:
                     logger.error(f"[{client_ip}] POST /api/game 错误: {str(e)}")
                     self.send_response(500)
-                    self.send_header("Content-Type", "application/json; charset=utf-8")
-                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_security_headers("application/json; charset=utf-8")
                     self.end_headers()
                     self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
             elif self.path == "/api/commands":
@@ -1676,8 +1740,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     {"command": "chat", "desc": "聊天", "params": {"message": "消息内容"}}
                 ]
                 self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_security_headers("application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"commands": commands}, ensure_ascii=False, indent=2).encode('utf-8'))
             else:
@@ -1694,7 +1757,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
         
         if waf_is_blacklisted(client_ip):
             self.send_response(403)
-            self.send_header('Content-Type', 'text/plain')
+            self.send_security_headers('text/plain', cors=False)
             self.end_headers()
             self.wfile.write(b'Forbidden')
             return
@@ -1702,7 +1765,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
         blocked, reason = waf_check_request(client_ip, self.path, self.headers)
         if blocked:
             self.send_response(403)
-            self.send_header('Content-Type', 'text/plain')
+            self.send_security_headers('text/plain', cors=False)
             self.end_headers()
             self.wfile.write(b'Forbidden')
             return
@@ -1735,7 +1798,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     "requests_total": requests_total
                 }
                 self.send_response(200)
-                self.send_header("Content-Type", "application/json")
+                self.send_security_headers("application/json", cors=False)
                 self.end_headers()
                 self.wfile.write(json.dumps(health_data).encode('utf-8'))
                 increment_metric('requests_success')
@@ -1747,7 +1810,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     self.end_headers()
                     return
                 self.send_response(200)
-                self.send_header("Content-Type", "text/plain; version=0.0.4")
+                self.send_security_headers("text/plain; version=0.0.4", cors=False)
                 self.end_headers()
                 self.wfile.write(format_prometheus_metrics().encode('utf-8'))
                 increment_metric('requests_success')
@@ -1763,7 +1826,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 model = provider_config.get('model', 'unknown')
 
                 self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_security_headers("application/json; charset=utf-8", cors=False)
                 self.end_headers()
                 self.wfile.write(json.dumps({"model": f"{active_provider}/{model}"}, ensure_ascii=False).encode('utf-8'))
                 return
@@ -1772,7 +1835,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 debug_enabled = config.get('debug', {}).get('api_enabled', False)
                 if not debug_enabled:
                     self.send_response(403)
-                    self.send_header("Content-Type", "application/json")
+                    self.send_security_headers("application/json", cors=False)
                     self.end_headers()
                     self.wfile.write(json.dumps({"error": "Debug mode disabled"}).encode('utf-8'))
                     return
@@ -1792,7 +1855,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                             "api_base": provider_cfg.get('api_base', 'unknown') if provider != 'minimax' else 'api.minimax.chat'
                         }
                 self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_security_headers("application/json; charset=utf-8", cors=False)
                 self.end_headers()
                 self.wfile.write(json.dumps(debug_data, ensure_ascii=False, indent=2).encode('utf-8'))
                 return
@@ -1812,7 +1875,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 except Exception as e:
                     logger.error(f"保存配置失败: {e}")
                 self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_security_headers("application/json; charset=utf-8", cors=False)
                 self.end_headers()
                 self.wfile.write(json.dumps({"debug_enabled": config['debug']['api_enabled']}).encode('utf-8'))
                 return
@@ -1829,7 +1892,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                 except:
                     pass
                 self.send_response(200)
-                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.send_security_headers("text/plain; charset=utf-8", cors=False)
                 self.end_headers()
                 self.wfile.write(''.join(log_lines).encode('utf-8'))
                 return
@@ -1847,8 +1910,7 @@ class NanobotHandler(BaseHTTPRequestHandler):
                             'ollama': {'api_base': cfg.get('ollama', {}).get('api_base', 'http://localhost:11434/v1')},
                         }
                         self.send_response(200)
-                        self.send_header("Content-Type", "application/json")
-                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.send_security_headers("application/json")
                         self.end_headers()
                         self.wfile.write(json.dumps(safe_cfg, ensure_ascii=False).encode('utf-8'))
                     except Exception as e:
@@ -1911,12 +1973,8 @@ class NanobotHandler(BaseHTTPRequestHandler):
                     
                     logger.info(f"[{client_ip}] GET {self.path} - 成功 (200)")
                     self.send_response(200)
-                    self.send_header("Content-Type", mime_type)
+                    self.send_security_headers(mime_type, cors=False)
                     self.send_header("Content-Length", len(content))
-                    self.send_header("X-Content-Type-Options", "nosniff")
-                    self.send_header("X-Frame-Options", "DENY")
-                    self.send_header("X-XSS-Protection", "1; mode=block")
-                    self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
                     self.end_headers()
                     self.wfile.write(content)
                 except BrokenPipeError:
