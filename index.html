@@ -6091,6 +6091,7 @@ function toggleAutoSpeak(){
 }
 function setAutoSpeak(enabled){
     autoSpeak=enabled;
+    localStorage.setItem('autoSpeak',enabled?'true':'false');
     updateAutoSpeakUI();
 }
 function updateAutoSpeakUI(){
@@ -8439,6 +8440,11 @@ function initMusic(){
     if(savedVol)musicSystem.volume=parseFloat(savedVol);
     const savedMode=localStorage.getItem('musicMode');
     if(savedMode)musicSystem.currentMode=savedMode;
+    const savedAutoSpeak=localStorage.getItem('autoSpeak');
+    if(savedAutoSpeak!==null){
+        autoSpeak=savedAutoSpeak==='true';
+        updateAutoSpeakUI();
+    }
     const savedSpeakMode=localStorage.getItem('speakMode');
     if(savedSpeakMode){
         speakMode=savedSpeakMode;

@@ -16,6 +16,7 @@ import subprocess
 import http.client
 import re
 import time
+import tempfile
 from datetime import datetime, timedelta
 from collections import Counter
 
@@ -181,14 +182,27 @@ def ensure_data_dir():
 def load_json_file(filepath, default=None):
     if default is None:
         default = {}
-    if os.path.exists(filepath):
+    if not os.path.exists(filepath):
+        return default
+    try:
         with open(filepath, 'r', encoding='utf-8') as f:
             return json.load(f)
-    return default
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"[WARN] JSON文件损坏，将使用默认值: {filepath} - {e}")
+        try:
+            os.remove(filepath)
+        except:
+            pass
+        return default
 
 def save_json_file(filepath, data):
-    with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2)
+    try:
+        fd, temp_path = tempfile.mkstemp(dir=os.path.dirname(filepath), suffix='.tmp')
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2)
+        os.replace(temp_path, filepath)
+    except Exception as e:
+        print(f"[ERROR] 保存JSON文件失败: {filepath} - {e}")
 
 def is_private_ip(ip):
     if not ip:

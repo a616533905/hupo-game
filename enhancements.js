@@ -1212,6 +1212,428 @@
     };
 
     /* ============================================
+       11. 昼夜动态系统
+       ============================================ */
+    var DayNightSystem = {
+        overlay: null,
+        indicator: null,
+        starsContainer: null,
+        currentPhase: '',
+        checkInterval: null,
+
+        phases: {
+            dawn: { start: 5, end: 7, label: '🌅 黎明', weather: 'sunny' },
+            day: { start: 7, end: 17, label: '☀️ 白天', weather: 'sunny' },
+            dusk: { start: 17, end: 19, label: '🌇 黄昏', weather: 'cloudy' },
+            night: { start: 19, end: 24, label: '🌙 夜晚', weather: 'night' },
+            nightLate: { start: 0, end: 5, label: '🌙 深夜', weather: 'night' }
+        },
+
+        init: function() {
+            this.createOverlay();
+            this.createIndicator();
+            this.createStars();
+            this.update();
+            var self = this;
+            this.checkInterval = setInterval(function() { self.update(); }, 60000);
+            console.log('[DayNight] 昼夜动态系统已启动');
+        },
+
+        createOverlay: function() {
+            this.overlay = document.createElement('div');
+            this.overlay.className = 'daynight-overlay';
+            document.body.insertBefore(this.overlay, document.body.firstChild);
+        },
+
+        createIndicator: function() {
+            this.indicator = document.createElement('div');
+            this.indicator.className = 'daynight-indicator';
+            document.body.appendChild(this.indicator);
+        },
+
+        createStars: function() {
+            this.starsContainer = document.createElement('div');
+            this.starsContainer.className = 'stars-container';
+            var count = 30;
+            for (var i = 0; i < count; i++) {
+                var star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Utils.rand(0, 100) + '%';
+                star.style.top = Utils.rand(0, 100) + '%';
+                star.style.setProperty('--duration', Utils.rand(2, 5) + 's');
+                star.style.setProperty('--delay', Utils.rand(0, 3) + 's');
+                if (Utils.rand(0, 1) > 0.7) {
+                    star.style.width = '3px';
+                    star.style.height = '3px';
+                }
+                this.starsContainer.appendChild(star);
+            }
+            document.body.appendChild(this.starsContainer);
+        },
+
+        getPhase: function() {
+            var hour = new Date().getHours();
+            var min = new Date().getMinutes();
+            var time = hour + min / 60;
+
+            if (time >= 5 && time < 7) return 'dawn';
+            if (time >= 7 && time < 17) return 'day';
+            if (time >= 17 && time < 19) return 'dusk';
+            if (time >= 19 || time < 5) return 'night';
+            return 'day';
+        },
+
+        update: function() {
+            var phase = this.getPhase();
+            if (phase === this.currentPhase) return;
+            this.currentPhase = phase;
+
+            this.overlay.className = 'daynight-overlay ' + phase;
+            var config = this.phases[phase] || this.phases.day;
+            this.indicator.className = 'daynight-indicator ' + phase;
+            this.indicator.textContent = config.label;
+
+            if (phase === 'night') {
+                this.starsContainer.classList.add('visible');
+            } else {
+                this.starsContainer.classList.remove('visible');
+            }
+
+            if (typeof weather !== 'undefined' && typeof setWeather === 'function') {
+                if (phase === 'night' && weather !== 'night') {
+                    setWeather('night', 0);
+                }
+            }
+
+            this.applyGameEffects(phase);
+        },
+
+        applyGameEffects: function(phase) {
+            if (typeof addMessage !== 'function') return;
+            var messages = {
+                dawn: '🌅 天亮了！新的一天开始了~',
+                day: '☀️ 阳光明媚，适合冒险！',
+                dusk: '🌇 太阳快下山了，注意安全~',
+                night: '🌙 夜幕降临，怪物变强了！商店夜间打折中~'
+            };
+            if (messages[phase]) {
+                addMessage(messages[phase], 'bot');
+            }
+        },
+
+        isNight: function() {
+            return this.currentPhase === 'night';
+        },
+
+        getShopDiscount: function() {
+            return this.isNight() ? 0.85 : 1.0;
+        }
+    };
+
+    /* ============================================
+       12. 猫咪互动增强
+       ============================================ */
+    var CatInteraction = {
+        lastIdleTime: Date.now(),
+        idleInterval: null,
+        clickCount: 0,
+        clickTimer: null,
+
+        idleActions: [
+            { text: '🦋 追蝴蝶~', cls: 'idle-chase' },
+            { text: '😪 打哈欠...', cls: 'idle-yawn' },
+            { text: '🐱 舔爪子~', cls: 'idle-lick' },
+            { text: '🧶 伸懒腰~', cls: 'idle-stretch' },
+            { text: '👀 发呆中...', cls: '' },
+            { text: '🐟 想吃鱼干~', cls: '' },
+            { text: '😴 好困...', cls: 'idle-yawn' },
+            { text: '🎾 想玩球~', cls: 'idle-chase' }
+        ],
+
+        init: function() {
+            this.bindCatClick();
+            this.startIdleLoop();
+            console.log('[CatInteraction] 猫咪互动系统已启动');
+        },
+
+        bindCatClick: function() {
+            var self = this;
+            var sprite = Utils.qs('#catSprite');
+            if (!sprite) return;
+
+            sprite.style.cursor = 'pointer';
+
+            Utils.on(sprite, 'click', function(e) {
+                e.stopPropagation();
+                self.handleClick(e);
+            });
+
+            Utils.on(sprite, 'touchstart', function(e) {
+                self.handleClick(e);
+            });
+        },
+
+        handleClick: function(e) {
+            this.clickCount++;
+            this.lastIdleTime = Date.now();
+
+            this.showClickRipple(e);
+            this.showHeart(e);
+
+            var self = this;
+            clearTimeout(this.clickTimer);
+            this.clickTimer = setTimeout(function() {
+                self.triggerClickReaction();
+                self.clickCount = 0;
+            }, 300);
+        },
+
+        showClickRipple: function(e) {
+            var sprite = Utils.qs('#catSprite');
+            if (!sprite) return;
+            var ripple = document.createElement('div');
+            ripple.className = 'cat-click-ripple';
+            var rect = sprite.getBoundingClientRect();
+            ripple.style.left = (e.clientX || e.touches[0].clientX) - rect.left + 'px';
+            ripple.style.top = (e.clientY || e.touches[0].clientY) - rect.top + 'px';
+            sprite.style.position = sprite.style.position || 'relative';
+            sprite.appendChild(ripple);
+            setTimeout(function() { if (ripple.parentNode) ripple.remove(); }, 600);
+        },
+
+        showHeart: function(e) {
+            var sprite = Utils.qs('#catSprite');
+            if (!sprite) return;
+            var hearts = ['💕', '❤️', '💖', '💗', '🩷'];
+            var heart = document.createElement('div');
+            heart.className = 'heart-float';
+            heart.textContent = hearts[Utils.randInt(0, hearts.length - 1)];
+            var rect = sprite.getBoundingClientRect();
+            heart.style.left = Utils.rand(30, 70) + '%';
+            heart.style.top = '10%';
+            sprite.appendChild(heart);
+            setTimeout(function() { if (heart.parentNode) heart.remove(); }, 1500);
+        },
+
+        triggerClickReaction: function() {
+            if (typeof cat === 'undefined') return;
+            var reactions;
+            if (this.clickCount >= 5) {
+                reactions = [
+                    '喵喵喵！别挠了~',
+                    '好好好！我开心了！💕',
+                    '嘻嘻~好痒！',
+                    '停停停！我投降了！😹'
+                ];
+                if (typeof cat.happiness !== 'undefined') {
+                    cat.happiness = Math.min(100, cat.happiness + 3);
+                }
+            } else if (this.clickCount >= 3) {
+                reactions = [
+                    '喵~ 好舒服~',
+                    '呼噜呼噜~',
+                    '再摸摸~',
+                    '嗯~ 开心！'
+                ];
+                if (typeof cat.happiness !== 'undefined') {
+                    cat.happiness = Math.min(100, cat.happiness + 2);
+                }
+            } else {
+                reactions = [
+                    '喵？',
+                    '嗯？',
+                    '什么事？',
+                    '喵~'
+                ];
+                if (typeof cat.happiness !== 'undefined') {
+                    cat.happiness = Math.min(100, cat.happiness + 1);
+                }
+            }
+
+            var msg = reactions[Utils.randInt(0, reactions.length - 1)];
+            this.showBubble(msg);
+
+            if (typeof updateUI === 'function') updateUI();
+            if (typeof saveGame === 'function') saveGame();
+        },
+
+        showBubble: function(text) {
+            var sprite = Utils.qs('#catSprite');
+            if (!sprite) return;
+            var old = sprite.querySelector('.idle-action-bubble');
+            if (old) old.remove();
+
+            var bubble = document.createElement('div');
+            bubble.className = 'idle-action-bubble';
+            bubble.textContent = text;
+            sprite.style.position = sprite.style.position || 'relative';
+            sprite.appendChild(bubble);
+            setTimeout(function() { if (bubble.parentNode) bubble.remove(); }, 2500);
+        },
+
+        startIdleLoop: function() {
+            var self = this;
+            this.idleInterval = setInterval(function() {
+                if (document.hidden) return;
+                var elapsed = Date.now() - self.lastIdleTime;
+                if (elapsed > 15000 && Utils.rand(0, 1) < 0.3) {
+                    self.triggerIdleAction();
+                    self.lastIdleTime = Date.now();
+                }
+            }, 10000);
+        },
+
+        triggerIdleAction: function() {
+            var action = this.idleActions[Utils.randInt(0, this.idleActions.length - 1)];
+            var sprite = Utils.qs('#catSprite');
+            if (!sprite) return;
+
+            if (action.cls) {
+                sprite.classList.remove('idle-chase', 'idle-yawn', 'idle-lick', 'idle-stretch');
+                void sprite.offsetWidth;
+                sprite.classList.add(action.cls);
+                setTimeout(function() {
+                    sprite.classList.remove(action.cls);
+                }, 2500);
+            }
+
+            this.showBubble(action.text);
+        }
+    };
+
+    /* ============================================
+       13. 里程碑庆祝特效
+       ============================================ */
+    var MilestoneEffects = {
+        init: function() {
+            this.hookLevelUp();
+            this.hookAchievement();
+            this.hookRareItem();
+            console.log('[MilestoneEffects] 里程碑庆祝系统已启动');
+        },
+
+        showMilestone: function(text, type) {
+            var container = document.createElement('div');
+            container.className = 'milestone-celebration';
+
+            var textEl = document.createElement('div');
+            textEl.className = 'milestone-text ' + (type || '');
+            textEl.textContent = text;
+            container.appendChild(textEl);
+
+            var colors = {
+                'level-up': '#ffd93d',
+                'rare-item': '#a29bfe',
+                'achievement': '#6bcb77'
+            };
+            var ringColor = colors[type] || '#ffd93d';
+
+            for (var i = 0; i < 3; i++) {
+                var ring = document.createElement('div');
+                ring.className = 'milestone-ring';
+                ring.style.borderColor = ringColor;
+                ring.style.animationDelay = (i * 0.2) + 's';
+                container.appendChild(ring);
+            }
+
+            document.body.appendChild(container);
+
+            if (typeof ParticleEngine !== 'undefined' && ParticleEngine.particles.length < ParticleEngine.maxParticles * 0.7) {
+                var cx = window.innerWidth / 2;
+                var cy = window.innerHeight / 2;
+                var particleColors = {
+                    'level-up': ['#ffd93d', '#ffb347', '#ff6b6b'],
+                    'rare-item': ['#a29bfe', '#6c5ce7', '#74b9ff'],
+                    'achievement': ['#6bcb77', '#1dd1a1', '#ffeaa7']
+                };
+                var pColors = particleColors[type] || ['#ffd93d', '#ff6b6b'];
+                for (var j = 0; j < 3; j++) {
+                    (function(delay, colors) {
+                        setTimeout(function() {
+                            ParticleEngine.addExplosion(
+                                cx + Utils.rand(-80, 80),
+                                cy + Utils.rand(-50, 50),
+                                colors[Utils.randInt(0, colors.length - 1)],
+                                Utils.randInt(6, 10)
+                            );
+                        }, delay);
+                    })(j * 200, pColors);
+                }
+            }
+
+            setTimeout(function() {
+                if (container.parentNode) container.remove();
+            }, 3000);
+        },
+
+        showAchievementUnlock: function(name, icon) {
+            var el = document.createElement('div');
+            el.className = 'achievement-unlock-effect';
+            el.innerHTML = (icon || '🏆') + ' 成就解锁：' + name;
+            document.body.appendChild(el);
+            setTimeout(function() { if (el.parentNode) el.remove(); }, 3500);
+        },
+
+        hookLevelUp: function() {
+            var origCheck = window.checkLevel;
+            if (origCheck) {
+                window.checkLevel = function() {
+                    var prevLevel = typeof cat !== 'undefined' ? cat.level : 0;
+                    origCheck.apply(null, arguments);
+                    if (typeof cat !== 'undefined' && cat.level > prevLevel) {
+                        MilestoneEffects.showMilestone('⬆️ Lv.' + cat.level + ' 升级！', 'level-up');
+                    }
+                };
+            }
+        },
+
+        hookAchievement: function() {
+            var origCheckAch = window.checkAch;
+            if (origCheckAch) {
+                window.checkAch = function(id) {
+                    var wasUnlocked = typeof achievements !== 'undefined' && achievements.includes(id);
+                    origCheckAch.apply(null, arguments);
+                    if (!wasUnlocked && typeof achievements !== 'undefined' && achievements.includes(id)) {
+                        var achNames = {
+                            firstWin: '初次胜利', winStreak3: '三连胜', winStreak10: '十连胜',
+                            level5: '成长之路', level10: '冒险新星', level20: '资深战士',
+                            richCat: '小富翁', collector: '收藏家', explorer: '探险家',
+                            evolved: '完成进化', evolved_all: '全进化形态'
+                        };
+                        var achIcons = {
+                            firstWin: '⚔️', winStreak3: '🔥', winStreak10: '💥',
+                            level5: '⭐', level10: '🌟', level20: '💫',
+                            richCat: '💰', collector: '📚', explorer: '🗺️',
+                            evolved: '🌟', evolved_all: '🔮'
+                        };
+                        MilestoneEffects.showMilestone('🏆 成就解锁！', 'achievement');
+                        MilestoneEffects.showAchievementUnlock(
+                            achNames[id] || id,
+                            achIcons[id] || '🏆'
+                        );
+                    }
+                };
+            }
+        },
+
+        hookRareItem: function() {
+            var origShowDrop = window.showDropItem;
+            if (origShowDrop) {
+                window.showDropItem = function(item) {
+                    origShowDrop.apply(null, arguments);
+                    if (item && (item.rarity === 'rare' || item.rarity === 'epic' || item.rarity === 'legendary')) {
+                        var rarityNames = { rare: '💎 稀有', epic: '💜 史诗', legendary: '🌟 传说' };
+                        MilestoneEffects.showMilestone(
+                            rarityNames[item.rarity] + ' ' + (item.name || ''),
+                            'rare-item'
+                        );
+                    }
+                };
+            }
+        }
+    };
+
+    /* ============================================
        启动入口
        ============================================ */
     function boot() {
@@ -1224,6 +1646,9 @@
             UIEffects.init();
             EventBridge.init();
             BattleResultEffects.init();
+            DayNightSystem.init();
+            CatInteraction.init();
+            MilestoneEffects.init();
             console.log('[Enhancements v' + VERSION + '] 所有增强模块加载完成 ✓');
         } catch(err) {
             console.error('[Enhancements] 初始化错误:', err);
@@ -1244,7 +1669,10 @@
         UIEffects: UIEffects,
         ParticleEngine: ParticleEngine,
         SceneParticles: SceneParticles,
-        BattleResultEffects: BattleResultEffects
+        BattleResultEffects: BattleResultEffects,
+        DayNightSystem: DayNightSystem,
+        CatInteraction: CatInteraction,
+        MilestoneEffects: MilestoneEffects
     };
 
 })();
